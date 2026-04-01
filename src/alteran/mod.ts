@@ -6,6 +6,7 @@ import {
   cleanProject,
   cleanProjectScopes,
   compactProject,
+  ensureProjectEnv,
   generateShellEnv,
   initProject,
   initStandaloneApp,
@@ -32,6 +33,7 @@ export {
   addTool,
   cleanProject,
   compactProject,
+  ensureProjectEnv,
   generateShellEnv,
   initProject,
   passthroughDeno,
@@ -49,6 +51,7 @@ function printHelp(): void {
 
 Commands:
   alteran init [dir]
+  alteran ensure-env [dir]
   alteran refresh
   alteran shellenv [dir]
   alteran app add|rm|purge|ls|run|init <name>
@@ -355,6 +358,18 @@ export async function runCli(argv: string[]): Promise<number> {
         const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
         await initProject(targetDir);
         console.error(`Initialized Alteran project at ${targetDir}`);
+        return 0;
+      }
+      case "ensure-env": {
+        if (isHelpToken(rest[0])) {
+          console.log("Usage:\n  alteran ensure-env [dir]");
+          return 0;
+        }
+        const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
+        const result = await ensureProjectEnv(targetDir);
+        if (result.initialized) {
+          console.error(`Initialized Alteran project at ${targetDir}`);
+        }
         return 0;
       }
       case "refresh": {

@@ -965,6 +965,34 @@ export async function refreshProject(
   return config;
 }
 
+export async function ensureProjectEnv(projectDir: string): Promise<{
+  initialized: boolean;
+  config: AlteranConfig;
+}> {
+  await loadProjectDotEnv(projectDir);
+
+  const configPath = join(projectDir, "alteran.json");
+  if (!await exists(configPath)) {
+    return {
+      initialized: true,
+      config: await initProject(projectDir),
+    };
+  }
+
+  await ensureProjectStructure(projectDir);
+  await copyBundledRuntime(projectDir);
+  await ensureBootstrapFiles(projectDir);
+  await ensureProjectGitignore(projectDir);
+
+  let config = await readAlteranConfig(projectDir);
+  await ensureLocalDeno(projectDir, config.deno_version);
+  await syncRootDenoConfig(projectDir, config);
+  await ensureEnvScripts(projectDir);
+
+  config = await readAlteranConfig(projectDir);
+  return { initialized: false, config };
+}
+
 export async function initProject(projectDir: string): Promise<AlteranConfig> {
   await loadProjectDotEnv(projectDir);
   await ensureProjectStructure(projectDir);
