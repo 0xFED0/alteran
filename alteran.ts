@@ -1,8 +1,15 @@
-export * from "./src/alteran/mod.ts";
+import {
+  exitCli,
+  getCliArgs,
+  isMain,
+  loadCliRunner,
+} from "./src/alteran/entry_runtime.ts";
 
-import { runCli } from "./src/alteran/mod.ts";
+export async function runCli(args: string[]): Promise<number> {
+  const cliRunner = await loadCliRunner();
+  return await cliRunner(args);
+}
 
-if (import.meta.main) {
-  const exitCode = await runCli(Deno.args);
-  Deno.exit(exitCode);
+if (await isMain(import.meta.url, import.meta.main)) {
+  exitCli(await runCli(getCliArgs()));
 }

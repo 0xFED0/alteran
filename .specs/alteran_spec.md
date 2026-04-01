@@ -149,6 +149,11 @@ src/alteran/mod.ts
 This file exists to provide a stable public entrypoint for repository use,
 bootstrap use, and publication preparation.
 
+It may also include a thin Node.js compatibility bridge whose only purpose is to
+locate or bootstrap Deno and then re-execute Alteran under Deno.
+
+That bridge does not make Alteran itself a Node-native runtime.
+
 It is not the canonical home of Alteran's internal runtime implementation.
 
 In a normal Alteran-managed project, the materialized runtime still lives at:
@@ -678,6 +683,16 @@ In a materialized Alteran-managed project, the effective runtime entry remains:
 This keeps bootstrap/public usage stable while the materialized project-local
 runtime remains self-contained under `.runtime/alteran/`.
 
+If `alteran.ts` is invoked from Node.js, it may route into a minimal
+Node-compatibility bootstrap layer that:
+
+- finds or downloads Deno
+- re-executes Alteran under Deno
+- preserves Alteran's Deno-oriented execution model
+
+This compatibility is only for the CLI/bootstrap entrypoint. It is not a goal to
+make the full Alteran runtime/library Node-compatible.
+
 ---
 
 ## 8. `alteran.ts` and Internal Runtime Entry
@@ -712,6 +727,10 @@ package.
 
 In those contexts it delegates into the authored source tree, which can then
 materialize `.runtime/alteran/` for normal projects.
+
+The root `alteran.ts` should stay intentionally thin. Runtime detection such as
+"Deno vs Node.js" and "is this the main module" may live in a small internal
+helper module, while the public entrypoint keeps only minimal dispatch logic.
 
 ### 8.2 Why this split exists
 
@@ -2877,7 +2896,10 @@ This is acceptable because:
 
 - execution is controlled by Alteran
 - the environment is Deno-only
-- there is no target requirement for browser or Node.js compatibility
+- there is no target requirement for browser compatibility
+- Node.js compatibility, if present at all, is limited to a thin bootstrap
+  bridge in the top-level proxy entrypoint rather than the Alteran runtime
+  itself
 
 ### 37.6 Category model for Alteran
 
