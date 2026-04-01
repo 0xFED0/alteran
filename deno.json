@@ -4,6 +4,10 @@
     "tool:prepare_zip": "deno run -A ./alteran.ts tool run prepare_zip",
     "alteran": "deno run -A ./alteran.ts",
     "refresh": "deno run -A ./alteran.ts refresh",
+    "test:unit": "deno test -A ./tests/alteran_unit_test.ts",
+    "test:e2e": "deno test -A ./tests/alteran_e2e_test.ts",
+    "test:windows": "deno test -A ./tests/alteran_windows_e2e_test.ts",
+    "test:docker": "deno test -A ./tests/alteran_docker_e2e_test.ts",
     "test": "deno test -A"
   },
   "imports": {
