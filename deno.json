@@ -1,0 +1,16 @@
+{
+  "tasks": {
+    "tool:prepare_jsr": "deno run -A ./alteran.ts tool run prepare_jsr",
+    "tool:prepare_zip": "deno run -A ./alteran.ts tool run prepare_zip",
+    "alteran": "deno run -A ./alteran.ts",
+    "refresh": "deno run -A ./alteran.ts refresh",
+    "test": "deno test -A"
+  },
+  "imports": {
+    "@alteran": "./src/alteran/mod.ts",
+    "@alteran/": "./src/alteran/",
+    "@alteran/logging/logtape_ext": "./src/alteran/logging/logtape_ext.ts",
+    "@logtape/logtape": "./src/alteran/logging/logtape_cfg_mock.ts"
+  },
+  "workspace": []
+}
