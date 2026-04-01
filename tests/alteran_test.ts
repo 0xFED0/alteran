@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { getVersionedJsrDistDir } from "../tools/prepare_jsr/mod.ts";
 import {
@@ -457,4 +457,208 @@ Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () 
   }
 
   await Deno.stat(join(platformDir, "cache"));
+});
+
+Deno.test("alteran compact removes generated runtime artifacts but keeps bootstrap files", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-compact-" });
+  await initProject(projectDir);
+
+  await Deno.mkdir(join(projectDir, "apps", "demo", ".runtime"), {
+    recursive: true,
+  });
+  await Deno.writeTextFile(
+    join(projectDir, "apps", "demo", ".runtime", "marker.txt"),
+    "demo",
+  );
+  await Deno.mkdir(join(projectDir, "dist", "jsr"), { recursive: true });
+  await Deno.writeTextFile(
+    join(projectDir, "dist", "jsr", "artifact.txt"),
+    "dist",
+  );
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+
+  try {
+    const exitCode = await runCli(["compact", "-y"]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact -y to pass, got exit code ${exitCode}`,
+      );
+    }
+
+    for (
+      const removedPath of [
+        join(projectDir, ".runtime"),
+        join(projectDir, "dist"),
+        join(projectDir, "apps", "demo", ".runtime"),
+      ]
+    ) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(`Expected ${removedPath} to be removed by compact`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
+
+    for (
+      const preservedPath of [
+        join(projectDir, "activate"),
+        join(projectDir, "activate.bat"),
+        join(projectDir, "alteran.json"),
+        join(projectDir, "deno.json"),
+        join(projectDir, ".gitignore"),
+        join(projectDir, "apps"),
+        join(projectDir, "tools"),
+        join(projectDir, "libs"),
+        join(projectDir, "tests"),
+      ]
+    ) {
+      await Deno.stat(preservedPath);
+    }
+
+    if (Deno.build.os !== "windows") {
+      const command = new Deno.Command("zsh", {
+        args: [
+          "-lc",
+          `cd ${
+            JSON.stringify(projectDir)
+          } && . ./activate >/dev/null 2>/dev/null && test -f .runtime/alteran/mod.ts && test -f .runtime/env/enter-env.sh`,
+        ],
+        env: {
+          ...Deno.env.toObject(),
+          ALTERAN_RUN_SOURCES: resolve(Deno.cwd(), "alteran.ts"),
+          PATH: `${join(dirname(Deno.execPath()))}:${
+            Deno.env.get("PATH") ?? ""
+          }`,
+        },
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const output = await command.output();
+      if (!output.success) {
+        throw new Error(
+          `Expected activate to rehydrate compacted project. stdout=${
+            new TextDecoder().decode(output.stdout)
+          } stderr=${new TextDecoder().decode(output.stderr)}`,
+        );
+      }
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("alteran compact -n cancels without changing the project", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-compact-no-" });
+  await initProject(projectDir);
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+
+  try {
+    const exitCode = await runCli(["compact", "-n"]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact -n to exit cleanly, got ${exitCode}`,
+      );
+    }
+
+    await Deno.stat(join(projectDir, ".runtime"));
+    await Deno.stat(join(projectDir, "activate"));
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("alteran compact prompts and cancels by default when the answer is no", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-prompt-no-",
+  });
+  await initProject(projectDir);
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  const previousPrompt = globalThis.prompt;
+  const stdinDescriptor = Object.getOwnPropertyDescriptor(
+    Deno.stdin,
+    "isTerminal",
+  );
+
+  Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+  Object.defineProperty(Deno.stdin, "isTerminal", {
+    configurable: true,
+    value: () => true,
+  });
+  globalThis.prompt = () => "n";
+
+  try {
+    const exitCode = await runCli(["compact"]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact prompt cancel to exit cleanly, got ${exitCode}`,
+      );
+    }
+
+    await Deno.stat(join(projectDir, ".runtime"));
+  } finally {
+    globalThis.prompt = previousPrompt;
+    if (stdinDescriptor) {
+      Object.defineProperty(Deno.stdin, "isTerminal", stdinDescriptor);
+    }
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("alteran compact requires explicit confirmation in non-interactive mode", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-noninteractive-",
+  });
+  await initProject(projectDir);
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  const stdinDescriptor = Object.getOwnPropertyDescriptor(
+    Deno.stdin,
+    "isTerminal",
+  );
+
+  Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+  Object.defineProperty(Deno.stdin, "isTerminal", {
+    configurable: true,
+    value: () => false,
+  });
+
+  try {
+    const exitCode = await runCli(["compact"]);
+    if (exitCode !== 1) {
+      throw new Error(
+        `Expected alteran compact without flags in non-interactive mode to fail, got ${exitCode}`,
+      );
+    }
+
+    await Deno.stat(join(projectDir, ".runtime"));
+  } finally {
+    if (stdinDescriptor) {
+      Object.defineProperty(Deno.stdin, "isTerminal", stdinDescriptor);
+    }
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
 });
