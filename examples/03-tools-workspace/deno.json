@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "alteran": "deno run -A ./alteran.ts",
+    "refresh": "deno run -A ./alteran.ts refresh",
+    "test": "deno test -A",
+    "tool:check-env": "deno run -A ./alteran.ts tool run check-env",
+    "tool:release-notes": "deno run -A ./alteran.ts tool run release-notes"
+  },
+  "imports": {
+    "@alteran": "./.runtime/alteran/mod.ts",
+    "@alteran/": "./.runtime/alteran/",
+    "@alteran/logging/logtape_ext": "./.runtime/alteran/logging/logtape_ext.ts",
+    "@logtape/logtape": "./.runtime/alteran/logging/logtape_cfg_mock.ts",
+    "@libs/table": "./libs/table/mod.ts"
+  },
+  "workspace": []
+}

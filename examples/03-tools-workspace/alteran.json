@@ -1,0 +1,41 @@
+{
+  "name": "tools-workspace",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": false
+  },
+  "apps": {},
+  "tools": {
+    "check-env": {
+      "name": "check-env",
+      "path": "./tools/check-env.ts",
+      "discovered": true
+    },
+    "release-notes": {
+      "name": "release-notes",
+      "path": "./tools/release-notes.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": [
+        "./apps/*"
+      ],
+      "exclude": []
+    },
+    "tools": {
+      "include": [
+        "./tools/*"
+      ],
+      "exclude": []
+    }
+  }
+}

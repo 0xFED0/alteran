@@ -1,0 +1,36 @@
+{
+  "name": "logging-run-tree",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": false
+  },
+  "apps": {},
+  "tools": {
+    "run-pipeline": {
+      "name": "run-pipeline",
+      "path": "./tools/run-pipeline.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": [
+        "./apps/*"
+      ],
+      "exclude": []
+    },
+    "tools": {
+      "include": [
+        "./tools/*"
+      ],
+      "exclude": []
+    }
+  }
+}

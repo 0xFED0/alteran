@@ -1,0 +1,15 @@
+{
+  "name": "portable-cli",
+  "id": "portable-cli",
+  "version": "0.1.0",
+  "title": "portable-cli",
+  "standalone": false,
+  "view": {
+    "enabled": false
+  },
+  "entry": {
+    "core": "./core/mod.ts",
+    "view": "./view",
+    "app": "app"
+  }
+}

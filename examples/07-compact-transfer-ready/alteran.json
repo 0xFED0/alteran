@@ -1,0 +1,42 @@
+{
+  "name": "compact-transfer-ready",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": false
+  },
+  "apps": {
+    "portable-cli": {
+      "name": "portable-cli",
+      "path": "./apps/portable-cli",
+      "discovered": true
+    }
+  },
+  "tools": {
+    "project-status": {
+      "name": "project-status",
+      "path": "./tools/project-status.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": [
+        "./apps/*"
+      ],
+      "exclude": []
+    },
+    "tools": {
+      "include": [
+        "./tools/*"
+      ],
+      "exclude": []
+    }
+  }
+}

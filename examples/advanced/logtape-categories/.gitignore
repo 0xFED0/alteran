@@ -1,0 +1,12 @@
+
+# --- alteran managed: begin ---
+.DS_Store
+Thumbs.db
+activate
+activate.bat
+.runtime/
+apps/*/app
+apps/*/app.bat
+apps/*/.runtime/
+dist/
+# --- alteran managed: end ---

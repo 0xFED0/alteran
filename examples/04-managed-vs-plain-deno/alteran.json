@@ -1,0 +1,36 @@
+{
+  "name": "managed-vs-plain-deno",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": false
+  },
+  "apps": {},
+  "tools": {
+    "context-probe": {
+      "name": "context-probe",
+      "path": "./tools/context-probe.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": [
+        "./apps/*"
+      ],
+      "exclude": []
+    },
+    "tools": {
+      "include": [
+        "./tools/*"
+      ],
+      "exclude": []
+    }
+  }
+}

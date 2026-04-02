@@ -1,0 +1,36 @@
+{
+  "name": "advanced-logtape-categories",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": true
+  },
+  "apps": {},
+  "tools": {
+    "audit-log": {
+      "name": "audit-log",
+      "path": "./tools/audit-log.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": [
+        "./apps/*"
+      ],
+      "exclude": []
+    },
+    "tools": {
+      "include": [
+        "./tools/*"
+      ],
+      "exclude": []
+    }
+  }
+}

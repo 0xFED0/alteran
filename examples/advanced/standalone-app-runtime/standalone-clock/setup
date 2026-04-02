@@ -1,0 +1,92 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_PATH=$0
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)
+APP_ID="standalone-clock"
+cd "$APP_DIR"
+
+[ -f "./deno.json" ] || { printf '%s\n' "Standalone app setup requires ./deno.json" >&2; exit 1; }
+[ -f "./app.json" ] || { printf '%s\n' "Standalone app setup requires ./app.json" >&2; exit 1; }
+grep -Eq '"id"[[:space:]]*:[[:space:]]*"'$APP_ID'"' "./app.json" || {
+  printf '%s\n' "Standalone app setup requires app.json id '$APP_ID'" >&2
+  exit 1
+}
+
+UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
+UNAME_M=$(uname -m)
+
+case "$UNAME_S" in
+  darwin*) ALTERAN_OS="macos" ;;
+  linux*) ALTERAN_OS="linux" ;;
+  msys*|mingw*|cygwin*) ALTERAN_OS="windows" ;;
+  *) ALTERAN_OS="$UNAME_S" ;;
+esac
+
+case "$UNAME_M" in
+  x86_64|amd64) ALTERAN_ARCH="x64" ;;
+  arm64|aarch64) ALTERAN_ARCH="arm64" ;;
+  *) ALTERAN_ARCH="$UNAME_M" ;;
+esac
+
+DENO_RUNTIME_ROOT="$APP_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH"
+LOCAL_DENO="$DENO_RUNTIME_ROOT/bin/deno"
+
+resolve_deno_target() {
+  case "$ALTERAN_OS-$ALTERAN_ARCH" in
+    macos-x64) printf '%s' "x86_64-apple-darwin" ;;
+    macos-arm64) printf '%s' "aarch64-apple-darwin" ;;
+    linux-x64) printf '%s' "x86_64-unknown-linux-gnu" ;;
+    linux-arm64) printf '%s' "aarch64-unknown-linux-gnu" ;;
+    windows-x64) printf '%s' "x86_64-pc-windows-msvc" ;;
+    windows-arm64) printf '%s' "aarch64-pc-windows-msvc" ;;
+    *) return 1 ;;
+  esac
+}
+
+if [ -z "${DENO_SOURCES:-}" ]; then
+  DENO_SOURCES="https://dl.deno.land/release"
+fi
+
+if [ -x "$LOCAL_DENO" ]; then
+  exit 0
+fi
+
+if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
+  printf '%s\n' "Standalone app setup requires curl and unzip to materialize local Deno." >&2
+  exit 1
+fi
+
+DENO_TARGET=$(resolve_deno_target) || {
+  printf '%s\n' "Unsupported platform for standalone app setup: $ALTERAN_OS-$ALTERAN_ARCH" >&2
+  exit 1
+}
+
+DENO_VERSION=""
+for source in $DENO_SOURCES; do
+  if DENO_VERSION=$(curl -fsSL "${source%/}/release-latest.txt" 2>/dev/null); then
+    break
+  fi
+done
+
+[ -n "$DENO_VERSION" ] || {
+  printf '%s\n' "Failed to resolve latest Deno version from DENO_SOURCES." >&2
+  exit 1
+}
+
+mkdir -p "$DENO_RUNTIME_ROOT/bin"
+ARCHIVE_NAME="deno-$DENO_TARGET.zip"
+ARCHIVE_PATH="$DENO_RUNTIME_ROOT/$ARCHIVE_NAME"
+
+for source in $DENO_SOURCES; do
+  if curl -fsSL "${source%/}/$DENO_VERSION/$ARCHIVE_NAME" -o "$ARCHIVE_PATH" && unzip -oq "$ARCHIVE_PATH" -d "$DENO_RUNTIME_ROOT/bin"; then
+    rm -f "$ARCHIVE_PATH"
+    chmod +x "$LOCAL_DENO"
+    mkdir -p "$DENO_RUNTIME_ROOT/cache"
+    exit 0
+  fi
+  rm -f "$ARCHIVE_PATH"
+done
+
+printf '%s\n' "Failed to download local Deno for standalone app setup." >&2
+exit 1
