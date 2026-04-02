@@ -41,9 +41,8 @@ canonical home of authored source.
 More specifically:
 
 1. Repository-level `alteran.ts` delegates to `src/alteran/mod.ts`.
-2. `refresh`, `init`, and `ensure-env` materialize `.runtime/alteran`,
-   `.runtime/tools`, and `.runtime/libs` from authored source when local source
-   is available.
+2. `refresh` and `setup` materialize `.runtime/alteran`, `.runtime/tools`, and
+   `.runtime/libs` from authored source when local source is available.
 3. `prepare_jsr` and other release tooling should package from `src/`, not from
    `.runtime/`.
 4. `.runtime/` should be safe to ignore in git and safe to reconstruct from

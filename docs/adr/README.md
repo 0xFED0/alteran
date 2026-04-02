@@ -12,7 +12,7 @@ alone and that benefit from explicit rationale, tradeoffs, and consequences.
 - [ADR 0003: Test Suite Prioritizes Signal Over Greenness](./0003-test-suite-prioritizes-signal-over-greenness.md)
 - [ADR 0004: Use Self-Hosted Bootstrap Fixtures for Remote Bootstrap Tests](./0004-self-hosted-bootstrap-fixtures-for-e2e.md)
 - [ADR 0005: Keep Authored Alteran Source in `src/`, Not in `.runtime/`](./0005-src-is-the-authored-source-of-truth.md)
-- [ADR 0006: `activate` Uses `ensure-env`, Not Full `init`, On Every Entry](./0006-activate-uses-ensure-env-not-init-every-time.md)
+- [ADR 0006: Keep Activation Lightweight Rather Than Rebuilding on Every Entry](./0006-activate-uses-ensure-env-not-init-every-time.md)
 - [ADR 0007: Keep `alteran.ts` Thin and Use Node Only as a Bootstrap Bridge](./0007-thin-public-entrypoint-with-node-bootstrap-bridge.md)
 - [ADR 0008: Stable Public Entrypoint vs Local Materialized Runtime](./0008-stable-public-entrypoint-vs-local-runtime.md)
 - [ADR 0009: Separate Alteran Runtime from Runtime Helper Tools](./0009-separate-alteran-runtime-from-runtime-tools.md)

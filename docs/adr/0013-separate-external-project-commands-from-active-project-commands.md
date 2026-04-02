@@ -16,8 +16,7 @@ Alteran divides command scope into two categories.
 
 External-project commands may target an explicit project directory, for example:
 
-- `init [dir]`
-- `ensure-env [dir]`
+- `setup [dir]`
 - `shellenv [dir]`
 
 Active-project commands operate on the project resolved through `ALTERAN_HOME`
