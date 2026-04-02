@@ -70,6 +70,17 @@ async function makeRepoCopy(prefix: string): Promise<string> {
   return copyDir;
 }
 
+function hermeticAlteranEnv(
+  env: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...env,
+    ALTERAN_SRC: "",
+    ALTERUN_SRC: "",
+    ALTERAN_HOME: "",
+  };
+}
+
 async function assertSuccessfulShellActivation(
   activationCommand: string,
   targetDir: string,
@@ -79,7 +90,7 @@ async function assertSuccessfulShellActivation(
     `${activationCommand} >/dev/null && test "$ALTERAN_HOME" = ${
       JSON.stringify(join(targetDir, ".runtime"))
     } && test -f "$ALTERAN_HOME/alteran/mod.ts" && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null`,
-    { env },
+    { env: hermeticAlteranEnv(env) },
   );
 
   if (!output.success) {
@@ -975,7 +986,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "copied activate can bootstrap from hosted runnable source",
+  name: "copied activate can bootstrap from hosted runnable source when archive source is also available",
   ignore: IS_WINDOWS,
   async fn() {
     const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
@@ -1000,10 +1011,62 @@ Deno.test({
         projectDir,
         {
           ALTERAN_RUN_SOURCES: `${server.baseUrl}${fixture.runSourceUrlPath}`,
-          ALTERAN_ARCHIVE_SOURCES: "",
+          ALTERAN_ARCHIVE_SOURCES: `${server.baseUrl}/alteran.zip`,
           PATH: hostDenoPath(),
         },
       );
+    } finally {
+      await server.close();
+      await fixture.cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name: "hosted runnable source alone fails because archive sources are required for materialization",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
+    const server = await startStaticFileServer(fixture.servedDir);
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-copy-activate-http-run-only-",
+    });
+
+    try {
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "activate"),
+        join(projectDir, "activate"),
+      );
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "activate.bat"),
+        join(projectDir, "activate.bat"),
+      );
+      await Deno.chmod(join(projectDir, "activate"), 0o755);
+
+      const output = await runZsh(
+        `cd ${JSON.stringify(projectDir)} && . ./activate`,
+        {
+          env: hermeticAlteranEnv({
+            ...Deno.env.toObject(),
+            ALTERAN_RUN_SOURCES: `${server.baseUrl}${fixture.runSourceUrlPath}`,
+            ALTERAN_ARCHIVE_SOURCES: "",
+            PATH: hostDenoPath(),
+          }),
+        },
+      );
+
+      if (output.success) {
+        throw new Error(
+          "Expected hosted runnable source without archive source to fail materialization, but activation succeeded.",
+        );
+      }
+
+      const stderr = decode(output.stderr);
+      if (!stderr.includes("ALTERAN_ARCHIVE_SOURCES is empty")) {
+        throw new Error(
+          `Expected missing archive-source guidance, got stderr=${stderr}`,
+        );
+      }
     } finally {
       await server.close();
       await fixture.cleanup();

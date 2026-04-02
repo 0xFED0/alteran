@@ -30,6 +30,14 @@ async function dockerAvailable(): Promise<boolean> {
 const DOCKER_AVAILABLE = await dockerAvailable();
 
 function buildBootstrapCommand(baseImage: string): string {
+  if (baseImage.startsWith("denoland/deno:")) {
+    return [
+      "apt-get update",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl python3 unzip",
+      "update-ca-certificates",
+    ].join(" && ");
+  }
+
   if (baseImage.startsWith("ubuntu:")) {
     return [
       "apt-get update",
@@ -38,15 +46,27 @@ function buildBootstrapCommand(baseImage: string): string {
     ].join(" && ");
   }
 
+  if (baseImage.startsWith("debian:")) {
+    return [
+      "apt-get update",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl python3 unzip",
+      "update-ca-certificates",
+    ].join(" && ");
+  }
+
   return [
-    "apk add --no-cache ca-certificates curl python3 unzip",
+    "apk add --no-cache ca-certificates curl python3 unzip gcompat",
     "update-ca-certificates",
   ].join(" && ");
 }
 
 function buildGlobalDenoCommand(baseImage: string): string {
+  if (baseImage.startsWith("denoland/deno:")) {
+    return "";
+  }
+
   if (baseImage.startsWith("alpine:")) {
-    return "apk add --no-cache deno";
+    return 'export DENO_INSTALL=/usr/local && curl -fsSL https://deno.land/install.sh | sh -s -- -q && export PATH="/usr/local/bin:$PATH"';
   }
 
   return 'export DENO_INSTALL=/usr/local && curl -fsSL https://deno.land/install.sh | sh -s -- -q && export PATH="/usr/local/bin:$PATH"';
@@ -59,6 +79,7 @@ function buildDockerScript(baseImage: string, withGlobalDeno: boolean): string {
     withGlobalDeno
       ? buildGlobalDenoCommand(baseImage)
       : "",
+    "unset ALTERAN_SRC ALTERUN_SRC ALTERAN_HOME || true",
     "cat >/tmp/bootstrap_server.py <<'PY'\n"
       + "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler\n"
       + "import functools\n"
@@ -83,13 +104,14 @@ function buildDockerScript(baseImage: string, withGlobalDeno: boolean): string {
     "mkdir -p /target/copied",
     "cp /source/activate /source/activate.bat /target/copied/",
     "chmod +x /target/copied/activate",
-    '( cd /target/copied && ALTERAN_RUN_SOURCES="$REMOTE_RUN_SOURCE" ALTERAN_ARCHIVE_SOURCES="" . ./activate >/dev/null && [ "$ALTERAN_HOME" = "/target/copied/.runtime" ] && [ -f "$ALTERAN_HOME/alteran/mod.ts" ] && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null )',
+    '( cd /target/copied && ALTERAN_RUN_SOURCES="$REMOTE_RUN_SOURCE" ALTERAN_ARCHIVE_SOURCES="$REMOTE_ARCHIVE_SOURCE" . ./activate >/dev/null && [ "$ALTERAN_HOME" = "/target/copied/.runtime" ] && [ -f "$ALTERAN_HOME/alteran/mod.ts" ] && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null )',
     "mkdir -p /target/copied-archive",
     "cp /source/activate /source/activate.bat /target/copied-archive/",
     "chmod +x /target/copied-archive/activate",
     '( cd /target/copied-archive && ALTERAN_RUN_SOURCES="" ALTERAN_ARCHIVE_SOURCES="$REMOTE_ARCHIVE_SOURCE" . ./activate >/dev/null && [ "$ALTERAN_HOME" = "/target/copied-archive/.runtime" ] && [ -f "$ALTERAN_HOME/alteran/mod.ts" ] && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null )',
     "ensure_deno_in_path",
-    '( . /source/activate /target/explicit >/dev/null && [ "$ALTERAN_HOME" = "/target/explicit/.runtime" ] && [ -f "$ALTERAN_HOME/alteran/mod.ts" ] && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null )',
+    "sh /source/activate /target/explicit >/dev/null",
+    "assert_active /target/explicit",
     "ensure_deno_in_path",
     "cp -R /source/. /work/repo",
     "chmod +x /work/repo/activate",
@@ -122,6 +144,8 @@ async function runDockerMatrix(
       args: [
         "run",
         "--rm",
+        "--user",
+        "root",
         "-v",
         `${ALTERAN_REPO_DIR}:/source:ro`,
         "-v",
@@ -156,10 +180,10 @@ async function runDockerMatrix(
 }
 
 Deno.test({
-  name: "docker e2e: ubuntu base with global deno",
+  name: "docker e2e: official denoland image",
   ignore: !DOCKER_AVAILABLE,
   async fn() {
-    await runDockerMatrix("ubuntu:24.04", true);
+    await runDockerMatrix("denoland/deno:latest", true);
   },
 });
 
@@ -172,17 +196,9 @@ Deno.test({
 });
 
 Deno.test({
-  name: "docker e2e: alpine base with global deno",
+  name: "docker e2e: debian base without global deno",
   ignore: !DOCKER_AVAILABLE,
   async fn() {
-    await runDockerMatrix("alpine:3.20", true);
-  },
-});
-
-Deno.test({
-  name: "docker e2e: alpine base without global deno",
-  ignore: !DOCKER_AVAILABLE,
-  async fn() {
-    await runDockerMatrix("alpine:3.20", false);
+    await runDockerMatrix("debian:bookworm-slim", false);
   },
 });

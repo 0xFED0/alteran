@@ -465,6 +465,14 @@ Examples:
 - `macos-x64`
 - `macos-arm64`
 
+Current Linux Deno materialization targets GNU-based release archives.
+
+Alpine/musl environments are currently unsupported by Alteran.
+
+This includes environments that already contain a working global `deno`, because
+Alteran activation switches to a project-local managed Deno runtime after
+bootstrap.
+
 ### 5.6 Why cache is platform-specific
 
 `.runtime/deno/{os}-{arch}/cache` avoids cross-platform cache collisions and
@@ -576,10 +584,12 @@ example:
 - an HTTPS URL to a runnable Alteran entrypoint
 - another Deno-supported module specifier
 
-This is intentional.
+This is intentional, but the role of `ALTERAN_RUN_SOURCES` is limited:
 
-Alteran bootstrap should prefer invoking Alteran sources through Deno directly,
-rather than forcing all sources to be raw downloaded files.
+- it is for obtaining a runnable Alteran executable
+- it is not the canonical source for materializing `.runtime/alteran`
+- it may be used to bootstrap a temporary Alteran process that then delegates
+  runtime installation/materialization to local source or archive sources
 
 Reason:
 
@@ -587,6 +597,8 @@ Reason:
 - it keeps Deno-native specifier support
 - it allows mirrors to be either package-oriented or URL-oriented
 - it avoids locking the design to raw-file-only distribution
+- it avoids treating transient runnable module sources as authoritative install
+  bundles
 
 Until a public Alteran package/source is actually available, the built-in
 default for `ALTERAN_RUN_SOURCES` may legitimately be empty, in which case
@@ -610,6 +622,9 @@ Alteran should:
 This allows publication artifacts prepared from `dist/jsr/<version>/` to be
 reused as bootstrapable archive releases.
 
+Archive sources are the canonical remote source for Alteran runtime
+materialization/install.
+
 ---
 
 ## 7. Activate Scripts
@@ -621,6 +636,8 @@ These scripts should remain minimal bootstrap wrappers.
 They are responsible for:
 
 1. resolving the location of the `activate` script itself
+   - in sourced shell modes such as `zsh`, this must resolve the actual sourced
+     script path rather than relying on `$0`
 2. resolving the target project directory:
    - if an explicit path argument is provided, use it
    - otherwise use the directory containing the `activate` script
@@ -633,7 +650,7 @@ They are responsible for:
 8. obtaining the Alteran runtime material either:
    - from local Alteran repository source material such as `src/alteran/`,
      `src/tools/`, and `src/libs/`, if available
-   - or from remote bootstrap/publication sources as fallback
+   - or from remote archive/publication sources as fallback
 9. invoking Alteran initialization for the target directory
 10. activating the environment:
     - on Unix-like systems: evaluate `shellenv`
@@ -653,14 +670,25 @@ remote sources, they must:
 - read `DENO_SOURCES`
 - read `ALTERAN_RUN_SOURCES`, with optional legacy `ALTERAN_SOURCES` aliasing
 - read `ALTERAN_ARCHIVE_SOURCES`
-- try runnable Alteran sources first
-- try archive Alteran sources only after runnable sources fail
+- try runnable Alteran sources first to obtain a temporary executable Alteran
+- try archive Alteran sources after runnable sources when no local source/runtime
+  is available for materialization
 - iterate over the configured sources in order
 - stop on first successful source
 - continue to the next source after a failed attempt
 - fail with a clear summary if all configured sources fail
 - fail immediately with an explicit message if the relevant configured list is
   empty
+
+Important semantic rule:
+
+- `ALTERAN_RUN_SOURCES` are execution/bootstrap sources only
+- `ALTERAN_ARCHIVE_SOURCES` are install/materialization sources
+- if Alteran was launched from a remote runnable source and there is no local
+  authored source or existing installed runtime, runtime materialization must
+  come from `ALTERAN_ARCHIVE_SOURCES`
+- a remote runnable source by itself is not sufficient to authoritatively
+  materialize `.runtime/alteran`
 
 ### 7.2 Stable bootstrap entry
 
@@ -1648,6 +1676,12 @@ It should preserve:
 
 This scope is intended to leave a clean project suitable for sending as a zip
 archive, while preserving all user-owned sources and configuration.
+
+It should include cleanup equivalent to:
+
+- `alteran clean runtime`
+- `alteran clean app-runtimes`
+- `alteran clean builds`
 
 #### `alteran compact`
 
