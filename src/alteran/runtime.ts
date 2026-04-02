@@ -41,6 +41,8 @@ import {
 import {
   readActivateBatTemplate,
   readActivateTemplate,
+  readSetupBatTemplate,
+  readSetupTemplate,
 } from "./templates/bootstrap.ts";
 import { renderBatchEnv, renderShellEnv } from "./templates/env.ts";
 import type { AlteranConfig, RegistryEntry } from "./types.ts";
@@ -49,7 +51,6 @@ export interface ProjectPaths {
   projectDir: string;
   runtimeDir: string;
   alteranDir: string;
-  envDir: string;
   logsDir: string;
   toolsDir: string;
   libsDir: string;
@@ -71,7 +72,6 @@ export function getProjectPaths(projectDir: string): ProjectPaths {
     projectDir,
     runtimeDir,
     alteranDir: join(runtimeDir, "alteran"),
-    envDir: join(runtimeDir, "env"),
     logsDir: join(runtimeDir, "logs"),
     toolsDir: join(runtimeDir, "tools"),
     libsDir: join(runtimeDir, "libs"),
@@ -199,6 +199,8 @@ function getManagedProjectGitignoreBlock(): string {
     GITIGNORE_BEGIN,
     ".DS_Store",
     "Thumbs.db",
+    "activate",
+    "activate.bat",
     ".runtime/",
     "apps/*/.runtime/",
     "dist/",
@@ -565,7 +567,7 @@ async function downloadAlteranRuntimeFromArchiveSources(
       }
 
       const output = await new Deno.Command(Deno.execPath(), {
-        args: ["run", "-A", archiveEntry, "init", tempProjectDir],
+        args: ["run", "-A", archiveEntry, "setup", tempProjectDir],
         env: Deno.env.toObject(),
         stdout: "piped",
         stderr: "piped",
@@ -700,7 +702,6 @@ export async function ensureProjectStructure(
   await ensureDir(join(projectDir, "tests"));
   await ensureDir(paths.runtimeDir);
   await ensureDir(paths.alteranDir);
-  await ensureDir(paths.envDir);
   await ensureDir(paths.logsDir);
   await ensureDir(paths.toolsDir);
   await ensureDir(paths.libsDir);
@@ -717,16 +718,43 @@ async function copyBundledRuntime(projectDir: string): Promise<void> {
 }
 
 async function ensureBootstrapFiles(projectDir: string): Promise<void> {
+  const setupTarget = join(projectDir, "setup");
+  const setupBatTarget = join(projectDir, "setup.bat");
+  const setupSource = await readSetupTemplate();
+  const setupBatSource = await readSetupBatTemplate();
+
+  await writeTextFileIfChanged(setupTarget, setupSource);
+  if (Deno.build.os !== "windows") {
+    await Deno.chmod(setupTarget, 0o755);
+  }
+  await writeTextFileIfChanged(setupBatTarget, setupBatSource);
+}
+
+async function ensureActivationFiles(projectDir: string): Promise<void> {
   const activateTarget = join(projectDir, "activate");
   const activateBatTarget = join(projectDir, "activate.bat");
-  const activateSource = await readActivateTemplate();
-  const activateBatSource = await readActivateBatTemplate();
+  const paths = getProjectPaths(projectDir);
+  const shellInput = {
+    projectDir: projectDir.replaceAll("\\", "/"),
+    denoExe: paths.denoPath.replaceAll("\\", "/"),
+    alteranEntry: join(paths.alteranDir, "mod.ts").replaceAll("\\", "/"),
+    denoCacheDir: paths.cacheDir.replaceAll("\\", "/"),
+  };
+  const batchInput = {
+    projectDir: projectDir.replaceAll("/", "\\"),
+    denoExe: paths.denoPath.replaceAll("/", "\\"),
+    alteranEntry: join(paths.alteranDir, "mod.ts").replaceAll("/", "\\"),
+    denoCacheDir: paths.cacheDir.replaceAll("/", "\\"),
+  };
 
-  await writeTextFileIfChanged(activateTarget, activateSource);
+  await writeTextFileIfChanged(activateTarget, await readActivateTemplate(shellInput));
   if (Deno.build.os !== "windows") {
     await Deno.chmod(activateTarget, 0o755);
   }
-  await writeTextFileIfChanged(activateBatTarget, activateBatSource);
+  await writeTextFileIfChanged(
+    activateBatTarget,
+    await readActivateBatTemplate(batchInput),
+  );
 }
 
 async function ensureProjectGitignore(projectDir: string): Promise<void> {
@@ -845,15 +873,7 @@ export async function generateBatchEnv(projectDir: string): Promise<string> {
 }
 
 export async function ensureEnvScripts(projectDir: string): Promise<void> {
-  const paths = getProjectPaths(projectDir);
-  await writeTextFileIfChanged(
-    join(paths.envDir, "enter-env.sh"),
-    await generateShellEnv(projectDir),
-  );
-  await writeTextFileIfChanged(
-    join(paths.envDir, "enter-env.bat"),
-    await generateBatchEnv(projectDir),
-  );
+  await ensureActivationFiles(projectDir);
 }
 
 function withRegistryEntry(
@@ -878,6 +898,8 @@ export async function refreshProject(
   await loadProjectDotEnv(projectDir);
   await ensureProjectStructure(projectDir);
   await copyBundledRuntime(projectDir);
+  await ensureBootstrapFiles(projectDir);
+  await ensureProjectGitignore(projectDir);
 
   let config = await updateAlteranConfig(projectDir, (current) => ({
     ...createDefaultAlteranConfig(projectDir),
@@ -902,7 +924,7 @@ export async function refreshProject(
     await ensureAppConfig(projectDir, appName);
     await syncAppDenoConfig(projectDir, appName);
   }
-  await ensureEnvScripts(projectDir);
+  await ensureActivationFiles(projectDir);
 
   return config;
 }
@@ -911,37 +933,25 @@ export async function ensureProjectEnv(projectDir: string): Promise<{
   initialized: boolean;
   config: AlteranConfig;
 }> {
-  await loadProjectDotEnv(projectDir);
-
   const configPath = join(projectDir, "alteran.json");
-  if (!await exists(configPath)) {
-    return {
-      initialized: true,
-      config: await initProject(projectDir),
-    };
-  }
-
-  await ensureProjectStructure(projectDir);
-  await copyBundledRuntime(projectDir);
-  await ensureBootstrapFiles(projectDir);
-  await ensureProjectGitignore(projectDir);
-
-  let config = await readAlteranConfig(projectDir);
-  await ensureLocalDeno(projectDir, config.deno_version);
-  await syncRootDenoConfig(projectDir, config);
-  await ensureEnvScripts(projectDir);
-
-  config = await readAlteranConfig(projectDir);
-  return { initialized: false, config };
+  const initialized = !await exists(configPath);
+  return {
+    initialized,
+    config: await setupProject(projectDir),
+  };
 }
 
-export async function initProject(projectDir: string): Promise<AlteranConfig> {
+export async function setupProject(projectDir: string): Promise<AlteranConfig> {
   await loadProjectDotEnv(projectDir);
   await ensureProjectStructure(projectDir);
   await copyBundledRuntime(projectDir);
   await ensureBootstrapFiles(projectDir);
   await ensureProjectGitignore(projectDir);
   return await refreshProject(projectDir);
+}
+
+export async function initProject(projectDir: string): Promise<AlteranConfig> {
+  return await setupProject(projectDir);
 }
 
 export async function initStandaloneApp(path: string): Promise<void> {
@@ -1142,15 +1152,14 @@ export async function cleanProject(
       await ensureDir(paths.cacheDir);
       break;
     case "runtime":
-      await removeIfExists(paths.envDir);
       await removeIfExists(paths.logsDir);
       await cleanDenoRuntime(projectDir);
       await removeUnexpectedRuntimeEntries(projectDir);
       await ensureProjectStructure(projectDir);
       break;
     case "env":
-      await removeIfExists(paths.envDir);
-      await ensureDir(paths.envDir);
+      await removeIfExists(join(projectDir, "activate"));
+      await removeIfExists(join(projectDir, "activate.bat"));
       break;
     case "app-runtimes":
       for (
@@ -1171,6 +1180,7 @@ export async function cleanProject(
       break;
     case "all":
       await cleanProject(projectDir, "runtime");
+      await cleanProject(projectDir, "env");
       await cleanProject(projectDir, "app-runtimes");
       await cleanProject(projectDir, "builds");
       break;
@@ -1228,7 +1238,6 @@ async function removeUnexpectedRuntimeEntries(
   const allowedEntries = new Set([
     "alteran",
     "deno",
-    "env",
     "libs",
     "logs",
     "tools",
@@ -1259,6 +1268,8 @@ export async function compactProject(projectDir: string): Promise<void> {
 
   await removeIfExists(join(projectDir, ".runtime"));
   await removeIfExists(join(projectDir, "dist"));
+  await removeIfExists(join(projectDir, "activate"));
+  await removeIfExists(join(projectDir, "activate.bat"));
 
   const appsDir = join(projectDir, "apps");
   if (await exists(appsDir)) {
@@ -1446,7 +1457,8 @@ export async function upgradeTargets(
       preferRemote: true,
       version: options.alteran,
     });
-    await ensureEnvScripts(projectDir);
+    await ensureBootstrapFiles(projectDir);
+    await ensureActivationFiles(projectDir);
   }
 
   if (options.deno) {

@@ -9,8 +9,8 @@ import {
   writeTextFileIfChanged,
 } from "../../src/alteran/fs.ts";
 import {
-  readActivateBatTemplate,
-  readActivateTemplate,
+  readSetupBatTemplate,
+  readSetupTemplate,
 } from "../../src/alteran/templates/bootstrap.ts";
 import { ALTERAN_VERSION } from "../../src/alteran/version.ts";
 
@@ -53,15 +53,15 @@ export async function main(_args: string[]): Promise<void> {
     join(distDir, "alteran.ts"),
   );
   await writeTextFileIfChanged(
-    join(distDir, "activate"),
-    await readActivateTemplate(),
+    join(distDir, "setup"),
+    await readSetupTemplate(),
   );
   await writeTextFileIfChanged(
-    join(distDir, "activate.bat"),
-    await readActivateBatTemplate(),
+    join(distDir, "setup.bat"),
+    await readSetupBatTemplate(),
   );
   if (Deno.build.os !== "windows") {
-    await Deno.chmod(join(distDir, "activate"), 0o755);
+    await Deno.chmod(join(distDir, "setup"), 0o755);
   }
   await Deno.copyFile(join(repoRoot, "README.md"), join(distDir, "README.md"));
   await copyDirectory(join(repoRoot, "src"), join(distDir, "src"));

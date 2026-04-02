@@ -2,6 +2,8 @@
 # --- alteran managed: begin ---
 .DS_Store
 Thumbs.db
+activate
+activate.bat
 .runtime/
 apps/*/.runtime/
 dist/

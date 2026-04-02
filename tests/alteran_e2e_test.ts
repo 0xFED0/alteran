@@ -121,20 +121,20 @@ async function isNodeAvailable(): Promise<boolean> {
 const IS_WINDOWS = Deno.build.os === "windows";
 const NODE_AVAILABLE = !IS_WINDOWS && await isNodeAvailable();
 
-Deno.test("initProject creates core Alteran layout", async () => {
+Deno.test("setupProject creates core Alteran layout", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-init-" });
   await initProject(projectDir);
 
   for (
     const path of [
+      "setup",
+      "setup.bat",
       "alteran.json",
       "deno.json",
       "activate",
       "activate.bat",
       ".gitignore",
       ".runtime/alteran/mod.ts",
-      ".runtime/env/enter-env.sh",
-      ".runtime/env/enter-env.bat",
       "apps",
       "tools",
       "libs",
@@ -155,13 +155,23 @@ Deno.test("initProject creates core Alteran layout", async () => {
     }
   }
 
-  const shellenv = await Deno.readTextFile(
-    join(projectDir, ".runtime", "env", "enter-env.sh"),
-  );
-  if (!shellenv.includes(".runtime/deno/")) {
+  const activateSource = await Deno.readTextFile(join(projectDir, "activate"));
+  if (
+    !activateSource.includes(".runtime/deno/") ||
+    !activateSource.includes("shellenv")
+  ) {
     throw new Error(
-      "Expected shellenv to point Deno runtime into .runtime/deno/",
+      "Expected generated activate to use local Deno and delegate to alteran shellenv",
     );
+  }
+
+  try {
+    await Deno.stat(join(projectDir, ".runtime", "env"));
+    throw new Error("Expected .runtime/env to be absent under the new setup/activate architecture");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
   }
 });
 
@@ -261,6 +271,11 @@ Deno.test({
   if (stdout.includes("Initialized Alteran project at")) {
     throw new Error(
       `Expected repeated sourced activate not to reinitialize the project. stdout=${stdout}`,
+    );
+  }
+  if (stdout.includes("Set up Alteran project at")) {
+    throw new Error(
+      `Expected repeated sourced activate not to run setup. stdout=${stdout}`,
     );
   }
   },
@@ -383,9 +398,7 @@ Deno.test("alteran clean accepts multiple scopes", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-clean-" });
   await initProject(projectDir);
 
-  const envDir = join(projectDir, ".runtime", "env");
   const logsDir = join(projectDir, ".runtime", "logs");
-  await Deno.writeTextFile(join(envDir, "custom.tmp"), "env");
   await Deno.writeTextFile(join(logsDir, "custom.log"), "logs");
 
   const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
@@ -399,10 +412,19 @@ Deno.test("alteran clean accepts multiple scopes", async () => {
       );
     }
 
-    const envEntries = await Array.fromAsync(Deno.readDir(envDir));
     const logEntries = await Array.fromAsync(Deno.readDir(logsDir));
-    if (envEntries.some((entry) => entry.name === "custom.tmp")) {
-      throw new Error("Expected env scope to remove custom env artifacts");
+    for (const removedPath of [
+      join(projectDir, "activate"),
+      join(projectDir, "activate.bat"),
+    ]) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(`Expected ${removedPath} to be removed by clean env`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
     }
     if (logEntries.some((entry) => entry.name === "custom.log")) {
       throw new Error("Expected logs scope to remove custom log artifacts");
@@ -464,21 +486,34 @@ Deno.test("alteran clean all matches the safe-cleanup specification", async () =
 
     for (
       const preservedPath of [
-        join(projectDir, "activate"),
-        join(projectDir, "activate.bat"),
+        join(projectDir, "setup"),
+        join(projectDir, "setup.bat"),
         join(projectDir, "alteran.json"),
         join(projectDir, "deno.json"),
         join(projectDir, "apps"),
         join(projectDir, "tools"),
         join(projectDir, "libs"),
         join(projectDir, "tests"),
-        join(projectDir, ".runtime", "env"),
         join(projectDir, ".runtime", "logs"),
         join(projectDir, ".runtime", "deno"),
         join(projectDir, "dist", "jsr"),
       ]
     ) {
       await Deno.stat(preservedPath);
+    }
+
+    for (const removedPath of [
+      join(projectDir, "activate"),
+      join(projectDir, "activate.bat"),
+    ]) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(`Expected ${removedPath} to be removed by clean all`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
     }
   } finally {
     if (previousAlteranHome === undefined) {
@@ -608,9 +643,16 @@ Deno.test("alteran clean runtime removes unexpected legacy entries under .runtim
     }
 
     await Deno.stat(join(projectDir, ".runtime", "deno"));
-    await Deno.stat(join(projectDir, ".runtime", "env"));
     await Deno.stat(runtimeTool);
     await Deno.stat(runtimeLib);
+    try {
+      await Deno.stat(join(projectDir, ".runtime", "env"));
+      throw new Error("Expected .runtime/env to stay absent after clean runtime");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
   } finally {
     if (previousAlteranHome === undefined) {
       Deno.env.delete("ALTERAN_HOME");
@@ -716,8 +758,8 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
 
     for (
       const preservedPath of [
-        join(projectDir, "activate"),
-        join(projectDir, "activate.bat"),
+        join(projectDir, "setup"),
+        join(projectDir, "setup.bat"),
         join(projectDir, "alteran.json"),
         join(projectDir, "deno.json"),
         join(projectDir, ".gitignore"),
@@ -736,7 +778,7 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
           "-lc",
           `cd ${
             JSON.stringify(projectDir)
-          } && . ./activate >/dev/null 2>/dev/null && test -f .runtime/alteran/mod.ts && test -f .runtime/env/enter-env.sh`,
+          } && ./setup >/dev/null 2>/dev/null && . ./activate >/dev/null 2>/dev/null && test -f .runtime/alteran/mod.ts && test ! -d .runtime/env`,
         ],
         env: {
           ...Deno.env.toObject(),
@@ -896,7 +938,7 @@ Deno.test({
       `Expected node bridge help to succeed. stdout=${stdout} stderr=${stderr}`,
     );
   }
-  if (!stdout.includes("Alteran") || !stdout.includes("alteran init [dir]")) {
+  if (!stdout.includes("Alteran") || !stdout.includes("alteran setup [dir]")) {
     throw new Error(
       `Expected Alteran help output from node bridge, got: ${stdout}`,
     );
@@ -905,12 +947,12 @@ Deno.test({
 });
 
 Deno.test({
-  name: "node compatibility bridge can initialize a project through Deno",
+  name: "node compatibility bridge can set up a project through Deno",
   ignore: !NODE_AVAILABLE,
   async fn() {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-init-" });
   const command = new Deno.Command("node", {
-    args: [ALTERAN_ENTRY_PATH, "init", projectDir],
+    args: [ALTERAN_ENTRY_PATH, "setup", projectDir],
     cwd: ALTERAN_REPO_DIR,
     env: {
       ...Deno.env.toObject(),
@@ -925,12 +967,14 @@ Deno.test({
 
   if (!output.success) {
     throw new Error(
-      `Expected node bridge init to succeed. stdout=${stdout} stderr=${stderr}`,
+      `Expected node bridge setup to succeed. stdout=${stdout} stderr=${stderr}`,
     );
   }
 
   for (
     const expectedPath of [
+      join(projectDir, "setup"),
+      join(projectDir, "setup.bat"),
       join(projectDir, "activate"),
       join(projectDir, "activate.bat"),
       join(projectDir, "alteran.json"),
@@ -944,24 +988,24 @@ Deno.test({
 });
 
 Deno.test({
-  name: "copied activate bootstraps and activates an empty project directory",
+  name: "copied setup bootstraps an empty project directory and generates local activation",
   ignore: IS_WINDOWS,
   async fn() {
   const projectDir = await Deno.makeTempDir({
-    prefix: "alteran-copy-activate-",
+    prefix: "alteran-copy-setup-",
   });
   await Deno.copyFile(
-    join(ALTERAN_REPO_DIR, "activate"),
-    join(projectDir, "activate"),
+    join(ALTERAN_REPO_DIR, "setup"),
+    join(projectDir, "setup"),
   );
   await Deno.copyFile(
-    join(ALTERAN_REPO_DIR, "activate.bat"),
-    join(projectDir, "activate.bat"),
+    join(ALTERAN_REPO_DIR, "setup.bat"),
+    join(projectDir, "setup.bat"),
   );
-  await Deno.chmod(join(projectDir, "activate"), 0o755);
+  await Deno.chmod(join(projectDir, "setup"), 0o755);
 
   await assertSuccessfulShellActivation(
-    `cd ${JSON.stringify(projectDir)} && . ./activate`,
+    `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null && . ./activate`,
     projectDir,
     {
       ALTERAN_RUN_SOURCES: ALTERAN_ENTRY_PATH,
@@ -971,22 +1015,31 @@ Deno.test({
 
   for (
     const expectedPath of [
+      "setup",
+      "setup.bat",
       "alteran.json",
       "deno.json",
       "activate",
       "activate.bat",
       ".runtime/alteran/mod.ts",
-      ".runtime/env/enter-env.sh",
-      ".runtime/env/enter-env.bat",
     ]
   ) {
     await Deno.stat(join(projectDir, expectedPath));
+  }
+
+  try {
+    await Deno.stat(join(projectDir, ".runtime", "env"));
+    throw new Error("Expected copied setup bootstrap not to generate .runtime/env");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
   }
   },
 });
 
 Deno.test({
-  name: "copied activate can bootstrap from hosted runnable source when archive source is also available",
+  name: "copied setup can bootstrap from hosted runnable source when archive source is also available",
   ignore: IS_WINDOWS,
   async fn() {
     const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
@@ -997,17 +1050,17 @@ Deno.test({
 
     try {
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate"),
-        join(projectDir, "activate"),
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
       );
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate.bat"),
-        join(projectDir, "activate.bat"),
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
       );
-      await Deno.chmod(join(projectDir, "activate"), 0o755);
+      await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       await assertSuccessfulShellActivation(
-        `cd ${JSON.stringify(projectDir)} && . ./activate`,
+        `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null && . ./activate`,
         projectDir,
         {
           ALTERAN_RUN_SOURCES: `${server.baseUrl}${fixture.runSourceUrlPath}`,
@@ -1034,17 +1087,17 @@ Deno.test({
 
     try {
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate"),
-        join(projectDir, "activate"),
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
       );
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate.bat"),
-        join(projectDir, "activate.bat"),
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
       );
-      await Deno.chmod(join(projectDir, "activate"), 0o755);
+      await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       const output = await runZsh(
-        `cd ${JSON.stringify(projectDir)} && . ./activate`,
+        `cd ${JSON.stringify(projectDir)} && ./setup`,
         {
           env: hermeticAlteranEnv({
             ...Deno.env.toObject(),
@@ -1075,7 +1128,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "copied activate can bootstrap from hosted archive source",
+  name: "copied setup can bootstrap from hosted archive source",
   ignore: IS_WINDOWS,
   async fn() {
     const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
@@ -1086,17 +1139,17 @@ Deno.test({
 
     try {
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate"),
-        join(projectDir, "activate"),
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
       );
       await Deno.copyFile(
-        join(ALTERAN_REPO_DIR, "activate.bat"),
-        join(projectDir, "activate.bat"),
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
       );
-      await Deno.chmod(join(projectDir, "activate"), 0o755);
+      await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       await assertSuccessfulShellActivation(
-        `cd ${JSON.stringify(projectDir)} && . ./activate`,
+        `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null && . ./activate`,
         projectDir,
         {
           ALTERAN_RUN_SOURCES: "",
@@ -1112,7 +1165,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "repository activate can initialize and activate an explicit target directory",
+  name: "repository setup can initialize an explicit target directory and generated activate can then be sourced",
   ignore: IS_WINDOWS,
   async fn() {
   const projectDir = await Deno.makeTempDir({
@@ -1120,9 +1173,9 @@ Deno.test({
   });
 
   await assertSuccessfulShellActivation(
-    `. ${JSON.stringify(join(ALTERAN_REPO_DIR, "activate"))} ${
+    `sh ${JSON.stringify(join(ALTERAN_REPO_DIR, "setup"))} ${
       JSON.stringify(projectDir)
-    }`,
+    } >/dev/null && . ${JSON.stringify(join(projectDir, "activate"))}`,
     projectDir,
     {
       PATH: hostDenoPath(),
@@ -1132,7 +1185,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "activated repository environment can init an external target project",
+  name: "activated repository environment can set up an external target project",
   ignore: IS_WINDOWS,
   async fn() {
   const repoCopy = await makeRepoCopy("alteran-repo-env-");
@@ -1144,7 +1197,7 @@ Deno.test({
     const initOutput = await runZsh(
       `cd ${
         JSON.stringify(repoCopy)
-      } && . ./activate >/dev/null && alteran init ${
+      } && ./setup >/dev/null && . ./activate >/dev/null && alteran setup ${
         JSON.stringify(projectDir)
       } >/dev/null`,
       {
@@ -1156,7 +1209,7 @@ Deno.test({
 
     if (!initOutput.success) {
       throw new Error(
-        `Expected repo environment init to succeed. stdout=${
+        `Expected repo environment setup to succeed. stdout=${
           decode(initOutput.stdout)
         } stderr=${decode(initOutput.stderr)}`,
       );
@@ -1175,13 +1228,13 @@ Deno.test({
   },
 });
 
-Deno.test("direct deno run alteran.ts init bootstraps a target without prior activation", async () => {
+Deno.test("direct deno run alteran.ts setup bootstraps a target without prior activation", async () => {
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-direct-init-",
   });
 
   const output = await new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", ALTERAN_ENTRY_PATH, "init", projectDir],
+    args: ["run", "-A", ALTERAN_ENTRY_PATH, "setup", projectDir],
     cwd: ALTERAN_REPO_DIR,
     env: Deno.env.toObject(),
     stdout: "piped",
@@ -1190,7 +1243,7 @@ Deno.test("direct deno run alteran.ts init bootstraps a target without prior act
 
   if (!output.success) {
     throw new Error(
-      `Expected direct init to succeed. stdout=${
+      `Expected direct setup to succeed. stdout=${
         decode(output.stdout)
       } stderr=${decode(output.stderr)}`,
     );
@@ -1198,10 +1251,10 @@ Deno.test("direct deno run alteran.ts init bootstraps a target without prior act
 
   if (
     !decode(output.stderr).includes(
-      `Initialized Alteran project at ${projectDir}`,
+      `Set up Alteran project at ${projectDir}`,
     )
   ) {
-    throw new Error("Expected init to report the initialized project path");
+    throw new Error("Expected setup to report the target path");
   }
 
   if (Deno.build.os !== "windows") {
@@ -1216,35 +1269,35 @@ Deno.test("direct deno run alteran.ts init bootstraps a target without prior act
 });
 
 Deno.test({
-  name: "direct deno run alteran.ts ensure-env initializes shell activation for a target",
+  name: "alteran shellenv can activate a project after direct setup",
   ignore: IS_WINDOWS,
   async fn() {
   const projectDir = await Deno.makeTempDir({
-    prefix: "alteran-direct-ensure-env-",
+    prefix: "alteran-direct-shellenv-",
   });
 
-  const ensureOutput = await new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", ALTERAN_ENTRY_PATH, "ensure-env", projectDir],
+  const setupOutput = await new Deno.Command(Deno.execPath(), {
+    args: ["run", "-A", ALTERAN_ENTRY_PATH, "setup", projectDir],
     cwd: ALTERAN_REPO_DIR,
     env: Deno.env.toObject(),
     stdout: "piped",
     stderr: "piped",
   }).output();
 
-  if (!ensureOutput.success) {
+  if (!setupOutput.success) {
     throw new Error(
-      `Expected ensure-env to succeed. stdout=${
-        decode(ensureOutput.stdout)
-      } stderr=${decode(ensureOutput.stderr)}`,
+      `Expected setup to succeed. stdout=${
+        decode(setupOutput.stdout)
+      } stderr=${decode(setupOutput.stderr)}`,
     );
   }
 
   if (
-    !decode(ensureOutput.stderr).includes(
-      `Initialized Alteran project at ${projectDir}`,
+    !decode(setupOutput.stderr).includes(
+      `Set up Alteran project at ${projectDir}`,
     )
   ) {
-    throw new Error("Expected ensure-env to initialize an empty target");
+    throw new Error("Expected setup to initialize an empty target");
   }
 
   const shellenvOutput = await runZsh(
@@ -1252,7 +1305,7 @@ Deno.test({
       JSON.stringify(ALTERAN_ENTRY_PATH)
     } shellenv ${JSON.stringify(projectDir)})" && test "$ALTERAN_HOME" = ${
       JSON.stringify(join(projectDir, ".runtime"))
-    } && test -f "$ALTERAN_HOME/env/enter-env.sh" && alteran help >/dev/null`,
+    } && test ! -d "$ALTERAN_HOME/env" && alteran help >/dev/null`,
     {
       env: {
         PATH: hostDenoPath(),
@@ -1262,7 +1315,7 @@ Deno.test({
 
   if (!shellenvOutput.success) {
     throw new Error(
-      `Expected shellenv activation after ensure-env to succeed. stdout=${
+      `Expected shellenv activation after setup to succeed. stdout=${
         decode(shellenvOutput.stdout)
       } stderr=${decode(shellenvOutput.stderr)}`,
     );
