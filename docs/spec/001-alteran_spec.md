@@ -47,8 +47,8 @@ At this stage, `view` is only a placeholder/future extension point.
 
 A user should be able to place or download:
 
-- `activate`
-- `activate.bat`
+- `setup`
+- `setup.bat`
 
 into an empty folder and run them.
 
@@ -103,6 +103,8 @@ Suggested repository layout:
 
 ```text
 repo/
+  setup
+  setup.bat
   activate
   activate.bat
   alteran.ts
@@ -130,11 +132,25 @@ repo/
 
 ##### `activate`
 
-Unix bootstrap/activation entry for repository development.
+Generated Unix activation entry for repository development.
+
+It is a local artifact, not the primary public bootstrap surface.
 
 ##### `activate.bat`
 
-Windows bootstrap/activation entry for repository development.
+Generated Windows activation entry for repository development.
+
+It is a local artifact, not the primary public bootstrap surface.
+
+##### `setup`
+
+Unix public bootstrap/setup entry for repository development and empty-project
+bootstrap.
+
+##### `setup.bat`
+
+Windows public bootstrap/setup entry for repository development and
+empty-project bootstrap.
 
 ##### `alteran.ts`
 
@@ -192,13 +208,14 @@ Expected subdirectories include:
 
 Alteran-owned templates and generator modules for regenerable files such as:
 
+- `setup`
+- `setup.bat`
 - `activate`
 - `activate.bat`
-- `.runtime/env/enter-env.sh`
-- `.runtime/env/enter-env.bat`
 - future generated config/bootstrap files
 
-Bootstrap templates such as `activate` / `activate.bat` should be kept as
+Bootstrap templates such as `setup` / `setup.bat` and generated activation
+templates such as `activate` / `activate.bat` should be kept as
 embedded string-based source-of-truth in Alteran-owned TypeScript modules such
 as:
 
@@ -272,6 +289,16 @@ dist/zips/<version>/
 This may contain zip assets prepared from the corresponding versioned
 `dist/jsr/<version>/` bundle for GitHub Releases or similar distribution flows.
 
+Prepared archive/release payloads should include public bootstrap files such as:
+
+- `setup`
+- `setup.bat`
+
+They should not include generated local activation artifacts such as:
+
+- `activate`
+- `activate.bat`
+
 ##### `.runtime/`
 
 Materialized/generated runtime for the repository itself.
@@ -285,8 +312,8 @@ A normal Alteran-managed user project should be organized like this:
 
 ```text
 project/
-  activate
-  activate.bat
+  setup
+  setup.bat
   alteran.json
   deno.json
   deno.lock
@@ -294,6 +321,8 @@ project/
   tools/
   libs/
   tests/
+  activate
+  activate.bat
   .runtime/
 ```
 
@@ -330,6 +359,11 @@ Project-local runtime storage and infrastructure.
 
 In a normal project root, the guaranteed human-facing bootstrap files are:
 
+- `setup`
+- `setup.bat`
+
+Generated local activation artifacts may also exist:
+
 - `activate`
 - `activate.bat`
 
@@ -363,7 +397,7 @@ It should continue tracking authored runtime source such as:
 
 #### Managed project `.gitignore`
 
-`alteran init` should create a project-root `.gitignore` for normal
+`alteran setup` should create a project-root `.gitignore` for normal
 Alteran-managed projects.
 
 That project-level `.gitignore` should ignore generated/recoverable local state
@@ -398,9 +432,6 @@ The intent is:
       bin/
         deno[.exe]
       cache/
-  env/
-    enter-env.sh
-    enter-env.bat
 ```
 
 ### 5.1 `.runtime/alteran/`
@@ -478,9 +509,14 @@ bootstrap.
 `.runtime/deno/{os}-{arch}/cache` avoids cross-platform cache collisions and
 keeps runtime artifacts safe and predictable.
 
-### 5.7 `.runtime/env/`
+### 5.7 No dedicated `.runtime/env/`
 
-Stores generated environment activation scripts.
+The target architecture should not require persistent generated env scripts
+under `.runtime/env/`.
+
+Environment activation should instead be produced dynamically through
+`alteran shellenv` and consumed by generated root-level `activate` /
+`activate.bat`.
 
 ---
 
@@ -517,7 +553,8 @@ where the source bundle contains:
 - `tools/`
 - `libs/`
 
-Alteran and `activate` should treat this as a source-of-truth location from
+Alteran, public `setup`, and generated `activate` should treat this as a
+source-of-truth location from
 which `.runtime/alteran`, `.runtime/tools`, and `.runtime/libs` may be
 materialized.
 
@@ -529,6 +566,11 @@ ALTERAN_SRC=./src
 
 Alteran should load `.env` as an actual environment file for repository/project
 commands rather than treating it as a one-off source hint.
+
+When `ALTERAN_SRC` or `ALTERUN_SRC` comes from `.env`, path-like values such as
+`./src`, `../other-src`, `~/dev/alteran/src` must be resolved relative to the
+directory containing that `.env` file, not relative to the caller's current
+working directory.
 
 ### 6.2 Download source lists
 
@@ -627,20 +669,25 @@ materialization/install.
 
 ---
 
-## 7. Activate Scripts
+## 7. Setup and Activate Scripts
 
-### 7.1 Responsibility of `activate` / `activate.bat`
+### 7.1 Responsibility of `setup` / `setup.bat`
 
-These scripts should remain minimal bootstrap wrappers.
+These scripts are the public bootstrap entrypoints.
+
+They may be downloaded into an empty directory and executed directly.
 
 They are responsible for:
 
-1. resolving the location of the `activate` script itself
-   - in sourced shell modes such as `zsh`, this must resolve the actual sourced
-     script path rather than relying on `$0`
+1. resolving the location of the `setup` script itself
 2. resolving the target project directory:
    - if an explicit path argument is provided, use it
-   - otherwise use the directory containing the `activate` script
+   - otherwise use the directory containing the `setup` script
+   - path-like inputs must be normalized carefully:
+     - `~` should resolve to the caller's home directory
+     - relative paths should become absolute before bootstrap starts
+     - behavior must not depend on the caller's current working directory after
+       normalization
 3. determining current OS/arch
 4. checking whether project-local Deno exists
 5. falling back to global Deno if present
@@ -651,20 +698,64 @@ They are responsible for:
    - from local Alteran repository source material such as `src/alteran/`,
      `src/tools/`, and `src/libs/`, if available
    - or from remote archive/publication sources as fallback
-9. invoking Alteran initialization for the target directory
-10. activating the environment:
-    - on Unix-like systems: evaluate `shellenv`
-    - on Windows: call generated batch env script
+9. invoking Alteran initialization/setup for the target directory
+10. generating local `activate` / `activate.bat` artifacts for later use
 
-Bootstrap scripts must not implement project scaffolding or project
+Setup scripts must not implement project scaffolding or project
 synchronization logic themselves.
 
 They only bootstrap enough to run Alteran, then delegate project management to
 Alteran commands.
 
+### 7.2 Responsibility of generated `activate` / `activate.bat`
+
+These scripts are generated local activation artifacts, not the primary public
+bootstrap surface.
+
+They should remain intentionally lightweight.
+
+They are responsible for:
+
+1. exporting absolute-path bootstrap variables such as:
+   - `ALTERAN_HOME`
+   - `DENO_DIR`
+   - `DENO_INSTALL_ROOT`
+2. exposing an `alteran` function/shim that uses absolute paths
+3. delegating the rest of environment shaping to `alteran shellenv`
+4. avoiding runtime self-location/path discovery where generation-time absolute
+   paths are available
+
+Generated `activate` / `activate.bat` are local materialized artifacts, not
+portable public bootstrap files.
+
+They may assume:
+
+- one concrete project directory
+- one concrete `.runtime` layout
+- one concrete platform-specific Deno path
+
+They must not promise to remain valid:
+
+- after moving the project directory
+- after copying the generated activation file into a different location
+- across OS/architecture changes
+
+If the project is moved or opened on a different OS/architecture, the supported
+recovery flow is to run `setup` again and regenerate `activate` /
+`activate.bat`.
+
+For Unix-like shells, generated `activate` should support being sourced:
+
+- `source ./activate`
+
+Generated Unix `activate` should be sourced-only. Running it as a regular
+executable should fail with a clear hint to use `source ./activate`.
+It should not promise useful behavior when invoked as a separate process,
+because that cannot affect the caller's current shell environment.
+
 #### Source-list behavior during bootstrap
 
-When `activate` / `activate.bat` need to download Deno or obtain Alteran from
+When `setup` / `setup.bat` need to download Deno or obtain Alteran from
 remote sources, they must:
 
 - read `DENO_SOURCES`
@@ -690,7 +781,7 @@ Important semantic rule:
 - a remote runnable source by itself is not sufficient to authoritatively
   materialize `.runtime/alteran`
 
-### 7.2 Stable bootstrap entry
+### 7.3 Stable bootstrap entry
 
 The public bootstrap/proxy entry remains `alteran.ts` in the Alteran repository
 and publication package.
@@ -803,7 +894,7 @@ Alteran commands are divided into two groups.
 These may operate on a project directory even when that project is not currently
 activated:
 
-- `init <dir>`
+- `setup [dir]`
 - `shellenv [dir]`
 
 #### Active-project commands
@@ -817,28 +908,33 @@ through `ALTERAN_HOME`:
 - `reimport ...`
 
 This keeps project-management commands tied to the active dev environment, while
-still allowing bootstrap/init flows to target projects from outside.
+still allowing bootstrap/setup flows to target projects from outside.
 
 ---
 
 ## 9. Environment Activation
 
-The `init` / `refresh` flow must generate:
+The `setup` / `refresh` flow must generate:
 
-- `.runtime/env/enter-env.sh`
-- `.runtime/env/enter-env.bat`
+- `activate`
+- `activate.bat`
 
-These scripts are responsible for setting up the dev environment.
+These generated root-level scripts are responsible for setting up the dev
+environment.
 
-### 9.1 Responsibilities of enter-env scripts
+### 9.1 Responsibilities of generated activate scripts
 
 They should:
 
 - set `ALTERAN_HOME`
+- set `DENO_DIR`
+- set `DENO_INSTALL_ROOT` if needed
 - add local Deno to `PATH`
-- add Alteran command alias/shim to `PATH` or shell alias scope
-- configure project-local cache paths
-- expose a convenient `alteran` command
+- expose a convenient `alteran` command using absolute paths
+- delegate dynamic project-specific aliases and additional exports to
+  `alteran shellenv`
+- embed concrete absolute paths at generation time instead of rediscovering the
+  script location at activation time
 
 ### 9.2 Alias model
 
@@ -855,14 +951,12 @@ It should:
 
 - print shell code to stdout
 - print logs/diagnostics only to stderr
-- reuse existing generated env scripts when possible
-- if no env script exists, generate activation output in memory and print it to
-  stdout without persisting a new file
+- compute activation output dynamically from current project state
 
 `shellenv` is intended for interactive activation flows such as:
 
 - Unix: `eval "$(deno ... alteran.ts shellenv)"`
-- Windows: generation/use of batch env script, then `call` it
+- Windows: generation/use of activation batch code, then `call` it
 
 ### 9.4 Activation model
 
@@ -871,8 +965,14 @@ It should:
 Preferred activation flow:
 
 1. bootstrap runtime
-2. run `alteran.ts init <target-dir>`
-3. evaluate `alteran.ts shellenv <target-dir>`
+2. generate or refresh `activate`
+3. `source ./activate` or equivalent local activation flow
+
+Generated Unix `activate` should not rely on executed-mode evaluation such as
+`eval "$(./activate)"`.
+
+Direct process execution such as `./activate` is not a supported activation
+flow and should fail clearly.
 
 This requires the rule for shellenv:
 
@@ -884,9 +984,8 @@ This requires the rule for shellenv:
 Preferred activation flow:
 
 1. bootstrap runtime
-2. run `alteran.ts init <target-dir>`
-3. ensure `.runtime/env/enter-env.bat` exists
-4. `call` that file
+2. generate or refresh `activate.bat`
+3. `call` that file
 
 Windows should not attempt to emulate Unix-style `eval`.
 
@@ -1503,16 +1602,16 @@ Better behavior:
 
 If enabled, Alteran refreshes before executing a requested command.
 
-### 23.5 Init Command
+### 23.5 Setup Command
 
-Project initialization command:
+Project setup command:
 
-- **`alteran init [dir]`**
+- **`alteran setup [dir]`**
 
 This command is responsible for preparing a project directory so that it becomes
 a valid Alteran project.
 
-#### Responsibilities of `init`
+#### Responsibilities of `setup`
 
 - create missing base project files if needed
 - create missing directory skeleton if needed
@@ -1521,20 +1620,20 @@ a valid Alteran project.
 - create or repair `alteran.json`
 - create or repair `deno.json`
 - create or repair `.gitignore`
-- create or repair env scripts
-- perform a `refresh` as part of initialization
+- create or repair generated activation scripts
+- perform a `refresh` as part of setup
 
-When `init` needs to obtain Deno or Alteran runtime material, it should honor
+When `setup` needs to obtain Deno or Alteran runtime material, it should honor
 the configured source-list behavior from Section 6.1.
 
 #### Scope
 
-`init` may target:
+`setup` may target:
 
 - the current working directory
 - an explicit external project directory
 
-This makes it suitable for bootstrap flows and for initializing projects outside
+This makes it suitable for bootstrap flows and for preparing projects outside
 the currently active shell context.
 
 ---
@@ -1652,14 +1751,13 @@ project structure.
 
 It may remove things that can be recreated through:
 
-- `activate`
-- `init`
+- `setup`
 - `refresh`
 
 It should preserve:
 
-- `activate`
-- `activate.bat`
+- `setup`
+- `setup.bat`
 - `alteran.json`
 - `deno.json`
 - `deno.lock`
@@ -1701,8 +1799,8 @@ Conceptually it should:
 
 It should preserve:
 
-- `activate`
-- `activate.bat`
+- `setup`
+- `setup.bat`
 - `alteran.json`
 - `deno.json`
 - `deno.lock`
@@ -1713,7 +1811,7 @@ It should preserve:
 
 After `alteran compact`, the project should behave as though Alteran runtime
 artifacts had never been materialized locally, while still being re-hydratable
-from scratch through `activate` / `activate.bat`.
+from scratch through `setup` / `setup.bat`.
 
 #### Confirmation UX
 
@@ -1759,7 +1857,7 @@ where Alteran explicitly decides to preserve the minimum bootstrap state.
 This is broader than `cache` and may include:
 
 - platform-local runtime binaries
-- generated env files
+- generated activation artifacts
 - downloaded Alteran runtime material
 - generated runtime metadata
 
@@ -1784,18 +1882,19 @@ continue to work without requiring immediate re-activation or re-download.
 
 #### `alteran clean env`
 
-Removes generated environment activation files under:
+Removes generated activation artifacts such as:
 
 ```text
-.runtime/env/
+activate
+activate.bat
 ```
 
 Examples:
 
-- `enter-env.sh`
-- `enter-env.bat`
+- `activate`
+- `activate.bat`
 
-These files must be recreatable through `init` / `refresh`.
+These files must be recreatable through `setup` / `refresh`.
 
 #### `alteran clean app-runtimes`
 
@@ -1946,7 +2045,7 @@ This model is preferred because it:
 
 - makes publication contents explicit
 - prevents accidental publication of unrelated repository files
-- allows validation that the package contains exactly what `init` needs
+- allows validation that the package contains exactly what `setup` needs
 - separates development layout from publication layout
 - improves confidence in reproducible publishing
 
@@ -1970,7 +2069,7 @@ Typical responsibilities may include:
 The intended public command is:
 
 ```bash
-deno run -A jsr:@alteran init
+deno run -A jsr:@alteran setup
 ```
 
 Therefore the Alteran package should publish a root entrypoint for the package
@@ -1991,14 +2090,14 @@ The target package identity is:
 Its main responsibility is to serve commands such as:
 
 ```bash
-deno run -A jsr:@alteran init
+deno run -A jsr:@alteran setup
 ```
 
 If Alteran exposes programmatic APIs such as:
 
 ```ts
-import { init } from "@alteran/lib";
-await init(dir);
+import { setup } from "@alteran/lib";
+await setup(dir);
 ```
 
 those should live under a library-oriented subpath such as:
@@ -2015,18 +2114,25 @@ This keeps the split clear:
 ### 29.7 Publication package contents
 
 The published JSR package should contain everything needed for the public
-bootstrap/init flow.
+bootstrap/setup flow.
 
 In particular, it must contain enough Alteran runtime material so that:
 
-- the public package entry can run `init`
-- `init` can copy or materialize the required runtime files into the target
+- the public package entry can run `setup`
+- `setup` can copy or materialize the required runtime files into the target
   project's `.runtime/`
 - the resulting initialized project can operate correctly from its local runtime
 
 In practice, the publication package may ship the authored source bundle under
 `src/` and use that as the source-of-truth from which the target project's
 `.runtime/` is materialized.
+
+Publication/release payloads should include public bootstrap files such as
+`setup` / `setup.bat`.
+
+They should not include generated local activation artifacts such as
+`activate` / `activate.bat`, because those belong to post-setup local project
+state rather than to the public release surface.
 
 This means the publication package is not just a thin remote stub.
 
@@ -2065,7 +2171,7 @@ A minimal bootstrap flow from an empty folder should be possible with:
 curl <bootstrap-url> | sh
 ```
 
-or equivalent downloaded `activate` script.
+or equivalent downloaded `setup` script.
 
 This must be able to:
 
@@ -2407,7 +2513,7 @@ When Alteran needs Deno, it should:
 
 1. check project-local Deno in `.runtime/deno/{os}-{arch}/bin/`
 2. if global or parent Deno is available and satisfies the configured version
-   constraint, it may be used during bootstrap/init flows
+   constraint, it may be used during bootstrap/setup flows
 3. if no available Deno satisfies the configured version requirement, Alteran
    downloads an appropriate local Deno into the project runtime
 4. once local runtime is established, project execution should prefer the local

@@ -100,7 +100,7 @@ Scenario tests validate a fuller supported user flow.
 Depending on the example, a scenario test may verify things such as:
 
 - bootstrap from an empty directory;
-- `init` behavior;
+- `setup` behavior;
 - `refresh` behavior;
 - app creation and execution;
 - tool creation and execution;
@@ -405,4 +405,3 @@ Core examples require stronger scenario coverage.
 README quick start must be tested explicitly.
 
 The goal is to preserve trust: if Alteran shows a user that something works, the repository must continuously verify that this is still true.
-

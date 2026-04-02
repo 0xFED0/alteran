@@ -7,7 +7,7 @@ projects.
 
 ```sh
 ./activate
-alteran init .
+alteran setup .
 alteran refresh
 alteran app add hello
 alteran tool add seed
