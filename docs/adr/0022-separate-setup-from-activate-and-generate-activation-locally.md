@@ -27,6 +27,12 @@ Alteran distinguishes two different bootstrap artifacts:
 - public `setup` / `setup.bat`
 - generated local `activate` / `activate.bat`
 
+The same distinction also applies to app-local bootstrap surfaces:
+
+- `setup` / `setup.bat` are the public, commit-worthy bootstrap entrypoints
+- `app` / `app.bat` are generated local launchers and should not be treated as
+  authored tracked source files
+
 ### `setup` / `setup.bat`
 
 These are the public bootstrap entrypoints.
@@ -43,6 +49,10 @@ is to:
 
 They may contain the unavoidable shell/batch logic required for first-time
 bootstrap.
+
+By default, public `setup` / `setup.bat` files are intended to remain tracked
+in source control because they are part of the project's bootstrap contract
+(`git clone -> setup`).
 
 The corresponding top-level Alteran command should also be named `setup`, not
 `init`.
@@ -100,6 +110,8 @@ Instead:
   persisted as separate env-script artifacts under `.runtime/env/`
 - release/publication archives should ship public `setup` / `setup.bat`, but
   should not ship generated local `activate` / `activate.bat`
+- generated launcher surfaces such as `app` / `app.bat` should also be treated
+  as local/generated artifacts rather than authored bootstrap sources
 
 ## Consequences
 

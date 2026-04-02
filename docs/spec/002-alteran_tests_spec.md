@@ -69,12 +69,13 @@ that honestly.
 
 The Alteran suite exists to verify that:
 
-- an Alteran project can be initialized correctly
+- an Alteran project can be set up correctly
 - activation makes `deno` and `alteran` usable in the intended shell
 - project-local runtime material is generated in the expected layout
-- registry, config, and generated environment files stay coherent
+- registry, config, and generated activation files stay coherent
 - cleanup commands are safe and consistent with the specification
 - bootstrap works from realistic source combinations
+- standalone app launchers can auto-materialize and launch a basic app flow
 - Windows activation behavior is covered explicitly rather than inferred from
   Unix behavior
 - Docker bootstrap paths are exercised in isolated environments
@@ -110,10 +111,11 @@ They should cover:
 - `alteran test`
 - `clean`
 - activation in realistic shell contexts
-- bootstrap from copied `activate`
-- bootstrap from repository `activate`
+- bootstrap from copied `setup`
+- bootstrap from repository `setup`
 - bootstrap from direct `deno run alteran.ts ...`
 - hosted bootstrap via runnable and archive sources
+- generated app launcher execution for a minimal standalone app scenario
 
 Current file:
 
@@ -162,15 +164,15 @@ The suite should explicitly cover the following bootstrap/activation entrypaths.
 
 ### 5.1 Copied bootstrap scripts
 
-The user copies `activate` and `activate.bat` into a target directory and runs
+The user copies `setup` and `setup.bat` into a target directory and runs
 them there.
 
 This is a first-class scenario because it represents bootstrap from an empty or
 near-empty folder.
 
-### 5.2 Direct activation script invocation with explicit target
+### 5.2 Direct setup script invocation with explicit target
 
-The user runs repository `activate` and supplies a target directory.
+The user runs repository `setup` and supplies a target directory.
 
 This covers a common bootstrap flow from a checked-out Alteran source
 repository.
@@ -198,6 +200,32 @@ The suite must cover bootstrap from:
 These should be hosted by test-local fixtures rather than public network
 resources.
 
+### 5.6 Generated Unix activation semantics
+
+The suite must cover generated Unix `activate` behavior as a sourced-only
+artifact.
+
+This includes:
+
+- `source ./activate`
+- activation from the generated file after `setup`
+- explicit failure when `activate` is run as a regular process
+
+### 5.7 Basic standalone app launcher contract
+
+The suite must cover a minimal generated `app` / `app.bat` launcher scenario.
+
+At minimum, the contract test should verify:
+
+- a basic app launcher can be executed directly by the user
+- no `source app` style flow is required or supported
+- if the app-local runtime is missing, launcher-triggered setup/bootstrap can
+  materialize enough runtime to proceed
+- the launcher then runs the main app task successfully
+- a later launch can reuse the already materialized app-local runtime
+- the launcher rejects a mismatched `app.json` identity instead of silently
+  treating a different app directory as valid
+
 ## 6. Platform Coverage Rules
 
 ### 6.1 Unix-like shells
@@ -211,6 +239,7 @@ Examples include:
 - sourcing absolute `activate` paths
 - repeated activation
 - shell option leakage
+- failure when `./activate` is executed instead of sourced
 
 ### 6.2 Windows
 
@@ -224,6 +253,8 @@ The suite should continue to include:
 - PowerShell to `cmd /c call ...`
 - spaces in repository and target paths
 - legacy source env aliases where still supported
+- direct execution of generated `app.bat` launchers for supported standalone app
+  scenarios
 
 ### 6.3 Linux in Docker
 
