@@ -34,7 +34,7 @@ finish_activate() {
 }
 
 if [ -n "${ZSH_VERSION:-}" ]; then
-  SCRIPT_PATH=$(eval 'printf "%s\n" "${(%):-%N}"')
+  SCRIPT_PATH=${(%):-%N}
 elif [ -n "${BASH_VERSION:-}" ]; then
   SCRIPT_PATH=$(eval 'printf "%s\n" "${BASH_SOURCE[0]}"')
 else
@@ -211,22 +211,18 @@ download_local_deno() {
 
 bootstrap_alteran_from_run_sources() {
   if is_blank "$ALTERAN_RUN_SOURCES"; then
-    printf '%s\n' "Cannot download Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running activate." >&2
+    printf '%s\n' "Cannot bootstrap Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running activate." >&2
     return 1
   fi
 
   for source in $ALTERAN_RUN_SOURCES; do
-    if "$BOOTSTRAP_DENO" run -A "$source" init "$TARGET_DIR" >&2; then
-      if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
-        ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
-      else
-        ALTERAN_ENTRY="$source"
-      fi
+    if "$BOOTSTRAP_DENO" run -A "$source" help >/dev/null 2>&1; then
+      ALTERAN_ENTRY="$source"
       return 0
     fi
   done
 
-  printf '%s\n' "Failed to download Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES." >&2
+  printf '%s\n' "Failed to bootstrap Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES." >&2
   return 1
 }
 
@@ -312,11 +308,22 @@ main() {
     fi
   fi
 
-  "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2
+  if ! "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2; then
+    return 1
+  fi
   if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
     ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
+  else
+    printf '%s\n' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/alteran/mod.ts." >&2
+    return 1
   fi
-  eval "$("$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" shellenv "$TARGET_DIR")"
+  if [ ! -f "$TARGET_DIR/.runtime/env/enter-env.sh" ]; then
+    printf '%s\n' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/env/enter-env.sh." >&2
+    return 1
+  fi
+
+  shellenv_output=$("$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" shellenv "$TARGET_DIR") || return 1
+  eval "$shellenv_output"
 }
 
 if main "$@"; then

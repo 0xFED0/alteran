@@ -181,7 +181,7 @@ Usage:
   alteran compact [-n|--no]
 
 Behavior:
-  - runs safe cleanup equivalent to clean all + app-runtimes + builds
+  - runs safe cleanup equivalent to clean all
   - removes the root .runtime/ directory completely
   - removes nested apps/*/.runtime/ directories
   - removes dist/ output completely

@@ -7,11 +7,23 @@ const ACTIVATE_BAT_TEMPLATE =
 export function readActivateTemplate(): Promise<string> {
   return Promise.resolve(
     ACTIVATE_TEMPLATE.replace(
+      'SCRIPT_PATH=$(eval \'printf "%s\\n" "${(%):-%N}"\')',
+      "SCRIPT_PATH=${(%):-%N}",
+    ).replace(
+      "Cannot download Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running activate.",
+      "Cannot bootstrap Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running activate.",
+    ).replace(
+      'for source in $ALTERAN_RUN_SOURCES; do\n    if "$BOOTSTRAP_DENO" run -A "$source" init "$TARGET_DIR" >&2; then\n      if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then\n        ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"\n      else\n        ALTERAN_ENTRY="$source"\n      fi\n      return 0\n    fi\n  done',
+      'for source in $ALTERAN_RUN_SOURCES; do\n    if "$BOOTSTRAP_DENO" run -A "$source" help >/dev/null 2>&1; then\n      ALTERAN_ENTRY="$source"\n      return 0\n    fi\n  done',
+    ).replace(
+      "Failed to download Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES.",
+      "Failed to bootstrap Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES.",
+    ).replace(
       'if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then\n    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"\n  elif [ -f "$SCRIPT_DIR/alteran.ts" ]; then\n    ALTERAN_ENTRY="$SCRIPT_DIR/alteran.ts"',
       'if [ -f "$SCRIPT_DIR/alteran.ts" ] && [ -f "$SCRIPT_DIR/src/alteran/mod.ts" ]; then\n    ALTERAN_ENTRY="$SCRIPT_DIR/alteran.ts"\n  elif [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then\n    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"',
     ).replace(
-      'run -A "$ALTERAN_ENTRY" init "$TARGET_DIR" >&2',
-      'run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2',
+      '"$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" init "$TARGET_DIR" >&2\n  if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then\n    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"\n  fi\n  eval "$("$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" shellenv "$TARGET_DIR")"',
+      'if ! "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2; then\n    return 1\n  fi\n  if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then\n    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"\n  else\n    printf \'%s\\n\' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/alteran/mod.ts." >&2\n    return 1\n  fi\n  if [ ! -f "$TARGET_DIR/.runtime/env/enter-env.sh" ]; then\n    printf \'%s\\n\' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/env/enter-env.sh." >&2\n    return 1\n  fi\n\n  shellenv_output=$("$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" shellenv "$TARGET_DIR") || return 1\n  eval "$shellenv_output"',
     ),
   );
 }
@@ -19,11 +31,14 @@ export function readActivateTemplate(): Promise<string> {
 export function readActivateBatTemplate(): Promise<string> {
   return Promise.resolve(
     ACTIVATE_BAT_TEMPLATE.replace(
+      '"%BOOTSTRAP_DENO%" run -A "%%~S" init "%TARGET_DIR%"\n        if exist "%TARGET_DIR%\\.runtime\\alteran\\mod.ts" (\n          set "ALTERAN_ENTRY=%TARGET_DIR%\\.runtime\\alteran\\mod.ts"\n          goto :have_alteran\n        )',
+      '"%BOOTSTRAP_DENO%" run -A "%%~S" help >nul 2>nul\n        if not errorlevel 1 (\n          set "ALTERAN_ENTRY=%%~S"\n          goto :have_alteran\n        )',
+    ).replace(
       'if exist "%TARGET_DIR%\\.runtime\\alteran\\mod.ts" (\n    set "ALTERAN_ENTRY=%TARGET_DIR%\\.runtime\\alteran\\mod.ts"\n  ) else (\n  if exist "%SCRIPT_DIR%alteran.ts" (\n    set "ALTERAN_ENTRY=%SCRIPT_DIR%alteran.ts"',
       'if exist "%SCRIPT_DIR%alteran.ts" if exist "%SCRIPT_DIR%src\\alteran\\mod.ts" (\n    set "ALTERAN_ENTRY=%SCRIPT_DIR%alteran.ts"\n  ) else (\n  if exist "%TARGET_DIR%\\.runtime\\alteran\\mod.ts" (\n    set "ALTERAN_ENTRY=%TARGET_DIR%\\.runtime\\alteran\\mod.ts"',
     ).replace(
-      'run -A "%ALTERAN_ENTRY%" init "%TARGET_DIR%"',
-      'run -A "%ALTERAN_ENTRY%" ensure-env "%TARGET_DIR%"',
+      '"%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" init "%TARGET_DIR%"\nif exist "%TARGET_DIR%\\.runtime\\alteran\\mod.ts" set "ALTERAN_ENTRY=%TARGET_DIR%\\.runtime\\alteran\\mod.ts"\ncall "%TARGET_DIR%\\.runtime\\env\\enter-env.bat"',
+      '"%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" ensure-env "%TARGET_DIR%"\nif errorlevel 1 exit /b %ERRORLEVEL%\nif exist "%TARGET_DIR%\\.runtime\\alteran\\mod.ts" (\n  set "ALTERAN_ENTRY=%TARGET_DIR%\\.runtime\\alteran\\mod.ts"\n) else (\n  echo Alteran bootstrap did not materialize %TARGET_DIR%\\.runtime\\alteran\\mod.ts. 1>&2\n  exit /b 1\n)\nif not exist "%TARGET_DIR%\\.runtime\\env\\enter-env.bat" (\n  echo Alteran bootstrap did not materialize %TARGET_DIR%\\.runtime\\env\\enter-env.bat. 1>&2\n  exit /b 1\n)\ncall "%TARGET_DIR%\\.runtime\\env\\enter-env.bat"',
     ),
   );
 }

@@ -88,9 +88,9 @@ if exist "%LOCAL_DENO%" (
   ) else (
     if not "%ALTERAN_RUN_SOURCES: =%"=="" (
       for %%S in (%ALTERAN_RUN_SOURCES%) do (
-        "%BOOTSTRAP_DENO%" run -A "%%~S" init "%TARGET_DIR%"
-        if exist "%TARGET_DIR%\.runtime\alteran\mod.ts" (
-          set "ALTERAN_ENTRY=%TARGET_DIR%\.runtime\alteran\mod.ts"
+        "%BOOTSTRAP_DENO%" run -A "%%~S" help >nul 2>nul
+        if not errorlevel 1 (
+          set "ALTERAN_ENTRY=%%~S"
           goto :have_alteran
         )
       )
@@ -136,6 +136,16 @@ if exist "%LOCAL_DENO%" (
 
 :have_alteran
 "%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" ensure-env "%TARGET_DIR%"
-if exist "%TARGET_DIR%\.runtime\alteran\mod.ts" set "ALTERAN_ENTRY=%TARGET_DIR%\.runtime\alteran\mod.ts"
+if errorlevel 1 exit /b %ERRORLEVEL%
+if exist "%TARGET_DIR%\.runtime\alteran\mod.ts" (
+  set "ALTERAN_ENTRY=%TARGET_DIR%\.runtime\alteran\mod.ts"
+) else (
+  echo Alteran bootstrap did not materialize %TARGET_DIR%\.runtime\alteran\mod.ts. 1>&2
+  exit /b 1
+)
+if not exist "%TARGET_DIR%\.runtime\env\enter-env.bat" (
+  echo Alteran bootstrap did not materialize %TARGET_DIR%\.runtime\env\enter-env.bat. 1>&2
+  exit /b 1
+)
 call "%TARGET_DIR%\.runtime\env\enter-env.bat"
 endlocal
