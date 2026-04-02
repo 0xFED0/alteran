@@ -57,7 +57,7 @@ Commands:
   alteran setup [dir]
   alteran refresh
   alteran shellenv [dir] [--shell=sh|batch]
-  alteran app add|rm|purge|ls|run|init <name>
+  alteran app add|rm|purge|ls|run|setup <name>
   alteran tool add|rm|purge|ls|run <name>
   alteran reimport apps|tools <dir>
   alteran clean <scope> [<scope> ...]
@@ -95,7 +95,7 @@ Usage:
   alteran app purge <name>
   alteran app ls
   alteran app run <name> [args...]
-  alteran app init <path>
+  alteran app setup <path>
 
 Commands:
   add     Register an app and scaffold it if missing.
@@ -103,7 +103,7 @@ Commands:
   purge   Remove app files and unregister the app.
   ls      List registered apps.
   run     Run the app task from apps/<name>/deno.json.
-  init    Create a standalone app scaffold outside the main repo.
+  setup   Create a standalone app scaffold outside the main repo.
 
 Help:
   alteran app --help
@@ -445,9 +445,10 @@ export async function runCli(argv: string[]): Promise<number> {
             return 0;
           case "run":
             return await runApp(projectDir, name, actionArgs);
+          case "setup":
           case "init":
             if (!name) {
-              throw new Error("app init requires a target path");
+              throw new Error("app setup requires a target path");
             }
             await initStandaloneApp(name);
             return 0;
