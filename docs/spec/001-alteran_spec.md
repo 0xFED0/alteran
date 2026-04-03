@@ -1120,6 +1120,7 @@ It stores:
 - tool registry
 - auto-reimport config
 - alias and shortcut config
+- shell alias config
 - refresh behavior config
 - project runtime selection such as `deno_version`
 - logging configuration
@@ -1137,6 +1138,7 @@ It stores:
     "stderr": {},
     "logtape": true
   },
+  "shell_aliases": {},
   "apps": {},
   "tools": {},
   "auto_reimport": {
@@ -1154,6 +1156,56 @@ It stores:
 
 Exact schema may evolve, but these concepts must exist. Later sections refine
 the runtime and logging parts of this file in more detail.
+
+### 11.3 App/tool registry alias fields
+
+Each app or tool registry entry may optionally declare:
+
+- `shell_aliases: ["..."]`
+
+Meaning:
+
+- `shell_aliases` is the exact list of shell alias names Alteran should inject
+  for that entry
+- for created or reimported entries whose alias field is missing, Alteran may
+  seed a default first alias such as `app-<name>` or `tool-<name>`
+- if `shell_aliases` is present as an empty array or explicit `null`, that
+  disables automatic alias seeding for that entry
+- alias names are not implicitly transformed once written into
+  `shell_aliases`; they are injected exactly as written
+
+Alteran-created or Alteran-reimported entries may still default to
+alias-enabled behavior, but that must become explicit by writing the seeded
+names into `shell_aliases` rather than depending on hidden runtime generation.
+
+If an entry is reimported and the registry already contains user alias settings
+for that entry, those settings should be preserved.
+
+### 11.4 Top-level shell aliases
+
+Arbitrary shell convenience aliases do not belong inside an individual app or
+tool registry entry.
+
+They belong in:
+
+- `shell_aliases`
+
+Example:
+
+```json
+{
+  "shell_aliases": {
+    "myrun": "alt run some/script.ts"
+  }
+}
+```
+
+These aliases:
+
+- are shell UX only
+- are injected into generated shell environment output
+- are not app/tool identity
+- are not prefixed automatically by Alteran
 
 ---
 
@@ -1600,8 +1652,11 @@ Responsibilities:
 Responsibilities:
 
 - unregister app from Alteran registry
-- remove related workspace/task/alias entries
+- remove related workspace/task/entry-alias entries
 - **must not** delete app files from disk
+
+This removal applies to aliases owned by that app registry entry, not to
+unrelated top-level `shell_aliases`.
 
 ### 19.3 `app purge`
 
@@ -1642,6 +1697,10 @@ Tools follow the same non-destructive vs destructive distinction:
 
 - `rm` unregisters
 - `purge` deletes files
+
+If a tool registry entry owned generated or explicit entry aliases, those
+entry-scoped aliases should be removed together with the registry entry.
+Unrelated top-level `shell_aliases` must remain untouched.
 
 ---
 
@@ -2454,6 +2513,18 @@ Recommended convenience aliases:
 - **`atest`** -> `alteran test`
 - **`ax`** -> `alteran x`
 - **`adeno`** -> `alteran deno`
+
+Project-specific entry aliases are a separate mechanism.
+
+Rules:
+
+- entry aliases come from each app/tool registry entry's `shell_aliases`
+- for created or reimported entries whose `shell_aliases` field is absent,
+  Alteran may seed a first default alias such as `app-<name>` or `tool-<name>`
+- if `shell_aliases` is present as `[]` or `null`, that disables default alias
+  seeding for that entry
+- arbitrary shell shortcuts belong under top-level `shell_aliases`, not under
+  app/tool registry identity alone
 
 ### 34.3 Preferred alias for Alteran-managed Deno passthrough
 

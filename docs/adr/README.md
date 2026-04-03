@@ -30,6 +30,7 @@ alone and that benefit from explicit rationale, tradeoffs, and consequences.
 - [ADR 0021: Reserve `view` as a Placeholder and Avoid Premature GUI Architecture](./0021-reserve-view-as-a-placeholder-and-avoid-premature-gui-architecture.md)
 - [ADR 0022: Separate Public `setup` Bootstrap from Generated Local `activate`](./0022-separate-setup-from-activate-and-generate-activation-locally.md)
 - [ADR 0023: Use a Project-Scoped Execution Context with a Canonical Root Log Directory](./0023-project-scoped-execution-context-and-canonical-log-root.md)
+- [ADR 0024: Use Explicit `shell_aliases` for Entries and a Separate Top-Level `shell_aliases` Map](./0024-opt-in-entry-aliases-and-separate-shell-aliases.md)
 
 ## Notes
 
