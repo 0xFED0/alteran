@@ -3,6 +3,7 @@ export interface RegistryEntry {
   name?: string;
   title?: string;
   discovered?: boolean;
+  shell_aliases?: string[] | null;
 }
 
 export interface AutoReimportSection {
@@ -19,6 +20,7 @@ export interface AlteranConfig {
   name: string;
   auto_refresh_before_run: boolean;
   deno_version?: string;
+  shell_aliases: Record<string, string>;
   logging: {
     stdout: LoggingStreamConfig;
     stderr: LoggingStreamConfig;

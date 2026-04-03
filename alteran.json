@@ -2,6 +2,7 @@
   // Alteran project configuration.
   "name": "alteran",
   "auto_refresh_before_run": false,
+  "shell_aliases": {},
   "deno_version": ">=2.4.1",
   "logging": {
     "stdout": {
@@ -17,12 +18,14 @@
     "prepare_jsr": {
       "name": "prepare_jsr",
       "path": "./tools/prepare_jsr.ts",
-      "discovered": true
+      "discovered": true,
+      "shell_aliases": ["tool-prepare_jsr"]
     },
     "prepare_zip": {
       "name": "prepare_zip",
       "path": "./tools/prepare_zip.ts",
-      "discovered": true
+      "discovered": true,
+      "shell_aliases": ["tool-prepare_zip"]
     }
   },
   "auto_reimport": {

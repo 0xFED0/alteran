@@ -3,8 +3,10 @@ import { join } from "node:path";
 import {
   createDefaultAlteranConfig,
   discoverTools,
+  readAlteranConfig,
   syncAppDenoConfig,
   syncRootDenoConfig,
+  updateAlteranConfig,
 } from "../src/alteran/config.ts";
 import { ensureDir } from "../src/alteran/fs.ts";
 import { updateJsoncFile } from "../src/alteran/jsonc.ts";
@@ -370,6 +372,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     alteranEntry: "/tmp/project/.runtime/alteran/mod.ts",
     appAliases: ["alias app-hello='alteran app run hello'"],
     toolAliases: ["alias tool-seed='alteran tool run seed'"],
+    shellAliases: ["alias myrun='alt run scripts/demo.ts'"],
   });
   const batch = renderBatchEnv({
     runtimeDir: "C:\\project\\.runtime",
@@ -379,6 +382,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     alteranEntry: "C:\\project\\.runtime\\alteran\\mod.ts",
     appAliases: ['doskey app-hello=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" app run hello $*'],
     toolAliases: ['doskey tool-seed=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" tool run seed $*'],
+    shellAliases: ['doskey myrun=alt run scripts/demo.ts $*'],
   });
 
   expect(
@@ -392,7 +396,8 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
   expect(
     shell.includes("alias atest='alteran test'") &&
       shell.includes("alias app-hello='alteran app run hello'") &&
-      shell.includes("alias tool-seed='alteran tool run seed'"),
+      shell.includes("alias tool-seed='alteran tool run seed'") &&
+      shell.includes("alias myrun='alt run scripts/demo.ts'"),
     "Expected shell env to contain core and registry-derived aliases",
   );
 
@@ -407,7 +412,57 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
   expect(
     batch.includes("doskey atest=alteran test $*") &&
       batch.includes('doskey app-hello=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" app run hello $*') &&
-      batch.includes('doskey tool-seed=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" tool run seed $*'),
+      batch.includes('doskey tool-seed=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" tool run seed $*') &&
+      batch.includes("doskey myrun=alt run scripts/demo.ts $*"),
     "Expected batch env to contain core and registry-derived doskey shortcuts",
+  );
+});
+
+Deno.test("readAlteranConfig provides a default empty shell_aliases map", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-shell-alias-defaults-" });
+  const config = await readAlteranConfig(projectDir);
+
+  expect(
+    JSON.stringify(config.shell_aliases) === "{}",
+    "Expected default shell_aliases to exist and be empty",
+  );
+});
+
+Deno.test("updateAlteranConfig can persist shell_aliases and entry alias fields", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-alias-config-" });
+
+  await updateAlteranConfig(projectDir, (current) => ({
+    ...current,
+    shell_aliases: {
+      myrun: "alt run scripts/demo.ts",
+    },
+    apps: {
+      hello: {
+        path: "./apps/hello",
+        shell_aliases: ["app-hello", "hello-now"],
+      },
+    },
+    tools: {
+      seed: {
+        path: "./tools/seed.ts",
+        shell_aliases: ["seed-now"],
+      },
+    },
+  }));
+
+  const config = await readAlteranConfig(projectDir);
+  expect(
+    JSON.stringify(config.apps.hello.shell_aliases) ===
+      JSON.stringify(["app-hello", "hello-now"]),
+    "Expected app entry alias fields to persist",
+  );
+  expect(
+    JSON.stringify(config.tools.seed.shell_aliases) ===
+      JSON.stringify(["seed-now"]),
+    "Expected tool entry alias fields to persist",
+  );
+  expect(
+    config.shell_aliases.myrun === "alt run scripts/demo.ts",
+    "Expected shell_aliases to persist",
   );
 });

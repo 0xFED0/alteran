@@ -6,6 +6,7 @@ export interface EnvTemplateInput {
   alteranEntry: string;
   appAliases: string[];
   toolAliases: string[];
+  shellAliases: string[];
 }
 
 export function renderShellEnv(input: EnvTemplateInput): string {
@@ -23,6 +24,7 @@ export function renderShellEnv(input: EnvTemplateInput): string {
     "alias adeno='alteran deno'",
     ...input.appAliases,
     ...input.toolAliases,
+    ...input.shellAliases,
     "",
   ].join("\n");
 }
@@ -43,6 +45,7 @@ export function renderBatchEnv(input: EnvTemplateInput): string {
     "doskey adeno=alteran deno $*",
     ...input.appAliases,
     ...input.toolAliases,
+    ...input.shellAliases,
     "",
   ].join("\r\n");
 }
