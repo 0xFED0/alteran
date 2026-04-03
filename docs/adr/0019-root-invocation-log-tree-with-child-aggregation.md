@@ -23,6 +23,10 @@ Instead:
 - child lifecycle and trace data are recorded in the root invocation’s
   `events.jsonl`
 
+The canonical root invocation directory always remains under the current
+project's `.runtime/logs/...`, even if Alteran later mirrors/copies logs to an
+external custom location.
+
 ## Consequences
 
 Positive:
