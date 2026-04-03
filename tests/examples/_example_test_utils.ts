@@ -64,6 +64,14 @@ function hermeticEnv(
   }
 
   return {
+    ALTERAN_HOME: "",
+    ALTERAN_RUN_ID: "",
+    ALTERAN_ROOT_RUN_ID: "",
+    ALTERAN_PARENT_RUN_ID: "",
+    ALTERAN_ROOT_LOG_DIR: "",
+    ALTERAN_LOG_MODE: "",
+    ALTERAN_LOG_CONTEXT_JSON: "",
+    ALTERAN_LOGTAPE_ENABLED: "",
     ...env,
     ...extra,
   };
@@ -138,7 +146,7 @@ async function rewriteExampleDotEnvForTemp(projectDir: string): Promise<void> {
   const lines = (await Deno.readTextFile(dotEnvPath)).split(/\r?\n/u);
   let changed = false;
   const nextLines = lines.map((line) => {
-    if (!line.startsWith("ALTERAN_SRC=") && !line.startsWith("ALTERUN_SRC=")) {
+    if (!line.startsWith("ALTERAN_SRC=")) {
       return line;
     }
     changed = true;

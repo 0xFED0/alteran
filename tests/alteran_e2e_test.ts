@@ -7,7 +7,7 @@ import {
   getVersionedZipDistDir,
 } from "../tools/prepare_zip/mod.ts";
 import { runCli } from "../src/alteran/mod.ts";
-import { copyDirectory, removeIfExists } from "../src/alteran/fs.ts";
+import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
 import {
   addApp,
   addTool,
@@ -152,7 +152,6 @@ function hermeticAlteranEnv(
   return {
     ...env,
     ALTERAN_SRC: "",
-    ALTERUN_SRC: "",
     ALTERAN_HOME: "",
   };
 }
@@ -462,6 +461,68 @@ Deno.test({
   },
 });
 
+Deno.test("reimported app outside ./apps can be run through alteran app run", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-reimport-app-" });
+  const previousCwd = Deno.cwd();
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await initProject(projectDir);
+    const importedAppDir = join(projectDir, "incoming-apps", "admin-console");
+    await ensureDir(join(importedAppDir, "core"));
+    await Deno.writeTextFile(
+      join(importedAppDir, "app.json"),
+      JSON.stringify({
+        name: "admin-console",
+        id: "admin-console",
+        version: "0.1.0",
+        title: "Admin Console",
+        standalone: false,
+        view: { enabled: false },
+        entry: {
+          core: "./core/mod.ts",
+          view: "./view",
+          app: "app",
+        },
+      }, null, 2) + "\n",
+    );
+    await Deno.writeTextFile(
+      join(importedAppDir, "deno.json"),
+      JSON.stringify({
+        tasks: {
+          core: "deno run -A ./core/mod.ts",
+          app: "deno task core",
+        },
+      }, null, 2) + "\n",
+    );
+    await Deno.writeTextFile(
+      join(importedAppDir, "core", "mod.ts"),
+      "console.log('admin-console-ok');\n",
+    );
+
+    Deno.chdir(projectDir);
+    Deno.env.delete("ALTERAN_HOME");
+    const reimportExitCode = await runCli(["reimport", "apps", "./incoming-apps"]);
+    const runExitCode = await runCli(["app", "run", "admin-console"]);
+
+    if (reimportExitCode !== 0) {
+      throw new Error(`Expected reimport apps to succeed, got exit code ${reimportExitCode}`);
+    }
+    if (runExitCode !== 0) {
+      throw new Error(
+        `Expected alteran app run admin-console to succeed for a reimported external app, got exit code ${runExitCode}`,
+      );
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+    Deno.chdir(previousCwd);
+  }
+});
+
 Deno.test({
   name: "standalone app launcher auto-runs local setup when runtime is missing",
   ignore: IS_WINDOWS,
@@ -719,6 +780,39 @@ Deno.test("alteran test stores logs under tests top-level log category", async (
     } else {
       Deno.env.set("ALTERAN_HOME", previousAlteranHome);
     }
+  }
+});
+
+Deno.test("alteran task runs deno-based tasks with managed preinit context", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-task-preinit-" });
+  const previousCwd = Deno.cwd();
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await initProject(projectDir);
+    await Deno.writeTextFile(
+      join(projectDir, "deno.json"),
+      JSON.stringify({
+        tasks: {
+          probe:
+            'deno eval "console.log(globalThis.__alteran_preinit__ ? \\"managed\\" : \\"plain\\")"',
+        },
+      }, null, 2) + "\n",
+    );
+
+    Deno.chdir(projectDir);
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["task", "probe"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected alteran task probe to succeed, got exit code ${exitCode}`);
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+    Deno.chdir(previousCwd);
   }
 });
 

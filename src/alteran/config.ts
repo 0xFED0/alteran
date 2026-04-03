@@ -216,7 +216,6 @@ export async function syncRootDenoConfig(
   );
   const workspaceEntries = Object.values(config.apps)
     .map((entry) => entry.path)
-    .filter((path) => path.startsWith("./apps/"))
     .sort((left, right) => left.localeCompare(right));
 
   const tasks: Record<string, string> = {
@@ -300,8 +299,9 @@ export function createDefaultAppConfig(name: string): AppConfig {
 export async function syncAppDenoConfig(
   projectDir: string,
   appName: string,
+  appDirOverride?: string,
 ): Promise<void> {
-  const appDir = join(projectDir, "apps", appName);
+  const appDir = appDirOverride ?? join(projectDir, "apps", appName);
   const appLibImports = await discoverLibAliasesFromDir(
     projectDir,
     join(appDir, "libs"),
@@ -328,7 +328,11 @@ export async function syncAppDenoConfig(
         app: "deno task core",
       },
       imports: {
-        ...(current.imports ?? {}),
+        ...Object.fromEntries(
+          Object.entries(current.imports ?? {}).filter(([key]) =>
+            !key.startsWith("@libs/")
+          ),
+        ),
         ...Object.fromEntries(
           Object.entries(mergedImports).map(([key, value]) => {
             const relativeValue = toPortablePath(
@@ -350,8 +354,9 @@ export async function syncAppDenoConfig(
 export async function ensureAppConfig(
   projectDir: string,
   appName: string,
+  appDirOverride?: string,
 ): Promise<void> {
-  const appDir = join(projectDir, "apps", appName);
+  const appDir = appDirOverride ?? join(projectDir, "apps", appName);
   await ensureDir(appDir);
   await updateJsoncFile(
     join(appDir, "app.json"),

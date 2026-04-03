@@ -1,4 +1,3 @@
-import { exists } from "../../src/alteran/fs.ts";
 import {
   assert,
   assertSuccess,
@@ -67,18 +66,12 @@ Deno.test({
       const parentMetadata = await readJson(`${parentDir}/metadata.json`) as {
         run_id: string;
       };
-
-      const hasNestedRunDir = await exists(`${projectDir}/.runtime/logs/runs`);
-      assert(hasNestedRunDir, "Expected nested run logs to be present");
-
-      const childDir = await latestLogDir(projectDir, "runs");
-      const childMetadata = await readJson(`${childDir}/metadata.json`) as {
-        parent_run_id: string | null;
-      };
+      const events = await Deno.readTextFile(`${parentDir}/events.jsonl`);
 
       assert(
-        childMetadata.parent_run_id === parentMetadata.run_id,
-        "Expected child run metadata to point at the parent run id",
+        events.includes('"msg":"run started"') &&
+          events.includes('"parent_run_id":"' + parentMetadata.run_id + '"'),
+        "Expected root events to record a child run linked to the parent run id",
       );
     });
   },

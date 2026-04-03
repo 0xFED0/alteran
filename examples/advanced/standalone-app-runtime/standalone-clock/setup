@@ -48,7 +48,18 @@ if [ -z "${DENO_SOURCES:-}" ]; then
   DENO_SOURCES="https://dl.deno.land/release"
 fi
 
+split_sources() {
+  printf '%s\n' "$1" | tr ';' ' '
+}
+
 if [ -x "$LOCAL_DENO" ]; then
+  exit 0
+fi
+
+if command -v deno >/dev/null 2>&1; then
+  mkdir -p "$DENO_RUNTIME_ROOT/bin" "$DENO_RUNTIME_ROOT/cache"
+  cp "$(command -v deno)" "$LOCAL_DENO"
+  chmod +x "$LOCAL_DENO"
   exit 0
 fi
 
@@ -63,7 +74,7 @@ DENO_TARGET=$(resolve_deno_target) || {
 }
 
 DENO_VERSION=""
-for source in $DENO_SOURCES; do
+for source in $(split_sources "$DENO_SOURCES"); do
   if DENO_VERSION=$(curl -fsSL "${source%/}/release-latest.txt" 2>/dev/null); then
     break
   fi
@@ -78,7 +89,7 @@ mkdir -p "$DENO_RUNTIME_ROOT/bin"
 ARCHIVE_NAME="deno-$DENO_TARGET.zip"
 ARCHIVE_PATH="$DENO_RUNTIME_ROOT/$ARCHIVE_NAME"
 
-for source in $DENO_SOURCES; do
+for source in $(split_sources "$DENO_SOURCES"); do
   if curl -fsSL "${source%/}/$DENO_VERSION/$ARCHIVE_NAME" -o "$ARCHIVE_PATH" && unzip -oq "$ARCHIVE_PATH" -d "$DENO_RUNTIME_ROOT/bin"; then
     rm -f "$ARCHIVE_PATH"
     chmod +x "$LOCAL_DENO"

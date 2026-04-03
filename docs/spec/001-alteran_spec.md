@@ -577,10 +577,10 @@ ALTERAN_SRC=./src
 Alteran should load `.env` as an actual environment file for repository/project
 commands rather than treating it as a one-off source hint.
 
-When `ALTERAN_SRC` or `ALTERUN_SRC` comes from `.env`, path-like values such as
-`./src`, `../other-src`, `~/dev/alteran/src` must be resolved relative to the
-directory containing that `.env` file, not relative to the caller's current
-working directory.
+When `ALTERAN_SRC` comes from `.env`, path-like values such as `./src`,
+`../other-src`, `~/dev/alteran/src` must be resolved relative to the directory
+containing that `.env` file, not relative to the caller's current working
+directory.
 
 ### 6.2 Download source lists
 

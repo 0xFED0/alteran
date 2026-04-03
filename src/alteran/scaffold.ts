@@ -1,6 +1,6 @@
-import { basename, join } from "node:path";
+import { basename, join, relative } from "node:path";
 
-import { ensureDir, writeTextFileIfChanged } from "./fs.ts";
+import { ensureDir, toPortablePath, writeTextFileIfChanged } from "./fs.ts";
 
 async function writeExecutableIfNeeded(
   path: string,
@@ -24,7 +24,19 @@ dist/
 `;
 }
 
-function createDevAppLauncher(name: string): string {
+function appProjectReference(appDir: string, projectDir: string): string {
+  const relativeProjectDir = toPortablePath(relative(appDir, projectDir));
+  return relativeProjectDir.startsWith(".")
+    ? relativeProjectDir
+    : `./${relativeProjectDir}`;
+}
+
+function createDevAppLauncher(
+  name: string,
+  appDir: string,
+  projectDir: string,
+): string {
+  const projectRef = appProjectReference(appDir, projectDir);
   return `#!/usr/bin/env sh
 set -eu
 
@@ -58,7 +70,7 @@ case "$UNAME_M" in
   *) ALTERAN_ARCH="$UNAME_M" ;;
 esac
 
-PROJECT_DIR=$(CDPATH= cd -- "$APP_DIR/../.." && pwd)
+PROJECT_DIR=$(CDPATH= cd -- "$APP_DIR/${projectRef}" && pwd)
 PARENT_DENO="$PROJECT_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
 ALTERAN_ENTRY="$PROJECT_DIR/.runtime/alteran/mod.ts"
 
@@ -83,7 +95,15 @@ exit 1
 `;
 }
 
-function createDevAppLauncherBat(name: string): string {
+function createDevAppLauncherBat(
+  name: string,
+  appDir: string,
+  projectDir: string,
+): string {
+  const projectRef = appProjectReference(appDir, projectDir).replaceAll(
+    "/",
+    "\\",
+  );
   return `@echo off
 setlocal
 set "APP_DIR=%~dp0"
@@ -110,7 +130,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-set "PROJECT_DIR=%APP_DIR%..\\.."
+set "PROJECT_DIR=%APP_DIR%${projectRef}"
 for %%I in ("%PROJECT_DIR%") do set "PROJECT_DIR=%%~fI"
 set "APP_NAME=${name}"
 set "ALTERAN_ARCH=x64"
@@ -143,7 +163,12 @@ exit /b 1
 `;
 }
 
-function createManagedAppSetupScript(name: string): string {
+function createManagedAppSetupScript(
+  name: string,
+  appDir: string,
+  projectDir: string,
+): string {
+  const projectRef = appProjectReference(appDir, projectDir);
   return `#!/usr/bin/env sh
 set -eu
 
@@ -160,7 +185,7 @@ grep -Eq '"id"[[:space:]]*:[[:space:]]*"'$APP_ID'"' "./app.json" || {
   exit 1
 }
 
-PROJECT_DIR=$(CDPATH= cd -- "$APP_DIR/../.." && pwd)
+PROJECT_DIR=$(CDPATH= cd -- "$APP_DIR/${projectRef}" && pwd)
 ROOT_SETUP="$PROJECT_DIR/setup"
 
 [ -f "$ROOT_SETUP" ] || {
@@ -172,7 +197,15 @@ sh "$ROOT_SETUP" "$PROJECT_DIR" >&2
 `;
 }
 
-function createManagedAppSetupScriptBat(name: string): string {
+function createManagedAppSetupScriptBat(
+  name: string,
+  appDir: string,
+  projectDir: string,
+): string {
+  const projectRef = appProjectReference(appDir, projectDir).replaceAll(
+    "/",
+    "\\",
+  );
   return `@echo off
 setlocal
 set "APP_DIR=%~dp0"
@@ -199,7 +232,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-set "PROJECT_DIR=%APP_DIR%..\\.."
+set "PROJECT_DIR=%APP_DIR%${projectRef}"
 for %%I in ("%PROJECT_DIR%") do set "PROJECT_DIR=%%~fI"
 set "ROOT_SETUP=%PROJECT_DIR%\\setup.bat"
 
@@ -216,20 +249,24 @@ exit /b %ERRORLEVEL%
 export async function ensureManagedAppScripts(
   projectDir: string,
   name: string,
+  appDirOverride?: string,
 ): Promise<void> {
-  const appDir = join(projectDir, "apps", name);
+  const appDir = appDirOverride ?? join(projectDir, "apps", name);
   await writeExecutableIfNeeded(
     join(appDir, "setup"),
-    createManagedAppSetupScript(name),
+    createManagedAppSetupScript(name, appDir, projectDir),
   );
   await writeTextFileIfChanged(
     join(appDir, "setup.bat"),
-    createManagedAppSetupScriptBat(name),
+    createManagedAppSetupScriptBat(name, appDir, projectDir),
   );
-  await writeExecutableIfNeeded(join(appDir, "app"), createDevAppLauncher(name));
+  await writeExecutableIfNeeded(
+    join(appDir, "app"),
+    createDevAppLauncher(name, appDir, projectDir),
+  );
   await writeTextFileIfChanged(
     join(appDir, "app.bat"),
-    createDevAppLauncherBat(name),
+    createDevAppLauncherBat(name, appDir, projectDir),
   );
 }
 
@@ -284,7 +321,18 @@ if [ -z "${"${"}DENO_SOURCES:-}" ]; then
   DENO_SOURCES="https://dl.deno.land/release"
 fi
 
+split_sources() {
+  printf '%s\\n' "$1" | tr ';' ' '
+}
+
 if [ -x "$LOCAL_DENO" ]; then
+  exit 0
+fi
+
+if command -v deno >/dev/null 2>&1; then
+  mkdir -p "$DENO_RUNTIME_ROOT/bin" "$DENO_RUNTIME_ROOT/cache"
+  cp "$(command -v deno)" "$LOCAL_DENO"
+  chmod +x "$LOCAL_DENO"
   exit 0
 fi
 
@@ -299,7 +347,7 @@ DENO_TARGET=$(resolve_deno_target) || {
 }
 
 DENO_VERSION=""
-for source in $DENO_SOURCES; do
+for source in $(split_sources "$DENO_SOURCES"); do
   if DENO_VERSION=$(curl -fsSL "${"${"}source%/}/release-latest.txt" 2>/dev/null); then
     break
   fi
@@ -314,7 +362,7 @@ mkdir -p "$DENO_RUNTIME_ROOT/bin"
 ARCHIVE_NAME="deno-$DENO_TARGET.zip"
 ARCHIVE_PATH="$DENO_RUNTIME_ROOT/$ARCHIVE_NAME"
 
-for source in $DENO_SOURCES; do
+for source in $(split_sources "$DENO_SOURCES"); do
   if curl -fsSL "${"${"}source%/}/$DENO_VERSION/$ARCHIVE_NAME" -o "$ARCHIVE_PATH" && unzip -oq "$ARCHIVE_PATH" -d "$DENO_RUNTIME_ROOT/bin"; then
     rm -f "$ARCHIVE_PATH"
     chmod +x "$LOCAL_DENO"
@@ -358,9 +406,20 @@ set "DENO_RUNTIME_ROOT=%APP_DIR%\\.runtime\\deno\\windows-%ALTERAN_ARCH%"
 set "LOCAL_DENO=%DENO_RUNTIME_ROOT%\\bin\\deno.exe"
 
 if not defined DENO_SOURCES set "DENO_SOURCES=https://dl.deno.land/release"
+set "DENO_SOURCES_LIST=%DENO_SOURCES:;= %"
 if exist "%LOCAL_DENO%" exit /b 0
 
-for %%S in (%DENO_SOURCES%) do (
+where deno >nul 2>nul
+if %ERRORLEVEL%==0 (
+  for /f "usebackq delims=" %%I in (\`where deno\`) do (
+    if not exist "%DENO_RUNTIME_ROOT%\\bin" mkdir "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
+    if not exist "%DENO_RUNTIME_ROOT%\\cache" mkdir "%DENO_RUNTIME_ROOT%\\cache" >nul 2>nul
+    copy /y "%%~I" "%LOCAL_DENO%" >nul
+    exit /b 0
+  )
+)
+
+for %%S in (%DENO_SOURCES_LIST%) do (
   powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ErrorActionPreference='Stop';" ^
     "$source='%%~S'.TrimEnd('/');" ^

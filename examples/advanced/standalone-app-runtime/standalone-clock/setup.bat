@@ -26,9 +26,20 @@ set "DENO_RUNTIME_ROOT=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%"
 set "LOCAL_DENO=%DENO_RUNTIME_ROOT%\bin\deno.exe"
 
 if not defined DENO_SOURCES set "DENO_SOURCES=https://dl.deno.land/release"
+set "DENO_SOURCES_LIST=%DENO_SOURCES:;= %"
 if exist "%LOCAL_DENO%" exit /b 0
 
-for %%S in (%DENO_SOURCES%) do (
+where deno >nul 2>nul
+if %ERRORLEVEL%==0 (
+  for /f "usebackq delims=" %%I in (`where deno`) do (
+    if not exist "%DENO_RUNTIME_ROOT%\bin" mkdir "%DENO_RUNTIME_ROOT%\bin" >nul 2>nul
+    if not exist "%DENO_RUNTIME_ROOT%\cache" mkdir "%DENO_RUNTIME_ROOT%\cache" >nul 2>nul
+    copy /y "%%~I" "%LOCAL_DENO%" >nul
+    exit /b 0
+  )
+)
+
+for %%S in (%DENO_SOURCES_LIST%) do (
   powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ErrorActionPreference='Stop';" ^
     "$source='%%~S'.TrimEnd('/');" ^
