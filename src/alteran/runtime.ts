@@ -343,6 +343,20 @@ async function seedLocalDenoFromExecutable(
   await ensureDir(paths.denoBinDir);
   await ensureDir(paths.cacheDir);
   await Deno.copyFile(sourceExecutable, paths.denoPath);
+  const sourceCacheDir = await (async (): Promise<string | null> => {
+    const explicitDenoDir = Deno.env.get("DENO_DIR")?.trim();
+    if (explicitDenoDir && await exists(explicitDenoDir)) {
+      return explicitDenoDir;
+    }
+    const siblingCacheDir = resolve(
+      dirname(dirname(resolve(sourceExecutable))),
+      "cache",
+    );
+    return await exists(siblingCacheDir) ? siblingCacheDir : null;
+  })();
+  if (sourceCacheDir !== null) {
+    await copyDirectory(sourceCacheDir, paths.cacheDir);
+  }
   if (Deno.build.os !== "windows") {
     await Deno.chmod(paths.denoPath, 0o755);
   }
