@@ -1,4 +1,4 @@
-# 04 Managed Vs Plain Deno
+# 04 Managed vs Plain Deno
 
 ## What this example shows
 
