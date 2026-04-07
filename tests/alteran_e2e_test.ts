@@ -7,6 +7,7 @@ import {
   getVersionedZipDistDir,
 } from "../tools/prepare_zip/mod.ts";
 import { runCli } from "../src/alteran/mod.ts";
+import { readAlteranConfig, updateAlteranConfig } from "../src/alteran/config.ts";
 import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
 import {
   addApp,
@@ -18,6 +19,7 @@ import {
   initProject,
   listRegistry,
   refreshProject,
+  reimportCategory,
 } from "../src/alteran/runtime.ts";
 import { detectPlatform } from "../src/alteran/platform.ts";
 import { ALTERAN_VERSION } from "../src/alteran/version.ts";
@@ -270,11 +272,33 @@ Deno.test("addApp and addTool update registries and env aliases", async () => {
   await initProject(projectDir);
   await addApp(projectDir, "hello");
   await addTool(projectDir, "seed");
+  await updateAlteranConfig(projectDir, (current) => ({
+    ...current,
+    shell_aliases: {
+      ...current.shell_aliases,
+      myrun: "alt run scripts/demo.ts",
+    },
+    apps: {
+      ...current.apps,
+      hello: {
+        ...current.apps.hello,
+        shell_aliases: ["app-hello", "hello-now"],
+      },
+    },
+    tools: {
+      ...current.tools,
+      seed: {
+        ...current.tools.seed,
+        shell_aliases: ["tool-seed", "seed-now"],
+      },
+    },
+  }));
   await refreshProject(projectDir);
 
   const apps = await listRegistry(projectDir, "apps");
   const tools = await listRegistry(projectDir, "tools");
   const shellenv = await generateShellEnv(projectDir);
+  const config = await readAlteranConfig(projectDir);
 
   if (!apps.some((line) => line.startsWith("hello\t"))) {
     throw new Error(`Expected hello app in registry, got: ${apps.join(", ")}`);
@@ -284,14 +308,64 @@ Deno.test("addApp and addTool update registries and env aliases", async () => {
       `Expected at least one tool in registry, got: ${tools.join(", ")}`,
     );
   }
+  if (
+    JSON.stringify(config.apps.hello.shell_aliases) !==
+      JSON.stringify(["app-hello", "hello-now"]) ||
+    JSON.stringify(config.tools.seed.shell_aliases) !==
+      JSON.stringify(["tool-seed", "seed-now"])
+  ) {
+    throw new Error("Expected added entries to persist explicit shell_aliases");
+  }
   if (!shellenv.includes("alias app-hello='alteran app run hello'")) {
     throw new Error("Expected generated app alias in shellenv");
   }
   if (!shellenv.includes("alias tool-seed='alteran tool run seed'")) {
     throw new Error("Expected generated tool alias in shellenv");
   }
+  if (!shellenv.includes("alias hello-now='alteran app run hello'")) {
+    throw new Error("Expected explicit app alias in shellenv");
+  }
+  if (!shellenv.includes("alias seed-now='alteran tool run seed'")) {
+    throw new Error("Expected explicit tool alias in shellenv");
+  }
+  if (!shellenv.includes("alias myrun='alt run scripts/demo.ts'")) {
+    throw new Error("Expected top-level shell_aliases entry in shellenv");
+  }
   if (!shellenv.includes("alias atest='alteran test'")) {
     throw new Error("Expected generated test alias in shellenv");
+  }
+});
+
+Deno.test("reimport preserves explicit alias state for existing registry entries", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-reimport-alias-state-" });
+  await seedManagedDeno(projectDir);
+  await initProject(projectDir);
+  await addTool(projectDir, "seed");
+
+  await updateAlteranConfig(projectDir, (current) => ({
+    ...current,
+    tools: {
+      ...current.tools,
+      seed: {
+        ...current.tools.seed,
+        shell_aliases: ["seed-now"],
+      },
+    },
+  }));
+
+  await reimportCategory(projectDir, "tools", "./tools");
+
+  const config = await readAlteranConfig(projectDir);
+  const shellenv = await generateShellEnv(projectDir);
+
+  if (JSON.stringify(config.tools.seed.shell_aliases) !== JSON.stringify(["seed-now"])) {
+    throw new Error("Expected reimport to preserve explicit tool shell_aliases");
+  }
+  if (shellenv.includes("alias tool-seed='alteran tool run seed'")) {
+    throw new Error("Expected disabled default tool alias to stay absent after reimport");
+  }
+  if (!shellenv.includes("alias seed-now='alteran tool run seed'")) {
+    throw new Error("Expected explicit tool alias to survive reimport");
   }
 });
 

@@ -24,6 +24,7 @@ export function createDefaultAlteranConfig(projectDir: string): AlteranConfig {
     name: projectDir.split(/[\\/]/).at(-1) ?? "alteran-project",
     auto_refresh_before_run: false,
     deno_version: Deno.version.deno,
+    shell_aliases: {},
     logging: {
       stdout: { mirror: true, capture: true },
       stderr: { mirror: true, capture: true },
@@ -38,6 +39,83 @@ export function createDefaultAlteranConfig(projectDir: string): AlteranConfig {
   };
 }
 
+function defaultEntryShellAlias(
+  kind: "app" | "tool",
+  name: string,
+): string {
+  return `${kind}-${name}`;
+}
+
+function normalizeEntryShellAliases(
+  kind: "app" | "tool",
+  name: string,
+  entry: Record<string, unknown>,
+): string[] | null | undefined {
+  if ("shell_aliases" in entry) {
+    const value = entry.shell_aliases;
+    if (value === null) {
+      return null;
+    }
+    if (Array.isArray(value)) {
+      return value.filter((alias): alias is string =>
+        typeof alias === "string" && alias.trim().length > 0
+      );
+    }
+    return undefined;
+  }
+
+  const legacyAliases = Array.isArray(entry.aliases)
+    ? entry.aliases.filter((alias): alias is string =>
+      typeof alias === "string" && alias.trim().length > 0
+    )
+    : [];
+  const legacyAddAlias = entry.add_alias;
+  if (legacyAddAlias === false) {
+    return legacyAliases;
+  }
+  if (legacyAddAlias === true) {
+    return [defaultEntryShellAlias(kind, name), ...legacyAliases];
+  }
+  return undefined;
+}
+
+function normalizeRegistryEntry(
+  kind: "app" | "tool",
+  name: string,
+  entry: RegistryEntry | Record<string, unknown>,
+): RegistryEntry {
+  const shellAliases = normalizeEntryShellAliases(
+    kind,
+    name,
+    entry as Record<string, unknown>,
+  );
+  return {
+    path: String((entry as Record<string, unknown>).path ?? ""),
+    ...(typeof (entry as Record<string, unknown>).name === "string"
+      ? { name: (entry as Record<string, unknown>).name as string }
+      : {}),
+    ...(typeof (entry as Record<string, unknown>).title === "string"
+      ? { title: (entry as Record<string, unknown>).title as string }
+      : {}),
+    ...(typeof (entry as Record<string, unknown>).discovered === "boolean"
+      ? { discovered: (entry as Record<string, unknown>).discovered as boolean }
+      : {}),
+    ...(shellAliases !== undefined ? { shell_aliases: shellAliases } : {}),
+  };
+}
+
+function normalizeRegistryEntries(
+  kind: "app" | "tool",
+  entries: Record<string, RegistryEntry | Record<string, unknown>>,
+): Record<string, RegistryEntry> {
+  return Object.fromEntries(
+    Object.entries(entries).map(([name, entry]) => [
+      name,
+      normalizeRegistryEntry(kind, name, entry),
+    ]),
+  );
+}
+
 export async function readAlteranConfig(
   projectDir: string,
 ): Promise<AlteranConfig> {
@@ -48,6 +126,13 @@ export async function readAlteranConfig(
     (current) => ({
       ...defaultConfig,
       ...current,
+      shell_aliases: {
+        ...defaultConfig.shell_aliases,
+        ...(current.shell_aliases ??
+          (current as AlteranConfig & {
+            shell?: { aliases?: Record<string, string> };
+          }).shell?.aliases ?? {}),
+      },
       logging: {
         ...defaultConfig.logging,
         ...current.logging,
@@ -62,8 +147,8 @@ export async function readAlteranConfig(
           ...current.auto_reimport?.tools,
         },
       },
-      apps: current.apps ?? {},
-      tools: current.tools ?? {},
+      apps: normalizeRegistryEntries("app", current.apps ?? {}),
+      tools: normalizeRegistryEntries("tool", current.tools ?? {}),
     }),
   );
 }
@@ -90,14 +175,21 @@ function isExcluded(path: string, excludePatterns: string[]): boolean {
 }
 
 function registryEntry(
+  kind: "app" | "tool",
   name: string,
   absolutePath: string,
   projectDir: string,
+  existing?: RegistryEntry,
 ): RegistryEntry {
+  const shellAliases = existing && "shell_aliases" in existing
+    ? existing.shell_aliases
+    : [defaultEntryShellAlias(kind, name)];
   return {
-    name,
+    ...existing,
+    name: existing?.name ?? name,
     path: toProjectRelativePath(projectDir, absolutePath),
     discovered: true,
+    ...(shellAliases !== undefined ? { shell_aliases: shellAliases } : {}),
   };
 }
 
@@ -120,7 +212,7 @@ export async function discoverApps(
     if (isExcluded(relativePath, config.auto_reimport.apps.exclude)) {
       continue;
     }
-    result[name] = registryEntry(name, appDir, projectDir);
+    result[name] = registryEntry("app", name, appDir, projectDir, result[name]);
   }
 
   return result;
@@ -153,7 +245,7 @@ export async function discoverTools(
     if (isExcluded(relativePath, config.auto_reimport.tools.exclude)) {
       continue;
     }
-    result[name] = registryEntry(name, toolPath, projectDir);
+    result[name] = registryEntry("tool", name, toolPath, projectDir, result[name]);
   }
 
   for (const name of await listDirectSubdirectories(toolsRoot)) {
@@ -166,7 +258,7 @@ export async function discoverTools(
     if (isExcluded(relativePath, config.auto_reimport.tools.exclude)) {
       continue;
     }
-    result[name] = registryEntry(name, fallbackPath, projectDir);
+    result[name] = registryEntry("tool", name, fallbackPath, projectDir, result[name]);
   }
 
   return result;

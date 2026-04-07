@@ -974,21 +974,107 @@ async function readRootTaskCommand(
   return null;
 }
 
-function toEnvAliasName(prefix: string, name: string): string {
-  return `${prefix}-${slugify(name)}`;
+function shellQuote(value: string): string {
+  return value.replaceAll("'", "'\\''");
+}
+
+function appendAlias(
+  aliases: Map<string, string>,
+  name: string,
+  command: string,
+): void {
+  if (!name.trim()) {
+    return;
+  }
+  aliases.set(name, command);
+}
+
+function createShellAliasLines(
+  aliases: Map<string, string>,
+): string[] {
+  return [...aliases.entries()].map(([name, command]) =>
+    `alias ${name}='${shellQuote(command)}'`
+  );
+}
+
+function createBatchAliasLines(
+  aliases: Map<string, string>,
+): string[] {
+  return [...aliases.entries()].map(([name, command]) =>
+    `doskey ${name}=${command} $*`
+  );
+}
+
+function collectAppAliasCommands(config: AlteranConfig): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const [name, entry] of Object.entries(config.apps).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    for (const aliasName of entry.shell_aliases ?? []) {
+      appendAlias(aliases, aliasName, `alteran app run ${name}`);
+    }
+  }
+  return aliases;
+}
+
+function collectToolAliasCommands(config: AlteranConfig): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const [name, entry] of Object.entries(config.tools).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    for (const aliasName of entry.shell_aliases ?? []) {
+      appendAlias(aliases, aliasName, `alteran tool run ${name}`);
+    }
+  }
+  return aliases;
+}
+
+function collectBatchAppAliasCommands(
+  config: AlteranConfig,
+  alteranEntry: string,
+): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const [name, entry] of Object.entries(config.apps).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    for (const aliasName of entry.shell_aliases ?? []) {
+      appendAlias(
+        aliases,
+        aliasName,
+        `deno run -A "${alteranEntry}" app run ${name}`,
+      );
+    }
+  }
+  return aliases;
+}
+
+function collectBatchToolAliasCommands(
+  config: AlteranConfig,
+  alteranEntry: string,
+): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const [name, entry] of Object.entries(config.tools).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    for (const aliasName of entry.shell_aliases ?? []) {
+      appendAlias(
+        aliases,
+        aliasName,
+        `deno run -A "${alteranEntry}" tool run ${name}`,
+      );
+    }
+  }
+  return aliases;
 }
 
 export async function generateShellEnv(projectDir: string): Promise<string> {
   const config = await readAlteranConfig(projectDir);
   const paths = getProjectPaths(projectDir);
-  const appAliases = Object.keys(config.apps).sort()
-    .map((name) =>
-      `alias ${toEnvAliasName("app", name)}='alteran app run ${name}'`
-    );
-  const toolAliases = Object.keys(config.tools).sort()
-    .map((name) =>
-      `alias ${toEnvAliasName("tool", name)}='alteran tool run ${name}'`
-    );
+  const appAliases = createShellAliasLines(collectAppAliasCommands(config));
+  const toolAliases = createShellAliasLines(collectToolAliasCommands(config));
+  const shellAliases = createShellAliasLines(
+    new Map(Object.entries(config.shell_aliases)),
+  );
 
   return renderShellEnv({
     runtimeDir: relativeExecutable(paths.runtimeDir),
@@ -998,33 +1084,33 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
     alteranEntry: relativeExecutable(join(paths.alteranDir, "mod.ts")),
     appAliases,
     toolAliases,
+    shellAliases,
   });
 }
 
 export async function generateBatchEnv(projectDir: string): Promise<string> {
   const config = await readAlteranConfig(projectDir);
   const paths = getProjectPaths(projectDir);
-  const appAliases = Object.keys(config.apps).sort()
-    .map((name) =>
-      `doskey ${toEnvAliasName("app", name)}=deno run -A "${
-        join(paths.alteranDir, "mod.ts")
-      }" app run ${name} $*`
-    );
-  const toolAliases = Object.keys(config.tools).sort()
-    .map((name) =>
-      `doskey ${toEnvAliasName("tool", name)}=deno run -A "${
-        join(paths.alteranDir, "mod.ts")
-      }" tool run ${name} $*`
-    );
+  const alteranEntry = join(paths.alteranDir, "mod.ts");
+  const appAliases = createBatchAliasLines(
+    collectBatchAppAliasCommands(config, alteranEntry),
+  );
+  const toolAliases = createBatchAliasLines(
+    collectBatchToolAliasCommands(config, alteranEntry),
+  );
+  const shellAliases = createBatchAliasLines(
+    new Map(Object.entries(config.shell_aliases)),
+  );
 
   return renderBatchEnv({
     runtimeDir: paths.runtimeDir,
     cacheDir: paths.cacheDir,
     platformDir: paths.platformDir,
     denoBinDir: paths.denoBinDir,
-    alteranEntry: join(paths.alteranDir, "mod.ts"),
+    alteranEntry,
     appAliases,
     toolAliases,
+    shellAliases,
   });
 }
 
@@ -1034,16 +1120,23 @@ export async function ensureEnvScripts(projectDir: string): Promise<void> {
 
 function withRegistryEntry(
   current: Record<string, RegistryEntry>,
+  kind: "app" | "tool",
   name: string,
   projectDir: string,
   targetPath: string,
 ): Record<string, RegistryEntry> {
+  const existing = current[name];
+  const shellAliases = existing && "shell_aliases" in existing
+    ? existing.shell_aliases
+    : [`${kind}-${name}`];
   return {
     ...current,
     [name]: {
+      ...existing,
       path: toProjectRelativePath(projectDir, targetPath),
-      name,
+      name: existing?.name ?? name,
       discovered: true,
+      ...(shellAliases !== undefined ? { shell_aliases: shellAliases } : {}),
     },
   };
 }
@@ -1136,7 +1229,7 @@ export async function addApp(
   await createAppScaffold(projectDir, name);
   await updateAlteranConfig(projectDir, (current) => ({
     ...current,
-    apps: withRegistryEntry(current.apps, name, projectDir, appDir),
+    apps: withRegistryEntry(current.apps, "app", name, projectDir, appDir),
     auto_reimport: {
       ...current.auto_reimport,
       apps: {
@@ -1197,7 +1290,7 @@ export async function addTool(
   await createToolScaffold(projectDir, name);
   await updateAlteranConfig(projectDir, (current) => ({
     ...current,
-    tools: withRegistryEntry(current.tools, name, projectDir, toolPath),
+    tools: withRegistryEntry(current.tools, "tool", name, projectDir, toolPath),
     auto_reimport: {
       ...current.auto_reimport,
       tools: {
@@ -1273,6 +1366,7 @@ export async function reimportCategory(
         ...current,
         apps: withRegistryEntry(
           current.apps,
+          "app",
           name,
           projectDir,
           join(resolvedSourceDir, name),
@@ -1287,6 +1381,7 @@ export async function reimportCategory(
           ...current,
           tools: withRegistryEntry(
             current.tools,
+            "tool",
             name,
             projectDir,
             join(resolvedSourceDir, entry.name),
