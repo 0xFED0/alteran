@@ -1,0 +1,24 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Alteran generated runtime state
+.runtime/
+
+# Nested standalone app runtimes
+apps/*/.runtime/
+
+# Generated publication output
+dist/jsr/*
+!dist/jsr/.keep
+
+# Local scratch space
+.tmp-*/
+
+# --- alteran managed: begin ---
+.DS_Store
+Thumbs.db
+.runtime/
+apps/*/.runtime/
+dist/
+# --- alteran managed: end ---

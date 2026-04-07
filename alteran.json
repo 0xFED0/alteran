@@ -1,0 +1,38 @@
+{
+  // Alteran project configuration.
+  "name": "alteran",
+  "auto_refresh_before_run": false,
+  "deno_version": ">=2.4.1",
+  "logging": {
+    "stdout": {
+      "mirror": true
+    },
+    "stderr": {
+      "mirror": true
+    },
+    "logtape": false
+  },
+  "apps": {},
+  "tools": {
+    "prepare_jsr": {
+      "name": "prepare_jsr",
+      "path": "./tools/prepare_jsr.ts",
+      "discovered": true
+    },
+    "prepare_zip": {
+      "name": "prepare_zip",
+      "path": "./tools/prepare_zip.ts",
+      "discovered": true
+    }
+  },
+  "auto_reimport": {
+    "apps": {
+      "include": ["./apps/*"],
+      "exclude": []
+    },
+    "tools": {
+      "include": ["./tools/*"],
+      "exclude": []
+    }
+  }
+}
