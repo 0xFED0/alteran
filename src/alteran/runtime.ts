@@ -1282,6 +1282,20 @@ export async function cleanProjectScopes(
   }
 }
 
+export async function compactProject(projectDir: string): Promise<void> {
+  await cleanProjectScopes(projectDir, ["all", "app-runtimes", "builds"]);
+
+  await removeIfExists(join(projectDir, ".runtime"));
+  await removeIfExists(join(projectDir, "dist"));
+
+  const appsDir = join(projectDir, "apps");
+  if (await exists(appsDir)) {
+    for (const appName of await listDirectSubdirectories(appsDir)) {
+      await removeIfExists(join(appsDir, appName, ".runtime"));
+    }
+  }
+}
+
 async function resolveDenoExecutable(
   projectDir: string,
   config?: AlteranConfig,

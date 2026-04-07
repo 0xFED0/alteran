@@ -5,6 +5,7 @@ import {
   addTool,
   cleanProject,
   cleanProjectScopes,
+  compactProject,
   generateShellEnv,
   initProject,
   initStandaloneApp,
@@ -30,6 +31,7 @@ export {
   addApp,
   addTool,
   cleanProject,
+  compactProject,
   generateShellEnv,
   initProject,
   passthroughDeno,
@@ -53,6 +55,7 @@ Commands:
   alteran tool add|rm|purge|ls|run <name>
   alteran reimport apps|tools <dir>
   alteran clean <scope> [<scope> ...]
+  alteran compact
   alteran run <file> [args...]
   alteran task <name> [args...]
   alteran test [filters/flags...]
@@ -163,6 +166,74 @@ Run a script with Alteran-managed Deno and preload initialization.
 
 Usage:
   alteran run <file> [args...]`);
+}
+
+function printCompactHelp(): void {
+  console.log(`alteran compact
+
+Reduce the project to a bootstrap-ready transferable state.
+
+Usage:
+  alteran compact [-y|--yes|-f|--force]
+  alteran compact [-n|--no]
+
+Behavior:
+  - runs safe cleanup equivalent to clean all + app-runtimes + builds
+  - removes the root .runtime/ directory completely
+  - removes nested apps/*/.runtime/ directories
+  - removes dist/ output completely
+  - preserves user source files, configs, and activate scripts
+  - asks for confirmation before making destructive changes unless -y/-f is set
+  - cancels immediately when -n is set
+
+After compact, the project should be re-hydratable from scratch through:
+  . ./activate
+  activate.bat`);
+}
+
+function printCompactWarning(projectDir: string): void {
+  console.error(
+    `Alteran compact will reduce this project to a bootstrap-ready state:
+  ${projectDir}
+
+It will remove:
+  - .runtime/
+  - apps/*/.runtime/
+  - dist/
+
+It will keep:
+  - activate / activate.bat
+  - alteran.json / deno.json / deno.lock
+  - .env / .gitignore
+  - apps/ tools/ libs/ tests/
+  - user-authored source and config files
+
+The project should still be re-hydratable later through activate.`,
+  );
+}
+
+function isYesFlag(value: string): boolean {
+  return value === "-y" || value === "--yes" || value === "-f" ||
+    value === "--force";
+}
+
+function isNoFlag(value: string): boolean {
+  return value === "-n" || value === "--no";
+}
+
+async function confirmCompact(projectDir: string): Promise<"yes" | "no"> {
+  printCompactWarning(projectDir);
+
+  if (!Deno.stdin.isTerminal()) {
+    throw new Error(
+      "alteran compact requires confirmation in interactive mode. Use -y/-f to proceed or -n to cancel.",
+    );
+  }
+
+  const answer = globalThis.prompt?.("Proceed with alteran compact? [y/N]") ??
+    null;
+  const normalized = answer?.trim().toLowerCase() ?? "";
+  return normalized === "y" || normalized === "yes" ? "yes" : "no";
 }
 
 function printTaskHelp(): void {
@@ -396,6 +467,45 @@ export async function runCli(argv: string[]): Promise<number> {
         const projectDir = await resolveActiveProjectDir();
         await cleanProjectScopes(projectDir, rest);
         console.error(`Cleaned ${rest.join(", ")}`);
+        return 0;
+      }
+      case "compact": {
+        if (rest.some((arg) => isHelpToken(arg))) {
+          printCompactHelp();
+          return 0;
+        }
+        const projectDir = await resolveActiveProjectDir();
+        const hasYes = rest.some(isYesFlag);
+        const hasNo = rest.some(isNoFlag);
+        const unsupportedArgs = rest.filter((arg) =>
+          !isYesFlag(arg) && !isNoFlag(arg)
+        );
+        if (unsupportedArgs.length > 0) {
+          throw new Error(
+            `alteran compact does not accept arguments: ${
+              unsupportedArgs.join(", ")
+            }`,
+          );
+        }
+        if (hasYes && hasNo) {
+          throw new Error(
+            "alteran compact cannot accept both yes and no flags",
+          );
+        }
+        if (hasNo) {
+          printCompactWarning(projectDir);
+          console.error("Cancelled compact");
+          return 0;
+        }
+        if (!hasYes) {
+          const confirmation = await confirmCompact(projectDir);
+          if (confirmation !== "yes") {
+            console.error("Cancelled compact");
+            return 0;
+          }
+        }
+        await compactProject(projectDir);
+        console.error("Compacted project");
         return 0;
       }
       case "run": {

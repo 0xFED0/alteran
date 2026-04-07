@@ -1566,6 +1566,7 @@ this pattern is used.
 Alteran should support an explicit cleanup command:
 
 - **`alteran clean <scope> [<scope> ...]`**
+- **`alteran compact`**
 
 This command removes generated, downloaded, cached, or otherwise recoverable
 files.
@@ -1599,7 +1600,10 @@ Examples:
 
 Performs a full safe cleanup.
 
-It should remove everything that can be recreated through:
+It should remove regeneratable working runtime state while preserving a usable
+project structure.
+
+It may remove things that can be recreated through:
 
 - `activate`
 - `init`
@@ -1625,6 +1629,60 @@ It should preserve:
 
 This scope is intended to leave a clean project suitable for sending as a zip
 archive, while preserving all user-owned sources and configuration.
+
+#### `alteran compact`
+
+`alteran compact` is a separate high-level command with no scopes.
+
+It is intended to reduce a project to a compact bootstrap-ready transfer state.
+
+Because this is intentionally destructive to local materialized runtime state,
+it should require an explicit confirmation step by default.
+
+Conceptually it should:
+
+- perform cleanup equivalent to `alteran clean all`
+- additionally remove the root `.runtime/` directory entirely
+- remove nested `apps/*/.runtime/` directories
+- remove `dist/` output entirely
+
+It should preserve:
+
+- `activate`
+- `activate.bat`
+- `alteran.json`
+- `deno.json`
+- `deno.lock`
+- `.env`
+- `.gitignore`
+- user source directories such as `apps/`, `tools/`, `libs/`, `tests/`
+- other user-authored source/config files
+
+After `alteran compact`, the project should behave as though Alteran runtime
+artifacts had never been materialized locally, while still being re-hydratable
+from scratch through `activate` / `activate.bat`.
+
+#### Confirmation UX
+
+By default, `alteran compact` should:
+
+- print a clear warning describing what will be removed
+- explain what will be preserved
+- ask for explicit confirmation such as `Are you sure? [y/N]`
+
+It should also support:
+
+- `-y` / `--yes`
+- `-f` / `--force`
+
+to auto-confirm and proceed without prompting, and:
+
+- `-n` / `--no`
+
+to auto-cancel.
+
+In non-interactive contexts, `alteran compact` without `-y` / `-f` / `-n` should
+fail explicitly rather than silently assuming confirmation.
 
 #### `alteran clean cache`
 
