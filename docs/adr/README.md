@@ -33,6 +33,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0025: Remove `init` and Keep `setup` as the Only Bootstrap Command](./0025-remove-init-and-keep-setup-as-the-only-bootstrap-command.md)
 - [ADR 0026: Keep LogTape Config Project-Local and Logging Context Lightweight](./0026-keep-logtape-config-project-local-and-log-context-lightweight.md)
 - [ADR 0027: Separate Portable `ai-user` Bundle from Repository-Scoped `ai-dev`](./0027-separate-portable-ai-user-bundle-from-repository-ai-dev.md)
+- [ADR 0028: Publish JSR from Versioned Staging Workspaces and Default to the Current Version](./0028-publish-jsr-from-versioned-staging-workspaces.md)
 
 ## Notes
 

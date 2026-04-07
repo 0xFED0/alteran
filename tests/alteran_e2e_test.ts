@@ -1628,7 +1628,7 @@ Deno.test("Alteran source lists prefer run sources and support legacy alias", ()
   Deno.env.delete("ALTERAN_ARCHIVE_SOURCES");
   Deno.env.set(
     "ALTERAN_SOURCES",
-    "jsr:@alteran https://example.com/alteran.ts",
+    "jsr:@alteran/alteran https://example.com/alteran.ts",
   );
 
   try {
@@ -1636,7 +1636,7 @@ Deno.test("Alteran source lists prefer run sources and support legacy alias", ()
     const archiveSources = getConfiguredAlteranArchiveSources();
 
     if (
-      runSources.join("|") !== "jsr:@alteran|https://example.com/alteran.ts"
+      runSources.join("|") !== "jsr:@alteran/alteran|https://example.com/alteran.ts"
     ) {
       throw new Error(
         `Expected legacy ALTERAN_SOURCES alias to populate run sources, got ${

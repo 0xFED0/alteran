@@ -1,0 +1,5 @@
+import { main } from "./publish_jsr/mod.ts";
+
+if (import.meta.main) {
+  await main(Deno.args);
+}

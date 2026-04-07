@@ -9,7 +9,7 @@ It also covers an important part of the product story that is easy to miss at fi
 ```sh
 mkdir hello-alteran
 cd hello-alteran
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 source ./activate
 ```
 

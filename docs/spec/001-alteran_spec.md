@@ -604,7 +604,7 @@ This is intentional, but the role of `ALTERAN_RUN_SOURCES` is limited:
 
 Reason:
 
-- it preserves support for `jsr:@alteran`
+- it preserves support for `jsr:@alteran/alteran`
 - it keeps Deno-native specifier support
 - it allows mirrors to be either package-oriented or URL-oriented
 - it avoids locking the design to raw-file-only distribution
@@ -2052,7 +2052,7 @@ Typical responsibilities may include:
 The intended public command is:
 
 ```bash
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 ```
 
 Therefore the Alteran package should publish a root entrypoint for the package itself, not only a subpath CLI module.
@@ -2062,36 +2062,36 @@ Therefore the Alteran package should publish a root entrypoint for the package i
 The target package identity is:
 
 ```text
-@alteran
+@alteran/alteran
 ```
 
 ### 29.6 Public package entry vs programmatic API
 
-`@alteran` is primarily a CLI-oriented package.
+`@alteran/alteran` is primarily a CLI-oriented package.
 
 Its main responsibility is to serve commands such as:
 
 ```bash
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 ```
 
 If Alteran exposes programmatic APIs such as:
 
 ```ts
-import { setup } from "@alteran/lib";
+import { setup } from "@alteran/alteran/lib";
 await setup(dir);
 ```
 
 those should live under a library-oriented subpath such as:
 
 ```text
-@alteran/lib
+@alteran/alteran/lib
 ```
 
 This keeps the split clear:
 
-- `@alteran` -> CLI/bootstrap entry
-- `@alteran/lib` -> programmatic API
+- `@alteran/alteran` -> CLI/bootstrap entry
+- `@alteran/alteran/lib` -> programmatic API
 
 ### 29.7 Publication package contents
 
@@ -2121,6 +2121,7 @@ The generated `dist/jsr/<version>/` package should include explicit package meta
 - version
 - exports
 - publication configuration
+- a local workspace `deno.json` suitable for `deno publish` from the prepared version directory
 
 This may be expressed through `jsr.json` or equivalent supported package metadata.
 
@@ -2131,7 +2132,25 @@ The repository should also maintain:
 - `README.md`
 - `docs/`
 
+Prepared publication bundles should copy both `README.md` and `docs/` into the
+versioned JSR package and any archive artifacts derived from it.
+
 so the public package and project remain understandable.
+
+### 29.9 Dedicated JSR publish flow
+
+Alteran may provide a dedicated publication helper such as `publish_jsr`.
+
+Its normal behavior should be:
+
+- if `--version` is omitted, treat it as `current`
+- `current` prepares and publishes the current repository version
+- `latest` publishes the latest already-prepared staged version under `dist/jsr/`
+- an explicit semantic version publishes that already-prepared version directory
+
+Because `deno publish` requires the config being published to belong to a workspace,
+each prepared `dist/jsr/<version>/` directory may include a local publish workspace
+config such as `deno.json` with `workspace: ["."]`.
 
 ---
 

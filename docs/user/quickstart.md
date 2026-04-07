@@ -16,7 +16,7 @@ cd hello-alteran
 The intended public package path is:
 
 ```sh
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 ```
 
 That path is great when Deno is already available on the machine.

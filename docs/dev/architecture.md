@@ -71,7 +71,7 @@ Publication is staged under versioned output directories:
 - `dist/jsr/<version>/`
 - `dist/zips/<version>/`
 
-The intended primary public package identity is `@alteran`.
+The intended primary public package identity is `@alteran/alteran`.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

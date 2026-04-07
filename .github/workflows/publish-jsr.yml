@@ -1,0 +1,38 @@
+name: publish-jsr
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # The OIDC ID token is used for authentication with JSR.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify tag matches Alteran version
+        working-directory: projects/alteran
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          SOURCE_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
+          if [ "$TAG_VERSION" != "$SOURCE_VERSION" ]; then
+            echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $SOURCE_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Publish to JSR
+        working-directory: projects/alteran
+        env:
+          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
+        run: deno run -A ./alteran.ts tool run publish_jsr --version current

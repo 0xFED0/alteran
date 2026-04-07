@@ -29,6 +29,16 @@ import {
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
 import { renderBatchEnv, renderShellEnv } from "../src/alteran/templates/env.ts";
+import {
+  ALTERAN_JSR_PACKAGE_NAME,
+  renderJsrPackageConfig,
+  renderJsrPublishWorkspaceConfig,
+} from "../tools/prepare_jsr/mod.ts";
+import {
+  parsePublishJsrArgs,
+  renderPublishJsrHelp,
+  resolveLatestPreparedJsrVersion,
+} from "../tools/publish_jsr/mod.ts";
 
 function expect(condition: unknown, message: string): void {
   if (!condition) {
@@ -77,11 +87,11 @@ Deno.test("source configuration helpers honor defaults, explicit values, and emp
     Deno.env.delete("ALTERAN_RUN_SOURCES");
     Deno.env.set(
       "ALTERAN_SOURCES",
-      "jsr:@alteran https://example.com/alteran.ts",
+      "jsr:@alteran/alteran https://example.com/alteran.ts",
     );
     expect(
       getConfiguredAlteranRunSources().join("|") ===
-        "jsr:@alteran|https://example.com/alteran.ts",
+        "jsr:@alteran/alteran|https://example.com/alteran.ts",
       "Expected legacy ALTERAN_SOURCES alias to populate runnable sources",
     );
 
@@ -462,6 +472,83 @@ Deno.test("buildAlteranLogtapeConfig deep-merges user config over defaults", () 
   expect(
     Array.isArray(config.loggers) && config.loggers.length === 2,
     "Expected merged LogTape config to append user loggers over defaults",
+  );
+});
+
+Deno.test("prepare_jsr renders the expected scoped package metadata", () => {
+  const rendered = JSON.parse(renderJsrPackageConfig());
+
+  expect(
+    rendered.name === ALTERAN_JSR_PACKAGE_NAME,
+    "Expected JSR package metadata to use the scoped package name",
+  );
+  expect(
+    rendered.exports?.["."] === "./alteran.ts" &&
+      rendered.exports?.["./lib"] === "./src/alteran/mod.ts",
+    "Expected JSR package exports to expose CLI root and library subpath",
+  );
+});
+
+Deno.test("prepare_jsr renders a self-contained publish workspace config", () => {
+  const rendered = JSON.parse(renderJsrPublishWorkspaceConfig());
+
+  expect(
+    JSON.stringify(rendered.workspace) === JSON.stringify(["."]),
+    "Expected publish workspace config to treat the versioned JSR dir as its own workspace root",
+  );
+});
+
+Deno.test("publish_jsr argument parsing supports version and token flags", () => {
+  const previousJsrToken = Deno.env.get("JSR_TOKEN");
+  const previousAlteranJsrToken = Deno.env.get("ALTERAN_JSR_TOKEN");
+
+  try {
+    Deno.env.set("ALTERAN_JSR_TOKEN", "env-token");
+    Deno.env.delete("JSR_TOKEN");
+
+    const parsed = parsePublishJsrArgs([
+      "--version",
+      "latest",
+      "--token=flag-token",
+    ]);
+    expect(parsed.version === "latest", "Expected explicit --version to be parsed");
+    expect(parsed.token === "flag-token", "Expected explicit --token to override env token");
+
+    const envParsed = parsePublishJsrArgs([]);
+    expect(envParsed.version === "current", "Expected publish_jsr to default to current version");
+    expect(envParsed.token === "env-token", "Expected publish_jsr to accept ALTERAN_JSR_TOKEN from env");
+
+    const helpParsed = parsePublishJsrArgs(["--help"]);
+    expect(helpParsed.helpRequested === true, "Expected publish_jsr to recognize --help");
+  } finally {
+    restoreEnv("JSR_TOKEN", previousJsrToken);
+    restoreEnv("ALTERAN_JSR_TOKEN", previousAlteranJsrToken);
+  }
+});
+
+Deno.test("publish_jsr help describes versions and token sources", () => {
+  const help = renderPublishJsrHelp();
+
+  expect(
+    help.includes("--version <current|latest|x.y.z>"),
+    "Expected publish_jsr help to describe version selection",
+  );
+  expect(
+    help.includes("JSR_TOKEN") && help.includes("ALTERAN_JSR_TOKEN"),
+    "Expected publish_jsr help to describe token environment variables",
+  );
+});
+
+Deno.test("publish_jsr can resolve the latest prepared version from dist/jsr", async () => {
+  const repoRoot = await Deno.makeTempDir({ prefix: "alteran-publish-jsr-latest-" });
+  await ensureDir(join(repoRoot, "dist", "jsr", "0.1.0"));
+  await ensureDir(join(repoRoot, "dist", "jsr", "0.2.0"));
+  await ensureDir(join(repoRoot, "dist", "jsr", "0.2.0-beta.1"));
+
+  const latest = await resolveLatestPreparedJsrVersion(repoRoot);
+  expect(
+    latest === "0.2.0",
+    `Expected latest prepared version to prefer stable semver ordering, got ${latest}`,
   );
 });
 

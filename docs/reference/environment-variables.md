@@ -42,6 +42,15 @@ These are normally set for you by `activate`, `activate.bat`, or another Alteran
 
 `ALTERAN_LOG_CONTEXT_JSON` is an Alteran-managed internal propagation variable, not a user-facing configuration surface. LogTape configuration should come from the current project's `alteran.json`, not from a serialized env payload.
 
+## Publication Variables
+
+| Variable | Meaning |
+| --- | --- |
+| `JSR_TOKEN` | Preferred token for `publish_jsr` / `deno publish` |
+| `ALTERAN_JSR_TOKEN` | Alteran-specific fallback token variable for `publish_jsr` |
+
+These variables are repository/developer publication inputs rather than normal project runtime configuration.
+
 ## Path Semantics
 
 Project-related paths are interpreted relative to the project or config they belong to, not relative to an arbitrary caller working directory.
