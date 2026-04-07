@@ -299,10 +299,10 @@ main() {
     BOOTSTRAP_DENO="$LOCAL_DENO"
   fi
 
-  if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
-    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
-  elif [ -f "$SCRIPT_DIR/alteran.ts" ]; then
+  if [ -f "$SCRIPT_DIR/alteran.ts" ] && [ -f "$SCRIPT_DIR/src/alteran/mod.ts" ]; then
     ALTERAN_ENTRY="$SCRIPT_DIR/alteran.ts"
+  elif [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
+    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
   else
     if ! bootstrap_alteran_from_run_sources; then
       if ! bootstrap_alteran_from_archive_sources; then
@@ -312,7 +312,7 @@ main() {
     fi
   fi
 
-  "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" init "$TARGET_DIR" >&2
+  "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2
   if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
     ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
   fi

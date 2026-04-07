@@ -149,6 +149,42 @@ Deno.test("sourced activate does not leak nounset into the caller shell", async 
   }
 });
 
+Deno.test("repeated sourced activate does not reinitialize an initialized project", async () => {
+  if (Deno.build.os === "windows") {
+    return;
+  }
+
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-activate-quiet-",
+  });
+  await initProject(projectDir);
+
+  const command = new Deno.Command("zsh", {
+    args: [
+      "-lc",
+      `cd ${
+        JSON.stringify(projectDir)
+      } && output=$({ . ./activate >/dev/null; . ./activate >/dev/null; } 2>&1); printf '%s' "$output"`,
+    ],
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const output = await command.output();
+  const stdout = new TextDecoder().decode(output.stdout);
+  const stderr = new TextDecoder().decode(output.stderr).trim();
+
+  if (!output.success) {
+    throw new Error(
+      `Expected repeated sourced activate to succeed. stdout=${stdout} stderr=${stderr}`,
+    );
+  }
+  if (stdout.includes("Initialized Alteran project at")) {
+    throw new Error(
+      `Expected repeated sourced activate not to reinitialize the project. stdout=${stdout}`,
+    );
+  }
+});
+
 Deno.test("runCli provides help for subcommands instead of treating help as data", async () => {
   const consoleLog = console.log;
   const messages: string[] = [];

@@ -80,11 +80,11 @@ if exist "%LOCAL_DENO%" (
 )
 
 :have_deno
+  if exist "%SCRIPT_DIR%alteran.ts" if exist "%SCRIPT_DIR%src\alteran\mod.ts" (
+    set "ALTERAN_ENTRY=%SCRIPT_DIR%alteran.ts"
+  ) else (
   if exist "%TARGET_DIR%\.runtime\alteran\mod.ts" (
     set "ALTERAN_ENTRY=%TARGET_DIR%\.runtime\alteran\mod.ts"
-  ) else (
-  if exist "%SCRIPT_DIR%alteran.ts" (
-    set "ALTERAN_ENTRY=%SCRIPT_DIR%alteran.ts"
   ) else (
     if not "%ALTERAN_RUN_SOURCES: =%"=="" (
       for %%S in (%ALTERAN_RUN_SOURCES%) do (
@@ -135,7 +135,7 @@ if exist "%LOCAL_DENO%" (
 )
 
 :have_alteran
-"%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" init "%TARGET_DIR%"
+"%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" ensure-env "%TARGET_DIR%"
 if exist "%TARGET_DIR%\.runtime\alteran\mod.ts" set "ALTERAN_ENTRY=%TARGET_DIR%\.runtime\alteran\mod.ts"
 call "%TARGET_DIR%\.runtime\env\enter-env.bat"
 endlocal
