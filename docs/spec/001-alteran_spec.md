@@ -545,6 +545,22 @@ It is used by:
 - tool scripts
 - runtime helpers
 
+`ALTERAN_HOME` is project-scoped.
+
+It must not be treated as a shell-global Alteran identity that is safe to carry
+across project boundaries.
+
+When a user enters another project through Alteran bootstrap/activation
+surfaces such as:
+
+- `setup`
+- `activate`
+- `shellenv`
+- generated `app` / `app.bat`
+
+that target project becomes authoritative and any foreign inherited
+`ALTERAN_HOME` must be replaced rather than trusted.
+
 ### 6.1 Source root override
 
 Alteran may also use:
@@ -717,6 +733,13 @@ synchronization logic themselves.
 They only bootstrap enough to run Alteran, then delegate project management to
 Alteran commands.
 
+Running `setup` against a target project is also a hard project-context
+boundary.
+
+If the caller shell already contains Alteran runtime/logging variables from a
+different project, `setup` must not treat that foreign context as authoritative
+for the target project.
+
 ### 7.2 Responsibility of generated `activate` / `activate.bat`
 
 These scripts are generated local activation artifacts, not the primary public
@@ -744,6 +767,10 @@ They may assume:
 - one concrete `.runtime` layout
 - one concrete platform-specific Deno path
 
+They should therefore overwrite project-defining runtime variables for the
+target project rather than trying to preserve foreign inherited values from
+another project.
+
 They must not promise to remain valid:
 
 - after moving the project directory
@@ -757,6 +784,12 @@ recovery flow is to run `setup` again and regenerate `activate` /
 For Unix-like shells, generated `activate` should support being sourced:
 
 - `source ./activate`
+
+Entering a project through generated `activate` is a hard project-context
+switch.
+
+It should not preserve a foreign Alteran execution identity from another
+project.
 
 Generated Unix `activate` should be sourced-only. Running it as a regular
 executable should fail with a clear hint to use `source ./activate`.
@@ -920,6 +953,38 @@ through `ALTERAN_HOME`:
 This keeps project-management commands tied to the active dev environment, while
 still allowing bootstrap/setup flows to target projects from outside.
 
+The intended normal workflow for another project is therefore:
+
+1. enter that project through `setup`, `activate`, or `shellenv`
+2. then run `alteran app|tool|task|run ...` inside that project context
+
+Ordinary command behavior should not imply an advanced cross-project mode where
+users point `app` / `tool` / `task` families directly at foreign
+`alteran.json`, `app.json`, or `deno.json` files.
+
+If Alteran supports an advanced cross-project execution mode, it should be
+spelled explicitly through a dedicated command such as:
+
+```text
+alteran external <path-to-json> <command> ...
+```
+
+or:
+
+```text
+ALTERAN_EXTERNAL_CTX=<path-to-json> alteran external <command> ...
+```
+
+Rules for this mode:
+
+- it is visually distinct from ordinary active-project commands
+- a positional `<path-to-json>` takes precedence over
+  `ALTERAN_EXTERNAL_CTX`
+- supported anchors should be explicit project/app config files such as
+  `alteran.json` or `app.json`
+- this mode must construct an isolated context for the targeted project instead
+  of silently reusing the caller's active project identity
+
 ---
 
 ## 9. Environment Activation
@@ -956,6 +1021,13 @@ This is preferred for dev shells.
 ### 9.3 `shellenv`
 
 `shellenv` prints environment activation code for the target project.
+
+Like `setup` and generated `activate`, `shellenv` is a project-context
+switching surface.
+
+It should generate environment code for the target project and should not treat
+foreign inherited Alteran runtime/logging identity as authoritative across
+project boundaries.
 
 It should:
 
@@ -1386,6 +1458,12 @@ Standalone app packages should also include canonical app-local `setup` /
 Generated `app` / `app.bat` launchers may invoke that app-local setup
 automatically when the app runtime has not yet been materialized.
 
+Like `setup`, `activate`, and `shellenv`, launching a standalone app through its
+generated `app` / `app.bat` is a project-context boundary for that app package.
+
+Foreign inherited Alteran runtime/logging identity must not remain
+authoritative for the launched app.
+
 This means a standalone app should be expected to support:
 
 - first launch with no pre-existing app-local runtime
@@ -1417,6 +1495,23 @@ This works naturally with the single `@libs/...` alias model.
 
 Because the alias remains the same, no code rewrite is required purely because a
 library moved from shared-project scope into packaged-app scope.
+
+### 16.5 Relative path resolution
+
+Relative paths in Alteran-managed config are not interpreted relative to the
+caller shell's current working directory.
+
+They are interpreted relative to the project/config location they belong to:
+
+- root-level config paths relative to the project root / root config file
+- app-local config paths relative to the app directory / app-local config file
+
+This prevents accidental `cd` changes from silently changing the meaning of
+entries such as:
+
+- `./tools/prepare_zip.ts`
+- `./apps/hello-cli`
+- `./core/mod.ts`
 
 ---
 
@@ -2758,6 +2853,12 @@ Logs are stored under:
 .runtime/logs/
 ```
 
+This is the canonical project-local log root.
+
+Even if Alteran later supports a user-provided external copy target such as
+`ALTERAN_CUSTOM_LOG_DIR`, the canonical root for invocation identity and
+metadata remains under the current project's `.runtime/logs/`.
+
 The top-level directories are:
 
 ```text
@@ -2872,6 +2973,36 @@ Recommended variables:
 - `ALTERAN_ROOT_LOG_DIR`
 - `ALTERAN_LOG_MODE`
 - `ALTERAN_LOG_CONTEXT_JSON`
+
+`ALTERAN_ROOT_LOG_DIR` must always point at a canonical project-local root log
+directory under:
+
+```text
+<project>/.runtime/logs/<category>/<run-id>
+```
+
+It must not be replaced by an external custom copy destination.
+
+If Alteran supports a custom log mirror/copy destination such as
+`ALTERAN_CUSTOM_LOG_DIR`:
+
+- canonical root metadata such as `metadata.json` still belongs under the
+  project-local `.runtime/logs/...`
+- `ALTERAN_ROOT_LOG_DIR` still points to that canonical project-local location
+- the custom location is only an additional copy/mirror target
+
+Inherited logging context is valid only when it belongs to the current project.
+
+In practice this means:
+
+- the inherited `ALTERAN_ROOT_LOG_DIR` must lie inside the current project's
+  `.runtime/logs/`
+- inherited `ALTERAN_RUN_ID` / `ALTERAN_ROOT_RUN_ID` must be coherent with that
+  canonical root session metadata
+
+If inherited logging variables are foreign or inconsistent, Alteran should
+self-heal by starting a fresh root session for the current project rather than
+failing hard by default.
 
 `ALTERAN_LOG_CONTEXT_JSON` should be a JSON string with a recommended shape
 like:

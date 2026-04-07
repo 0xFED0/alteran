@@ -29,6 +29,7 @@ alone and that benefit from explicit rationale, tradeoffs, and consequences.
 - [ADR 0020: Keep LogTape Optional and Integrate It via a Bare-Specifier Proxy](./0020-logtape-is-optional-and-integrated-via-bare-specifier-proxy.md)
 - [ADR 0021: Reserve `view` as a Placeholder and Avoid Premature GUI Architecture](./0021-reserve-view-as-a-placeholder-and-avoid-premature-gui-architecture.md)
 - [ADR 0022: Separate Public `setup` Bootstrap from Generated Local `activate`](./0022-separate-setup-from-activate-and-generate-activation-locally.md)
+- [ADR 0023: Use a Project-Scoped Execution Context with a Canonical Root Log Directory](./0023-project-scoped-execution-context-and-canonical-log-root.md)
 
 ## Notes
 
