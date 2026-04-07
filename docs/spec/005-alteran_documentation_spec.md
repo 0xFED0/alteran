@@ -22,9 +22,7 @@ This document covers:
 
 This document does not define GitHub-specific repository contribution workflows. Those may be documented separately.
 
-Optional AI-oriented operational overlays may be documented separately as long
-as they remain subordinate to the main documentation model rather than
-replacing it.
+Optional AI-oriented operational overlays may be documented separately as long as they remain subordinate to the main documentation model rather than replacing it.
 
 ---
 
@@ -72,15 +70,13 @@ The documentation structure must scale as Alteran grows, without turning into a 
 
 ### 2.6. Portability story
 
-Alteran documentation must clearly communicate that one of Alteran's central
-user-facing benefits is the portability of project folders.
+Alteran documentation must clearly communicate that one of Alteran's central user-facing benefits is the portability of project folders.
 
 The docs should help readers understand that:
 
 - Alteran keeps runtime material local to the project on purpose;
 - this reduces dependence on globally preinstalled tooling;
-- a project can be moved, copied, or sent to another machine and restored there
-  through `setup`.
+- a project can be moved, copied, or sent to another machine and restored there through `setup`.
 
 ---
 
@@ -97,17 +93,14 @@ A fifth related layer must exist for architectural reasoning:
 
 5. `docs/dev/adr/` — contributor-facing ADR navigation.
 
-Canonical ADR record files may live in `docs/adr/` as long as
-`docs/dev/adr/index.md` exists as the development-doc entrypoint that explains
-where the records live and links into them.
+Canonical ADR record files may live in `docs/adr/` as long as `docs/dev/adr/index.md` exists as the development-doc entrypoint that explains where the records live and links into them.
 
 Alteran may also keep optional AI-oriented operational overlays such as:
 
 - `docs/ai-user/` for a portable user-project AI bundle
 - `docs/ai-dev/` for repository-scoped AI guidance
 
-These overlays are not part of the main human documentation layers and must
-not replace them.
+These overlays are not part of the main human documentation layers and must not replace them.
 
 ### 3.1. Responsibility of each layer
 
@@ -201,9 +194,7 @@ docs/
 
 Names may evolve slightly, but the separation of responsibilities must remain.
 
-The current repository may also keep canonical ADR record files under
-`docs/adr/`, with `docs/dev/adr/index.md` acting as the contributor-facing ADR
-entrypoint inside the dev docs layer.
+The current repository may also keep canonical ADR record files under `docs/adr/`, with `docs/dev/adr/index.md` acting as the contributor-facing ADR entrypoint inside the dev docs layer.
 
 ---
 
@@ -240,17 +231,13 @@ The root README should remain concise enough to be readable as a repository land
 
 ### 5.3. README support sections after Quick Start
 
-After the main README Quick Start, the README may include one or two short
-supporting sections that reinforce major user-facing value without bloating the
-main walkthrough.
+After the main README Quick Start, the README may include one or two short supporting sections that reinforce major user-facing value without bloating the main walkthrough.
 
 High-value examples include:
 
 - a short section about portability of project folders;
-- a short section about bootstrap fallback when Deno is not yet installed
-  globally;
-- a short section that clarifies repository-local bootstrap versus ordinary
-  project bootstrap.
+- a short section about bootstrap fallback when Deno is not yet installed globally;
+- a short section that clarifies repository-local bootstrap versus ordinary project bootstrap.
 
 These sections should stay outside the main linear Quick Start flow.
 
@@ -265,8 +252,7 @@ The `Quick Start` section in the root `README.md` must provide a short, visually
 It must allow a reader to quickly see:
 
 - directory creation;
-- one-line URL-based setup through the public Alteran package or locator
-  entrypoint;
+- one-line URL-based setup through the public Alteran package or locator entrypoint;
 - entering the local project environment after bootstrap;
 - creation of a minimal app and a minimal tool;
 - a tiny code example for each;
@@ -292,23 +278,17 @@ The directory name may be different in final wording, but the flow must start fr
 
 ### Step 2. One-line URL-based setup through the public entrypoint
 
-The Quick Start must show a one-line setup command using the implemented
-public Alteran package or locator entry mechanism.
+The Quick Start must show a one-line setup command using the implemented public Alteran package or locator entry mechanism.
 
 This must be presented as the minimal bootstrap path for trying Alteran from scratch.
 
-The exact entrypoint and invocation syntax must match the implemented public
-bootstrap design.
+The exact entrypoint and invocation syntax must match the implemented public bootstrap design.
 
-If alternative bootstrap paths also exist, such as checked-in `setup` scripts,
-they should not replace the one-line public-entrypoint path as the primary
-Quick Start entry when Deno is already available.
+If alternative bootstrap paths also exist, such as checked-in `setup` scripts, they should not replace the one-line public-entrypoint path as the primary Quick Start entry when Deno is already available.
 
 ### Step 3. Enter the local environment
 
-After bootstrap, the Quick Start must show the supported activation step needed
-to enter the project's local environment before continuing with normal
-Alteran-managed commands.
+After bootstrap, the Quick Start must show the supported activation step needed to enter the project's local environment before continuing with normal Alteran-managed commands.
 
 ### Step 4. Create a minimal app template
 
@@ -370,17 +350,14 @@ Those belong in deeper docs.
 
 ## 6.6. Fallback bootstrap belongs outside the main Quick Start flow
 
-If the README documents bootstrap fallback for environments that do not yet have
-global Deno available, that explanation should live outside the main Quick
-Start sequence.
+If the README documents bootstrap fallback for environments that do not yet have global Deno available, that explanation should live outside the main Quick Start sequence.
 
 Suitable examples include:
 
 - "download `setup` from this repository";
 - "use a checked-out repository copy and run `./setup <dir>`".
 
-The point is to preserve one clean primary Quick Start while still documenting
-important practical fallback paths nearby.
+The point is to preserve one clean primary Quick Start while still documenting important practical fallback paths nearby.
 
 ## 6.7. Required link to the full quickstart doc
 
@@ -422,8 +399,7 @@ The detailed quickstart should include:
 - app and tool execution;
 - brief explanation of what is happening conceptually;
 - pointers to next docs: concepts, commands, guides, examples;
-- if helpful, a short explanation of bootstrap fallback paths for machines
-  where Deno is not yet installed globally.
+- if helpful, a short explanation of bootstrap fallback paths for machines where Deno is not yet installed globally.
 
 ## 7.3. Boundaries
 
@@ -485,10 +461,7 @@ Must answer short recurring questions that do not need long narrative explanatio
 
 ## 8.3. User command docs responsibilities
 
-The command docs should describe the purpose and expected behavior of
-user-facing command groups, such as initialization, refresh, app and tool
-management, run/task/deno distinctions, testing, cleanup, explicit
-external-project execution if supported, and version/runtime related commands.
+The command docs should describe the purpose and expected behavior of user-facing command groups, such as initialization, refresh, app and tool management, run/task/deno distinctions, testing, cleanup, explicit external-project execution if supported, and version/runtime related commands.
 
 ## 8.4. User guides responsibilities
 
@@ -667,11 +640,9 @@ Reserved or future-oriented capabilities must not be presented as if they are al
 
 ### 12.8. Prefer human, editorial wording over spec-like stiffness
 
-Documentation may be informed by specifications, but it should not read like a
-specification unless the page is itself a specification or reference sheet.
+Documentation may be informed by specifications, but it should not read like a specification unless the page is itself a specification or reference sheet.
 
-When two phrasings are equally correct, prefer the one that sounds more natural
-to a human reader.
+When two phrasings are equally correct, prefer the one that sounds more natural to a human reader.
 
 ### 12.9. Preserve editorial consistency
 
@@ -697,10 +668,8 @@ At minimum:
 - command overviews should link to relevant guides and reference docs;
 - dev overview should link to architecture, repository layout, and testing;
 - examples should be linked from relevant user docs where helpful;
-- each user/dev/reference page should include an easy path back to the docs
-  index;
-- where pages form a logical sequence, previous/next navigation is encouraged
-  and may be required by project convention.
+- each user/dev/reference page should include an easy path back to the docs index;
+- where pages form a logical sequence, previous/next navigation is encouraged and may be required by project convention.
 
 Cross-linking must reduce reader confusion, not create loops of empty navigation.
 

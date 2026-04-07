@@ -27,16 +27,13 @@ User-project AI docs have a different requirement:
 - they should remain useful even after the user customizes them locally
 - they should not require the full Alteran repository docs tree to be copied
 
-The previous mixed `docs/ai/` tree made these roles too easy to blur. In
-practice, a supposedly user-oriented subtree could still depend on repository
-paths and repository-only context, which weakens portability.
+The previous mixed `docs/ai/` tree made these roles too easy to blur. In practice, a supposedly user-oriented subtree could still depend on repository paths and repository-only context, which weakens portability.
 
 ## Decision
 
 Alteran separates AI documentation into two explicit trees:
 
-- `docs/ai-user/` — portable AI bundle for use inside ordinary Alteran
-  projects
+- `docs/ai-user/` — portable AI bundle for use inside ordinary Alteran projects
 - `docs/ai-dev/` — repository-scoped AI docs for changing Alteran itself
 
 ### `docs/ai-user/`
@@ -51,11 +48,9 @@ It should contain its own:
 - rules
 - skills
 
-It must be understandable when copied into another Alteran project without the
-rest of the Alteran repository docs.
+It must be understandable when copied into another Alteran project without the rest of the Alteran repository docs.
 
-It may summarize current Alteran user-facing behavior, but it must not become
-the only normative source of that behavior inside the Alteran repository.
+It may summarize current Alteran user-facing behavior, but it must not become the only normative source of that behavior inside the Alteran repository.
 
 ### `docs/ai-dev/`
 
@@ -68,8 +63,7 @@ It may depend on repository-local material such as:
 - `docs/dev/`
 - repository-specific maintainer rules and review profiles
 
-It contains repository AI routing, repository rules, Alteran-specific agent
-profiles, and reusable repository workflows.
+It contains repository AI routing, repository rules, Alteran-specific agent profiles, and reusable repository workflows.
 
 ### Repository root AI entrypoints
 
@@ -89,31 +83,25 @@ They should not pretend to be portable user-project AI bundles.
 
 - portable user AI guidance becomes easy to copy into another project
 - repository maintainer AI docs can stay deeply linked to specs and ADRs
-- the distinction between “using Alteran” and “changing Alteran” becomes much
-  clearer
+- the distinction between “using Alteran” and “changing Alteran” becomes much clearer
 - user customization of copied AI docs becomes easier to reason about
 
 ### Tradeoffs
 
-- some user-facing guidance must now be summarized twice: once in normal human
-  docs and once in the portable AI-user bundle
+- some user-facing guidance must now be summarized twice: once in normal human docs and once in the portable AI-user bundle
 - docs maintenance must keep `ai-user`, `ai-dev`, and the normal docs aligned
-- navigation must clearly explain which tree is portable and which is
-  repository-scoped
+- navigation must clearly explain which tree is portable and which is repository-scoped
 
 ## Rejected Alternatives
 
 ### Keep one mixed `docs/ai/` tree
 
-Rejected because it blurs portable user-project guidance with repository-only
-maintainer guidance.
+Rejected because it blurs portable user-project guidance with repository-only maintainer guidance.
 
 ### Put AI user docs under `docs/user/ai/`
 
-Rejected because it mixes human documentation responsibilities with AI
-operational overlays and makes portable copying less clean.
+Rejected because it mixes human documentation responsibilities with AI operational overlays and makes portable copying less clean.
 
 ### Require users to copy the whole `docs/user/` tree into their projects
 
-Rejected because it is heavier than necessary and does not provide AI-specific
-entrypoints, rules, and skills in a self-contained package.
+Rejected because it is heavier than necessary and does not provide AI-specific entrypoints, rules, and skills in a self-contained package.

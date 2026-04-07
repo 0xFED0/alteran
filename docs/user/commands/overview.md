@@ -19,11 +19,9 @@ Alteran uses an explicit command surface instead of positional shortcuts.
 Alteran keeps a clear boundary between:
 
 - external-targeting bootstrap commands such as `setup [dir]`
-- active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`,
-  and `compact`
+- active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`, and `compact`
 
-Advanced cross-project execution exists through the explicit `external`
-command rather than by letting every command quietly mutate arbitrary paths.
+Advanced cross-project execution exists through the explicit `external` command rather than by letting every command quietly mutate arbitrary paths.
 
 Supported external anchors are explicit Alteran config files:
 

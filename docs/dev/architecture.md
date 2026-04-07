@@ -8,9 +8,7 @@ Alteran is best understood as a small set of cooperating subsystems.
 - `setup` and `setup.bat`: public bootstrap entrypoints
 - generated `activate` and `activate.bat`: local activation entrypoints
 
-These are intentionally not all the same thing. `setup` owns bootstrap,
-materialization, and repair. `activate` is only for entering a prepared local
-environment.
+These are intentionally not all the same thing. `setup` owns bootstrap, materialization, and repair. `activate` is only for entering a prepared local environment.
 
 ## 2. Authored Runtime Source
 
@@ -36,8 +34,7 @@ Materialization can come from:
 - an already installed local runtime
 - archive sources for remote installation
 
-Runnable remote sources may launch Alteran, but they are not the canonical
-materialization source.
+Runnable remote sources may launch Alteran, but they are not the canonical materialization source.
 
 ## 4. Config And Project Sync
 
@@ -53,12 +50,9 @@ Refresh is the main synchronization operation.
 
 ## 5. Managed Execution
 
-Managed execution is centered on preinit and project-scoped environment
-context. `alteran run`, `alteran task`, `alteran app run`, and
-`alteran tool run` participate; plain Deno does not silently change.
+Managed execution is centered on preinit and project-scoped environment context. `alteran run`, `alteran task`, `alteran app run`, and `alteran tool run` participate; plain Deno does not silently change.
 
-Cross-project execution is explicit. Foreign project context should not be
-inherited accidentally.
+Cross-project execution is explicit. Foreign project context should not be inherited accidentally.
 
 ## 6. Logging
 
@@ -68,9 +62,7 @@ Runs are logged under a canonical project-local root:
 .runtime/logs/
 ```
 
-One root invocation gets one root log directory, and child runs aggregate into
-that tree. External log destinations may mirror logs, but they do not replace
-the canonical project-local root.
+One root invocation gets one root log directory, and child runs aggregate into that tree. External log destinations may mirror logs, but they do not replace the canonical project-local root.
 
 ## 7. Publication
 

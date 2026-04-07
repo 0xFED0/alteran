@@ -6,10 +6,7 @@ Accepted
 
 ## Context
 
-CLI tools become harder to teach and maintain when they collapse multiple
-intentions into positional shortcuts and ambiguous implicit behavior. Alteran
-manages apps, tools, runtime state, and Deno passthrough; hidden inference would
-make that surface harder to understand.
+CLI tools become harder to teach and maintain when they collapse multiple intentions into positional shortcuts and ambiguous implicit behavior. Alteran manages apps, tools, runtime state, and Deno passthrough; hidden inference would make that surface harder to understand.
 
 ## Decision
 
@@ -19,8 +16,7 @@ Alteran prefers explicit command families and verbs such as:
 - `alteran tool run <name>`
 - `alteran test`
 
-Core operations are not collapsed into positional magic where `run` is implied
-or bare arguments silently change meaning.
+Core operations are not collapsed into positional magic where `run` is implied or bare arguments silently change meaning.
 
 ## Consequences
 

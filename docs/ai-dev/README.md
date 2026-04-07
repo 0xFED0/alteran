@@ -1,7 +1,6 @@
 # AI Dev Docs
 
-This directory contains repository-scoped AI guidance for changing Alteran
-itself.
+This directory contains repository-scoped AI guidance for changing Alteran itself.
 
 It may depend on repository-local specs, ADRs, dev docs, and maintainer rules.
 
@@ -22,5 +21,4 @@ Then use:
 
 This directory is for the Alteran repository itself.
 
-It is not intended to be copied as a portable bundle into another user
-project.
+It is not intended to be copied as a portable bundle into another user project.

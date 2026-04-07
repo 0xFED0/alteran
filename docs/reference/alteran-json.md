@@ -38,16 +38,11 @@
 ## Field Notes
 
 - `name`: defaults to the directory name of the project
-- `auto_refresh_before_run`: when `true`, managed execution routes refresh
-  before running
-- `deno_version`: the desired managed Deno version or version constraint stored
-  in project policy
-- `shell_aliases`: extra shell shortcuts injected into `shellenv`; these are
-  not app or tool registry entries
-- `apps` / `tools`: Alteran's registry state for discovered or explicitly added
-  project units
-- `auto_reimport`: include and exclude rules that control structure-based
-  discovery
+- `auto_refresh_before_run`: when `true`, managed execution routes refresh before running
+- `deno_version`: the desired managed Deno version or version constraint stored in project policy
+- `shell_aliases`: extra shell shortcuts injected into `shellenv`; these are not app or tool registry entries
+- `apps` / `tools`: Alteran's registry state for discovered or explicitly added project units
+- `auto_reimport`: include and exclude rules that control structure-based discovery
 
 ## Registry Entry Shape
 
@@ -83,8 +78,7 @@ Current default shape:
 - matching paths must satisfy `include`
 - matching paths are still blocked by `exclude`
 
-This lets a project keep matching paths on disk while narrowing or broadening
-what Alteran auto-discovers during refresh.
+This lets a project keep matching paths on disk while narrowing or broadening what Alteran auto-discovers during refresh.
 
 ## Logging Fields
 

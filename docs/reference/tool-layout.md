@@ -17,8 +17,7 @@ tools/<name>/
   mod.ts
 ```
 
-Current discovery prefers `tools/<name>.ts` when it exists and can fall back to
-`tools/<name>/mod.ts` for directory-shaped tools.
+Current discovery prefers `tools/<name>.ts` when it exists and can fall back to `tools/<name>/mod.ts` for directory-shaped tools.
 
 ## Default Scaffold
 

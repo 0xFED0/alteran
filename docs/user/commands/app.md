@@ -2,8 +2,7 @@
 
 Apps are first-class Alteran project units under `apps/`.
 
-Use app commands when the thing you are building is a runnable application
-entrypoint, not just a helper script.
+Use app commands when the thing you are building is a runnable application entrypoint, not just a helper script.
 
 ## Commands
 
@@ -25,8 +24,7 @@ alteran app setup <path>
 - `run`: run the app task from the app's `deno.json`
 - `setup`: create a standalone app scaffold outside the main project
 
-`alteran app ls` prints the registered app name together with its resolved
-project-relative path.
+`alteran app ls` prints the registered app name together with its resolved project-relative path.
 
 ## What An App Scaffold Includes
 
@@ -38,17 +36,14 @@ A managed app scaffold currently includes:
 - `libs/`
 - `view/README.md`
 
-Managed apps also receive generated local helper scripts such as `setup`,
-`setup.bat`, `app`, and `app.bat`.
+Managed apps also receive generated local helper scripts such as `setup`, `setup.bat`, `app`, and `app.bat`.
 
 Their roles are intentionally different:
 
 - `setup` / `setup.bat` are app-local bootstrap entrypoints
 - `app` / `app.bat` are generated launchers for "run the app now" UX
 
-All of them are Alteran-generated artifacts rather than the canonical app
-source itself, but the setup scripts are part of the app-local bootstrap
-surface while the launchers are the ephemeral execution entrypoints.
+All of them are Alteran-generated artifacts rather than the canonical app source itself, but the setup scripts are part of the app-local bootstrap surface while the launchers are the ephemeral execution entrypoints.
 
 ## Running An App
 
@@ -57,8 +52,7 @@ alteran app run hello
 alteran app run hello --demo
 ```
 
-This executes the app inside the Alteran-managed environment and logs the run
-under the project log root.
+This executes the app inside the Alteran-managed environment and logs the run under the project log root.
 
 ## Standalone App Setup
 
@@ -66,12 +60,9 @@ under the project log root.
 alteran app setup ./portable-clock
 ```
 
-This creates a standalone app folder that owns its own bootstrap surface and
-app-local runtime expectations.
+This creates a standalone app folder that owns its own bootstrap surface and app-local runtime expectations.
 
-That command is for creating an app outside the current main project tree. It
-is different from `alteran app add`, which creates a managed app under
-`apps/` in the current project.
+That command is for creating an app outside the current main project tree. It is different from `alteran app add`, which creates a managed app under `apps/` in the current project.
 
 ## Related Docs
 

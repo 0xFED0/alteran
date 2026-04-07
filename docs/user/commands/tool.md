@@ -2,8 +2,7 @@
 
 Tools are first-class project automation units under `tools/`.
 
-Use tool commands when the thing you want is a project command or helper, not a
-separate application entrypoint.
+Use tool commands when the thing you want is a project command or helper, not a separate application entrypoint.
 
 ## Commands
 
@@ -23,8 +22,7 @@ alteran tool run <name> [args...]
 - `ls`: list registered tools
 - `run`: execute the tool through Alteran-managed Deno
 
-`alteran tool ls` prints the registered tool name together with its
-project-relative entry path.
+`alteran tool ls` prints the registered tool name together with its project-relative entry path.
 
 ## Scaffold Shape
 
@@ -35,8 +33,7 @@ The default tool scaffold creates:
 
 The entry file stays tiny and delegates to the helper module.
 
-That split keeps the public tool entry stable while giving you a normal module
-to grow over time.
+That split keeps the public tool entry stable while giving you a normal module to grow over time.
 
 ## Running A Tool
 
@@ -50,11 +47,9 @@ Tools are ideal for:
 - project automation
 - operational helpers
 - release and maintenance tasks
-- scripts you want kept inside the same managed environment as the rest of the
-  project
+- scripts you want kept inside the same managed environment as the rest of the project
 
-If you already have an ad hoc scripts folder, this is the part of Alteran that
-usually replaces it with a more explicit project model.
+If you already have an ad hoc scripts folder, this is the part of Alteran that usually replaces it with a more explicit project model.
 
 ## Related Docs
 

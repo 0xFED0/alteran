@@ -3,38 +3,30 @@
 ## Keep `setup` And `activate` Strictly Separate
 
 - `setup` is the public bootstrap and repair surface.
-- `activate` is a generated local entrypoint for entering an already
-  materialized environment.
-- If behavior downloads, repairs, reconstructs, or discovers runtime material,
-  it almost certainly belongs in `setup`, not in `activate`.
+- `activate` is a generated local entrypoint for entering an already materialized environment.
+- If behavior downloads, repairs, reconstructs, or discovers runtime material, it almost certainly belongs in `setup`, not in `activate`.
 
 ## Keep `activate` Lightweight And Deterministic
 
 - Generated `activate` should embed resolved absolute paths.
-- Generated `activate` is not meant to be portable across moved directories or
-  different OS/runtime layouts.
-- If a project moved or its runtime layout changed, the correct recovery path
-  is `setup`, not smarter activation magic.
+- Generated `activate` is not meant to be portable across moved directories or different OS/runtime layouts.
+- If a project moved or its runtime layout changed, the correct recovery path is `setup`, not smarter activation magic.
 
 ## Unix Activation Should Stay Sourced-Only
 
 - Support `source ./activate` clearly.
 - Reject executed-mode `./activate` with a clear message.
-- Do not design around `eval "$(./activate)"`; it creates quoting and parsing
-  complexity that is not worth the ambiguity.
+- Do not design around `eval "$(./activate)"`; it creates quoting and parsing complexity that is not worth the ambiguity.
 
 ## Set `DENO_DIR` Early
 
-`activate` should set `DENO_DIR` before the first Deno call that could resolve
-dependencies. Otherwise the project may leak cache writes into a global or
-foreign project location.
+`activate` should set `DENO_DIR` before the first Deno call that could resolve dependencies. Otherwise the project may leak cache writes into a global or foreign project location.
 
 ## Keep Shell Logic Minimal
 
 - Shell should orchestrate.
 - TypeScript should own real logic.
-- If shell starts understanding too much about runtime policy or project
-  architecture, move that logic into TS.
+- If shell starts understanding too much about runtime policy or project architecture, move that logic into TS.
 
 ## Prefer Path Certainty Over Path Cleverness
 
@@ -50,8 +42,7 @@ Prefer this materialization order:
 2. already materialized local runtime
 3. archive sources
 
-Use `ALTERAN_RUN_SOURCES` only for obtaining a runnable Alteran process, not
-as the canonical installation source.
+Use `ALTERAN_RUN_SOURCES` only for obtaining a runnable Alteran process, not as the canonical installation source.
 
 ## Avoid Recursive Bootstrap Designs
 
@@ -65,16 +56,14 @@ When bootstrap re-enters bootstrap, stop and redesign the boundary.
 
 ## Seed From What Is Already Available
 
-- If the current process already has a working local Deno or cache, prefer
-  seeding from it before downloading.
+- If the current process already has a working local Deno or cache, prefer seeding from it before downloading.
 - This matters a lot for offline-ish bootstrap and test fixtures.
 
 ## Be Honest About Platform Scope
 
 - GNU-based Linux is in scope.
 - Alpine/musl is not currently a supported runtime target.
-- Do not quietly broaden support in docs or code without intentionally solving
-  the binary/runtime implications.
+- Do not quietly broaden support in docs or code without intentionally solving the binary/runtime implications.
 
 ## Windows And Unix Need Symmetry, Not Identity
 

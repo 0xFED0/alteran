@@ -1,7 +1,6 @@
 # Clean And Compact
 
-Alteran distinguishes between safe cleanup of regenerable state and reducing a
-project to a transfer-ready bootstrap shape.
+Alteran distinguishes between safe cleanup of regenerable state and reducing a project to a transfer-ready bootstrap shape.
 
 ## Commands
 

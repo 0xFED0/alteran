@@ -19,15 +19,11 @@
 
 ## Steps
 
-1. Confirm whether the change is command contract, alias UX, help wording, or
-   documentation terminology.
-2. Keep command surfaces explicit rather than reviving positional magic or
-   hidden second modes.
-3. Keep current live vocabulary: `setup`, `shellenv`, `external`,
-   `shell_aliases`.
+1. Confirm whether the change is command contract, alias UX, help wording, or documentation terminology.
+2. Keep command surfaces explicit rather than reviving positional magic or hidden second modes.
+3. Keep current live vocabulary: `setup`, `shellenv`, `external`, `shell_aliases`.
 4. Do not reintroduce legacy command names such as `init`.
-5. When command behavior changes, update spec, docs, tests, and AI overlays in
-   sync.
+5. When command behavior changes, update spec, docs, tests, and AI overlays in sync.
 
 ## Done Checklist
 

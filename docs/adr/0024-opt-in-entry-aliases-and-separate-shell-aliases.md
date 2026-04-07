@@ -6,9 +6,7 @@ Accepted
 
 ## Context
 
-Alteran already provides a few global convenience aliases such as `alt`,
-`arun`, `atask`, `atest`, `ax`, and `adeno`, and it can also generate
-project-local app/tool launch aliases.
+Alteran already provides a few global convenience aliases such as `alt`, `arun`, `atask`, `atest`, `ax`, and `adeno`, and it can also generate project-local app/tool launch aliases.
 
 However, two different needs must be kept separate:
 
@@ -20,8 +18,7 @@ Mixing both into the same config shape would blur the distinction between:
 - stable project entities such as apps and tools
 - volatile shell UX conveniences
 
-It would also make alias generation too aggressive if every discovered app/tool
-always created shell aliases implicitly at runtime.
+It would also make alias generation too aggressive if every discovered app/tool always created shell aliases implicitly at runtime.
 
 ## Decision
 
@@ -37,16 +34,11 @@ Rules:
 
 - `shell_aliases` is the exact alias list injected for that entry
 - these aliases are entry-scoped and conceptually belong to that app/tool
-- if an entry is reimported and already exists in registry state, its alias
-  configuration is preserved
-- for created or reimported entries whose alias field is absent, Alteran may
-  seed a default first alias such as `app-<name>` / `tool-<name>`
-- if `shell_aliases` is present as `[]` or explicit `null`, that disables
-  automatic alias seeding for that entry
+- if an entry is reimported and already exists in registry state, its alias configuration is preserved
+- for created or reimported entries whose alias field is absent, Alteran may seed a default first alias such as `app-<name>` / `tool-<name>`
+- if `shell_aliases` is present as `[]` or explicit `null`, that disables automatic alias seeding for that entry
 
-For Alteran-created or Alteran-reimported entries, the default behavior may
-still be “alias-enabled by default”, but that state must be written explicitly
-into `shell_aliases` rather than being hidden behind a separate boolean flag.
+For Alteran-created or Alteran-reimported entries, the default behavior may still be “alias-enabled by default”, but that state must be written explicitly into `shell_aliases` rather than being hidden behind a separate boolean flag.
 
 ### 2. Top-level shell aliases
 
@@ -89,10 +81,8 @@ Example shape:
 
 ### Keep a separate `add_alias` flag plus `aliases`
 
-Rejected because it keeps meaningful alias behavior split across two different
-fields and makes the generated alias set less transparent to the user.
+Rejected because it keeps meaningful alias behavior split across two different fields and makes the generated alias set less transparent to the user.
 
 ### Store all aliases in one generic map
 
-Rejected because entry-bound aliases and arbitrary shell shortcuts have
-different ownership and lifecycle semantics.
+Rejected because entry-bound aliases and arbitrary shell shortcuts have different ownership and lifecycle semantics.

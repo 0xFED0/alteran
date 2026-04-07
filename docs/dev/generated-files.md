@@ -1,7 +1,6 @@
 # Generated Files
 
-Alteran intentionally generates and regenerates several files so users do not
-have to maintain fragile shell and sync artifacts manually.
+Alteran intentionally generates and regenerates several files so users do not have to maintain fragile shell and sync artifacts manually.
 
 ## Project-Level Generated Files
 
@@ -11,11 +10,9 @@ have to maintain fragile shell and sync artifacts manually.
 - synchronized parts of `deno.json`
 - managed `.gitignore` block
 
-`setup` and `setup.bat` are public bootstrap files, but they are also generated
-from Alteran-owned templates.
+`setup` and `setup.bat` are public bootstrap files, but they are also generated from Alteran-owned templates.
 
-That means contributors should normally fix the generator/template first, then
-resync the committed bootstrap files.
+That means contributors should normally fix the generator/template first, then resync the committed bootstrap files.
 
 ## App-Level Generated Files
 
@@ -31,9 +28,7 @@ Within that set:
 - `setup` / `setup.bat` are app-local bootstrap files
 - `app` / `app.bat` are generated launchers
 
-The launchers are generated local surfaces and should be treated as such. The
-setup files are also Alteran-generated, but they belong to the app bootstrap
-contract rather than to the app's authored source tree.
+The launchers are generated local surfaces and should be treated as such. The setup files are also Alteran-generated, but they belong to the app bootstrap contract rather than to the app's authored source tree.
 
 In other words:
 
@@ -55,9 +50,7 @@ Generated files should be:
 - owned by Alteran templates or sync logic
 - safe to regenerate
 
-Generated does not mean unimportant. Some generated files are part of the
-public product story and should be treated with the same care as authored
-source.
+Generated does not mean unimportant. Some generated files are part of the public product story and should be treated with the same care as authored source.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

@@ -6,8 +6,7 @@ Accepted
 
 ## Context
 
-Alteran’s most important risks are user-facing bootstrap and activation
-failures.
+Alteran’s most important risks are user-facing bootstrap and activation failures.
 
 Those failures often appear in scenarios that are:
 
@@ -29,14 +28,10 @@ The Alteran test suite should prefer product signal over nominal greenness.
 
 Specifically:
 
-1. If a test reproduces a realistic user-facing failure that should work by
-   specification, the test should remain strict.
-2. A currently failing test is acceptable when it documents a genuine product
-   gap or regression.
-3. Tests should be weakened only when the problem is truly in the harness or in
-   the test’s assumptions.
-4. Unsupported or exploratory scenarios must be labeled honestly, but should
-   not be silently converted into passing tests.
+1. If a test reproduces a realistic user-facing failure that should work by specification, the test should remain strict.
+2. A currently failing test is acceptable when it documents a genuine product gap or regression.
+3. Tests should be weakened only when the problem is truly in the harness or in the test’s assumptions.
+4. Unsupported or exploratory scenarios must be labeled honestly, but should not be silently converted into passing tests.
 
 ## Consequences
 
@@ -59,5 +54,4 @@ Rejected because it incentivizes weakening or removing useful regression tests.
 
 ### Encode only currently working behavior
 
-Rejected because it makes the suite descriptive of the implementation instead
-of normative for the product.
+Rejected because it makes the suite descriptive of the implementation instead of normative for the product.

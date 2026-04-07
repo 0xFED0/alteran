@@ -1,7 +1,6 @@
 # Project Layout
 
-A normal Alteran-managed project is organized around a few predictable top-level
-categories.
+A normal Alteran-managed project is organized around a few predictable top-level categories.
 
 ## Baseline Layout After Setup
 
@@ -25,8 +24,7 @@ Optional project directories can include `docs/` and `examples/`.
 
 ## Top-Level Files
 
-- `setup`, `setup.bat`: public bootstrap entrypoints that can regenerate the
-  local environment
+- `setup`, `setup.bat`: public bootstrap entrypoints that can regenerate the local environment
 - `activate`, `activate.bat`: generated local activation entrypoints
 - `alteran.json`: Alteran project config
 - `deno.json`: Deno config and workspace synchronization target
@@ -63,17 +61,14 @@ Important meaning:
 
 ## Git Expectations
 
-Generated and recoverable local state should stay out of version control.
-Typical ignored items include:
+Generated and recoverable local state should stay out of version control. Typical ignored items include:
 
 - `.runtime/`
 - generated `activate` and `activate.bat`
 - generated app launchers such as `apps/*/app` and `apps/*/app.bat`
 - reproducible build output such as `dist/`
 
-Public bootstrap files such as root `setup` and `setup.bat` stay tracked.
-App-local `setup` / `setup.bat` can also stay tracked, while app launchers are
-the throwaway generated side of that contract.
+Public bootstrap files such as root `setup` and `setup.bat` stay tracked. App-local `setup` / `setup.bat` can also stay tracked, while app launchers are the throwaway generated side of that contract.
 
 ## Related Docs
 

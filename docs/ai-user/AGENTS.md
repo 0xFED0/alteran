@@ -2,13 +2,11 @@
 
 This is a portable AI user bundle for Alteran projects.
 
-Copy this directory into an Alteran-managed project and customize it locally if
-needed.
+Copy this directory into an Alteran-managed project and customize it locally if needed.
 
 ## What This Bundle Is For
 
-Use this bundle when an AI assistant is helping inside a normal Alteran
-project.
+Use this bundle when an AI assistant is helping inside a normal Alteran project.
 
 It is for:
 
@@ -32,14 +30,11 @@ Then use the relevant skills under `skills/`.
 - Keep `setup` as the bootstrap and repair surface.
 - Treat `activate` as the local environment-entry surface.
 - On Unix, `activate` is sourced with `source ./activate`.
-- Plain `deno run` and `deno task` stay plain unless you intentionally use an
-  Alteran-managed command route.
-- Treat `.runtime/` as recoverable local project state, not primary authored
-  source.
+- Plain `deno run` and `deno task` stay plain unless you intentionally use an Alteran-managed command route.
+- Treat `.runtime/` as recoverable local project state, not primary authored source.
 - Keep Alteran config and paths explicit rather than relying on hidden magic.
 - Do not revive legacy command vocabulary such as `init`.
-- Keep support claims honest. GNU-based Linux is the intended Linux runtime
-  target; Alpine/musl is not the supported target today.
+- Keep support claims honest. GNU-based Linux is the intended Linux runtime target; Alpine/musl is not the supported target today.
 
 ## Do Not
 

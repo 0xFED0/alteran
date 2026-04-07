@@ -1,29 +1,20 @@
 # Alteran
 
-Alteran is a project-local runtime and scaffold manager for Deno automation
-projects.
+Alteran is a project-local runtime and scaffold manager for Deno automation projects.
 
-It gives a project its own bootstrap entrypoints, managed Deno runtime,
-structured `apps/`, `tools/`, `libs/`, and `tests/` layout, and a clear split
-between authored source and recoverable local runtime state.
+It gives a project its own bootstrap entrypoints, managed Deno runtime, structured `apps/`, `tools/`, `libs/`, and `tests/` layout, and a clear split between authored source and recoverable local runtime state.
 
 ## Why Alteran
 
 - bootstrap a project from an empty or near-empty directory
-- bootstrap an existing project even on a machine that does not already have Deno
-  installed
+- bootstrap an existing project even on a machine that does not already have Deno installed
 - keep Deno local to the project instead of depending on a global install
 - manage apps and tools as first-class project units
 - keep plain Deno available while adding an Alteran-managed execution mode
-- make the whole project folder portable between machines: copy it, send it,
-  rerun `setup`, and keep working
-- regenerate runtime state, activation files, and config instead of treating
-  them as hand-maintained shell plumbing
+- make the whole project folder portable between machines: copy it, send it, rerun `setup`, and keep working
+- regenerate runtime state, activation files, and config instead of treating them as hand-maintained shell plumbing
 
-One of Alteran's biggest practical advantages is that the project owns its
-runtime story. You can create a project, copy the folder to another machine or
-send it over the network, run `setup`, and get back to a working local
-environment without depending on a preinstalled global Deno toolchain.
+One of Alteran's biggest practical advantages is that the project owns its runtime story. You can create a project, copy the folder to another machine or send it over the network, run `setup`, and get back to a working local environment without depending on a preinstalled global Deno toolchain.
 
 ## Quick Start
 
@@ -78,23 +69,18 @@ alteran app run hello
 alteran tool run seed demo
 ```
 
-This quick start shows the core Alteran story: bootstrap a project, enter its
-local environment, create an app and a tool, and run both through the
-project-managed runtime.
+This quick start shows the core Alteran story: bootstrap a project, enter its local environment, create an app and a tool, and run both through the project-managed runtime.
 
 For a fuller walkthrough, see [docs/user/quickstart.md](./docs/user/quickstart.md).
 
 ## No Global Deno Yet?
 
-If the target machine does not already have Deno installed, use the checked-in
-bootstrap script instead of the JSR command.
+If the target machine does not already have Deno installed, use the checked-in bootstrap script instead of the JSR command.
 
 Two common paths are:
 
-1. download `setup` from this repository into the target directory and run it
-   there;
-2. if you already have a checkout of this repository, run `./setup <dir>` to
-   bootstrap another directory.
+1. download `setup` from this repository into the target directory and run it there;
+2. if you already have a checkout of this repository, run `./setup <dir>` to bootstrap another directory.
 
 Repository-local example:
 
@@ -103,13 +89,11 @@ Repository-local example:
 source ./some-project/activate
 ```
 
-This keeps the bootstrap story working even before any global Deno runtime is
-available on the machine.
+This keeps the bootstrap story working even before any global Deno runtime is available on the machine.
 
 ## Portable Project Folders
 
-One of Alteran's main selling points is that a project folder is meant to be
-portable.
+One of Alteran's main selling points is that a project folder is meant to be portable.
 
 A typical flow is:
 
@@ -118,34 +102,27 @@ A typical flow is:
 3. run `setup` there;
 4. continue using the same project layout and commands.
 
-That is the main reason Alteran prefers a project-local runtime over assuming a
-single globally installed toolchain for every project.
+That is the main reason Alteran prefers a project-local runtime over assuming a single globally installed toolchain for every project.
 
 ## Working From This Repository
 
-When you are developing Alteran from this source checkout, use the local repo
-bootstrap surface instead of the published package surface:
+When you are developing Alteran from this source checkout, use the local repo bootstrap surface instead of the published package surface:
 
 ```sh
 ./setup
 source ./activate
 ```
 
-That same `./setup` pattern is not special to the Alteran repository itself.
-The script can also target another directory, including an empty one:
+That same `./setup` pattern is not special to the Alteran repository itself. The script can also target another directory, including an empty one:
 
 ```sh
 ./setup ./some-project
 source ./some-project/activate
 ```
 
-That is the path to use when you want to bootstrap a project on a machine where
-`deno run -A jsr:@alteran setup` is not available because Deno is not yet
-installed globally.
+That is the path to use when you want to bootstrap a project on a machine where `deno run -A jsr:@alteran setup` is not available because Deno is not yet installed globally.
 
-In this repository, Alteran authored source lives under `src/alteran/`,
-`src/tools/`, and `src/libs/`. The local `.runtime/` tree is materialized
-runtime state.
+In this repository, Alteran authored source lives under `src/alteran/`, `src/tools/`, and `src/libs/`. The local `.runtime/` tree is materialized runtime state.
 
 ## Docs
 

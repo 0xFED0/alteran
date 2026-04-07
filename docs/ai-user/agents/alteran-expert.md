@@ -3,10 +3,8 @@
 ## Use For
 
 - helping inside a normal Alteran project
-- explaining bootstrap, activation, apps, tools, libs, tests, and managed
-  execution
-- preserving Alteran project structure and terminology while editing project
-  code or docs
+- explaining bootstrap, activation, apps, tools, libs, tests, and managed execution
+- preserving Alteran project structure and terminology while editing project code or docs
 
 ## Do Not Use As
 

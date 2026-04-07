@@ -2,15 +2,11 @@
 
 ## 1. Purpose
 
-This document defines how AI-oriented repository guidance should relate to the
-existing Alteran documentation system.
+This document defines how AI-oriented repository guidance should relate to the existing Alteran documentation system.
 
-Its goal is to help coding agents and human contributors work with the
-repository more accurately without creating a shadow specification or a second,
-conflicting docs tree.
+Its goal is to help coding agents and human contributors work with the repository more accurately without creating a shadow specification or a second, conflicting docs tree.
 
-This spec is intentionally grounded in the current Alteran repository layout
-and documentation model.
+This spec is intentionally grounded in the current Alteran repository layout and documentation model.
 
 ---
 
@@ -28,21 +24,16 @@ Alteran already has a layered documentation system under `docs/`:
 At the current repository state:
 
 - `docs/spec/001-alteran_spec.md` is the main product and architecture spec
-- `docs/spec/005-alteran_documentation_spec.md` governs the human
-  documentation system itself
-- `docs/spec/006-alteran_best_practice_rules_spec.md` defines normative
-  implementation guardrails, including AI-relevant contributor rules
-- this file governs how AI-oriented documentation should fit into the existing
-  documentation system
+- `docs/spec/005-alteran_documentation_spec.md` governs the human documentation system itself
+- `docs/spec/006-alteran_best_practice_rules_spec.md` defines normative implementation guardrails, including AI-relevant contributor rules
+- this file governs how AI-oriented documentation should fit into the existing documentation system
 - the repository-level routing file `AGENTS.md` exists
 - the repository routing index `llms.txt` exists
 - the tool-specific overlay `.github/copilot-instructions.md` exists
 - the repository-scoped AI docs tree `docs/ai-dev/` exists
 - the portable user-project AI bundle `docs/ai-user/` exists
 
-AI-oriented guidance must therefore integrate with the existing documentation
-layers rather than pretending that a separate `docs/specs/` tree or some
-undocumented AI hierarchy already exists.
+AI-oriented guidance must therefore integrate with the existing documentation layers rather than pretending that a separate `docs/specs/` tree or some undocumented AI hierarchy already exists.
 
 ---
 
@@ -68,8 +59,7 @@ AI docs are not intended to:
 - redefine public behavior or architecture
 - duplicate human docs line by line
 - become a dumping ground for prompts or chat transcripts
-- require a separate AI-only documentation tree when the existing docs already
-  cover the same responsibility well
+- require a separate AI-only documentation tree when the existing docs already cover the same responsibility well
 
 ---
 
@@ -81,8 +71,7 @@ When documents overlap, precedence is:
 2. `docs/adr/` for architectural rationale and decision history
 3. existing human docs under `docs/user/`, `docs/dev/`, and `docs/reference/`
 4. repository-level AI entrypoint files such as `AGENTS.md`
-5. optional tool-specific instruction files such as
-   `.github/copilot-instructions.md`
+5. optional tool-specific instruction files such as `.github/copilot-instructions.md`
 6. repository-level routing/index files such as `llms.txt`
 7. repository-scoped AI docs such as `docs/ai-dev/`
 8. portable user-project AI bundles such as `docs/ai-user/`
@@ -90,15 +79,12 @@ When documents overlap, precedence is:
 Interpretation notes:
 
 - `docs/spec/` governs contracts, terminology, layout, and intended behavior
-- `006-alteran_best_practice_rules_spec.md` governs implementation guardrails
-  and AI-relevant contribution rules
+- `006-alteran_best_practice_rules_spec.md` governs implementation guardrails and AI-relevant contribution rules
 - ADRs govern why non-obvious architectural decisions exist
-- human docs explain the system to readers and must remain aligned with the
-  specs
+- human docs explain the system to readers and must remain aligned with the specs
 - AI-specific docs are operational overlays only
 
-If lower-priority guidance conflicts with higher-priority guidance, the
-lower-priority guidance must be corrected.
+If lower-priority guidance conflicts with higher-priority guidance, the lower-priority guidance must be corrected.
 
 ---
 
@@ -117,13 +103,11 @@ If an AI-oriented file contains a rule that affects:
 - runtime behavior
 - testing or publication contract
 
-that rule must already exist in `docs/spec/` or be added there in the same
-change.
+that rule must already exist in `docs/spec/` or be added there in the same change.
 
 ### 6.2 Existing docs first
 
-AI guidance should preferentially route into the existing human documentation
-tree before introducing new AI-only files.
+AI guidance should preferentially route into the existing human documentation tree before introducing new AI-only files.
 
 If a workflow is already well described in:
 
@@ -135,24 +119,19 @@ then AI docs should link to that material instead of restating it in full.
 
 ### 6.3 Human-readable first
 
-AI docs must still be readable by human contributors. They should look like
-normal project documentation, not model-specific folklore.
+AI docs must still be readable by human contributors. They should look like normal project documentation, not model-specific folklore.
 
 ### 6.4 Routing over duplication
 
-Repository-level AI guidance should stay concise and navigational. Detailed
-procedures belong in focused playbooks, not in a giant root instruction file.
+Repository-level AI guidance should stay concise and navigational. Detailed procedures belong in focused playbooks, not in a giant root instruction file.
 
 ### 6.5 User and maintainer work are distinct
 
-AI guidance for using Alteran in a project and AI guidance for modifying the
-Alteran repository must remain separated conceptually, even if they reuse the
-same underlying docs tree.
+AI guidance for using Alteran in a project and AI guidance for modifying the Alteran repository must remain separated conceptually, even if they reuse the same underlying docs tree.
 
 ### 6.6 AI guidance must inherit implementation guardrails
 
-AI-oriented docs must not bypass or weaken the implementation rules defined in
-`006-alteran_best_practice_rules_spec.md`.
+AI-oriented docs must not bypass or weaken the implementation rules defined in `006-alteran_best_practice_rules_spec.md`.
 
 In particular, AI guidance must remain aligned with the normative rules about:
 
@@ -170,8 +149,7 @@ In particular, AI guidance must remain aligned with the normative rules about:
 
 ## 7. AI Documentation Layers In Alteran
 
-Alteran may use explicit AI-oriented files as long as they fit the existing
-docs model rather than competing with it.
+Alteran may use explicit AI-oriented files as long as they fit the existing docs model rather than competing with it.
 
 ### 7.1 `AGENTS.md` at repository root
 
@@ -191,11 +169,9 @@ It must not restate the full spec.
 
 ### 7.2 `.github/copilot-instructions.md`
 
-This file may contain tool-specific operational guidance for GitHub Copilot or
-similar tooling.
+This file may contain tool-specific operational guidance for GitHub Copilot or similar tooling.
 
-It must stay short, remain subordinate to `AGENTS.md`, and must not conflict
-with `docs/spec/`.
+It must stay short, remain subordinate to `AGENTS.md`, and must not conflict with `docs/spec/`.
 
 ### 7.3 `docs/ai-dev/`
 
@@ -212,18 +188,15 @@ docs/ai-dev/
 If `docs/ai-dev/` exists:
 
 - `docs/ai-dev/README.md` must be a short index
-- `docs/ai-dev/repository-rules.md` may provide a strict summary of mandatory
-  repository rules derived from `docs/spec/` and ADRs
+- `docs/ai-dev/repository-rules.md` may provide a strict summary of mandatory repository rules derived from `docs/spec/` and ADRs
 - `docs/ai-dev/agents/` may define reusable repository agent profiles
 - `docs/ai-dev/skills/` should contain only reusable repository playbooks
 
 If `docs/ai-dev/agents/` exists:
 
 - agent profiles must define role/scope, not new architecture
-- agent profiles must say whether they apply to repository work only or also
-  describe current user-facing Alteran behavior for repository tasks
-- reviewer profiles should remain review-focused and repository-scoped when the
-  project says so
+- agent profiles must say whether they apply to repository work only or also describe current user-facing Alteran behavior for repository tasks
+- reviewer profiles should remain review-focused and repository-scoped when the project says so
 
 ### 7.4 `docs/ai-user/`
 
@@ -245,13 +218,11 @@ If `docs/ai-user/` exists:
 - it should not require the full Alteran repository docs tree to remain useful
 - it may summarize user-facing Alteran behavior compactly
 - it may define portable user-project agent profiles such as an Alteran expert
-- it must not become the only normative source of user-facing Alteran behavior
-  inside the Alteran repository
+- it must not become the only normative source of user-facing Alteran behavior inside the Alteran repository
 
 ### 7.5 `llms.txt`
 
-If present, it should be a routing/index file only. It must not contain unique
-normative information.
+If present, it should be a routing/index file only. It must not contain unique normative information.
 
 ---
 
@@ -281,25 +252,19 @@ Contributor-facing ADR navigation layer inside the dev docs.
 
 ### 8.4 `docs/user/`
 
-Human-facing usage docs. These are also valid first-stop materials for agents
-acting as project users.
+Human-facing usage docs. These are also valid first-stop materials for agents acting as project users.
 
 ### 8.5 `docs/dev/`
 
-Human-facing repository-development docs. These are also valid first-stop
-materials for agents modifying Alteran itself.
+Human-facing repository-development docs. These are also valid first-stop materials for agents modifying Alteran itself.
 
 ### 8.6 `docs/reference/`
 
-Compact factual docs for command surfaces, config fields, environment
-variables, layouts, logging structure, and cleanup behavior.
+Compact factual docs for command surfaces, config fields, environment variables, layouts, logging structure, and cleanup behavior.
 
 ### 8.7 AI routing layers
 
-AI-oriented layers such as `AGENTS.md`, `.github/copilot-instructions.md`,
-repository `llms.txt`, `docs/ai-dev/`, or `docs/ai-user/` should be treated as
-operational routing material, not as higher-authority replacements for the
-directories above.
+AI-oriented layers such as `AGENTS.md`, `.github/copilot-instructions.md`, repository `llms.txt`, `docs/ai-dev/`, or `docs/ai-user/` should be treated as operational routing material, not as higher-authority replacements for the directories above.
 
 ---
 
@@ -314,45 +279,32 @@ Update, in this order when relevant:
 3. human-facing docs under `docs/user/`, `docs/dev/`, and `docs/reference/`
 4. optional AI routing or workflow docs
 
-If the change affects contributor guardrails or AI-relevant implementation
-rules, `006-alteran_best_practice_rules_spec.md` must be updated before
-derived AI overlays or best-practice summaries.
+If the change affects contributor guardrails or AI-relevant implementation rules, `006-alteran_best_practice_rules_spec.md` must be updated before derived AI overlays or best-practice summaries.
 
 ### 9.2 When only workflow guidance changes
 
-If architecture does not change, update the relevant human docs and optional
-AI docs without rewriting the main product spec unnecessarily.
+If architecture does not change, update the relevant human docs and optional AI docs without rewriting the main product spec unnecessarily.
 
 ### 9.3 When repeated AI work patterns appear
 
-If a repository task pattern clearly repeats and would help future agents, it
-may be captured in:
+If a repository task pattern clearly repeats and would help future agents, it may be captured in:
 
 - `docs/ai-dev/skills/` if that subtree exists
 - another explicit repo-level skill/playbook location adopted by the project
 
-But repeated workflow guidance must still reference the canonical spec and ADRs
-instead of inventing new rules locally.
+But repeated workflow guidance must still reference the canonical spec and ADRs instead of inventing new rules locally.
 
 ### 9.4 When repository-level constraints are easy to violate
 
-If the repository has a small set of high-risk mandatory constraints, Alteran
-may also keep a strict maintainer summary such as
-`docs/ai-dev/repository-rules.md`.
+If the repository has a small set of high-risk mandatory constraints, Alteran may also keep a strict maintainer summary such as `docs/ai-dev/repository-rules.md`.
 
-That file may restate mandatory repository rules in condensed form for AI
-maintainers, but it must remain derived from higher-priority sources and must
-not become the only place where those rules exist.
+That file may restate mandatory repository rules in condensed form for AI maintainers, but it must remain derived from higher-priority sources and must not become the only place where those rules exist.
 
 ### 9.5 When Alteran wants a portable user-project AI bundle
 
-If Alteran wants users to copy AI guidance into ordinary Alteran projects, it
-should package that material as a self-contained bundle such as
-`docs/ai-user/`.
+If Alteran wants users to copy AI guidance into ordinary Alteran projects, it should package that material as a self-contained bundle such as `docs/ai-user/`.
 
-That bundle should be updated when user-facing guidance changes materially, but
-it should stay compact and portable rather than mirroring the whole
-documentation tree.
+That bundle should be updated when user-facing guidance changes materially, but it should stay compact and portable rather than mirroring the whole documentation tree.
 
 ---
 
@@ -378,12 +330,9 @@ AI-oriented docs must not become the exclusive place for:
 - naming standards that affect the whole project
 - rationale that belongs in ADRs
 - implementation rules that belong in `006-alteran_best_practice_rules_spec.md`
-- mandatory repository rules that are not already defined in specs, ADRs, or
-  existing human docs
-- agent-role restrictions or review standards that affect the whole project but
-  are not documented in higher-priority docs
-- a portable user-project bundle that silently becomes the only place where
-  core user-facing Alteran behavior is defined
+- mandatory repository rules that are not already defined in specs, ADRs, or existing human docs
+- agent-role restrictions or review standards that affect the whole project but are not documented in higher-priority docs
+- a portable user-project bundle that silently becomes the only place where core user-facing Alteran behavior is defined
 
 AI-oriented docs must not:
 
@@ -392,8 +341,7 @@ AI-oriented docs must not:
 - treat advisory summaries as higher authority than numbered specs
 - present temporary workarounds as the preferred long-term model
 - reintroduce removed legacy command surfaces such as `init`
-- describe heavyweight environment-variable transport for project configuration
-  when the authoritative config belongs in project files such as `alteran.json`
+- describe heavyweight environment-variable transport for project configuration when the authoritative config belongs in project files such as `alteran.json`
 
 ---
 
@@ -416,9 +364,7 @@ docs/ai-dev/
 docs/ai-user/
 ```
 
-The `docs/dev/best-practices/` directory is not itself normative, but it is a
-useful derived layer for both humans and agents once the numbered specs and
-ADRs have been consulted.
+The `docs/dev/best-practices/` directory is not itself normative, but it is a useful derived layer for both humans and agents once the numbered specs and ADRs have been consulted.
 
 ---
 
@@ -520,8 +466,7 @@ An AI-docs change should be reviewed against these questions:
 - Is the file concise enough for its role?
 - Does it conflict with any higher-priority document?
 
-If any answer indicates overlap or conflict, the content or placement should be
-corrected before merge.
+If any answer indicates overlap or conflict, the content or placement should be corrected before merge.
 
 ---
 
@@ -537,27 +482,18 @@ For Alteran specifically:
 - keep repository `llms.txt` as a routing/index file only
 - keep `docs/ai-dev/` repository-scoped and operational
 - keep `docs/ai-user/` self-contained and portable
-- allow `docs/ai-dev/agents/` for Alteran-specific reusable agent profiles such
-  as a general Alteran expert or a repository-scoped Alteran reviewer
-- allow `docs/ai-dev/repository-rules.md` as a strict derived summary for
-  mandatory maintainer constraints
+- allow `docs/ai-dev/agents/` for Alteran-specific reusable agent profiles such as a general Alteran expert or a repository-scoped Alteran reviewer
+- allow `docs/ai-dev/repository-rules.md` as a strict derived summary for mandatory maintainer constraints
 - allow `docs/ai-dev/skills/` for repeated high-value repository workflows
-- prefer updating `docs/user/`, `docs/dev/`, and `docs/reference/` before
-  expanding AI-only overlays
-- avoid reviving hidden or legacy documentation roots such as `.spec/` or a
-  parallel `docs/specs/` tree
-- do not reintroduce removed bootstrap vocabulary such as `init` when the live
-  product contract uses `setup`
-- do not teach AI overlays to pass heavyweight LogTape config through env when
-  the live contract requires project-local configuration from `alteran.json`
+- prefer updating `docs/user/`, `docs/dev/`, and `docs/reference/` before expanding AI-only overlays
+- avoid reviving hidden or legacy documentation roots such as `.spec/` or a parallel `docs/specs/` tree
+- do not reintroduce removed bootstrap vocabulary such as `init` when the live product contract uses `setup`
+- do not teach AI overlays to pass heavyweight LogTape config through env when the live contract requires project-local configuration from `alteran.json`
 
 ---
 
 ## 15. Final Rule
 
-AI-oriented docs must make Alteran easier to change correctly, not easier to
-change creatively.
+AI-oriented docs must make Alteran easier to change correctly, not easier to change creatively.
 
-If an AI-specific document duplicates the spec, silently redefines
-architecture, or makes the repository harder to understand than the normal docs
-already do, it is malformed and should be rewritten or removed.
+If an AI-specific document duplicates the spec, silently redefines architecture, or makes the repository harder to understand than the normal docs already do, it is malformed and should be rewritten or removed.

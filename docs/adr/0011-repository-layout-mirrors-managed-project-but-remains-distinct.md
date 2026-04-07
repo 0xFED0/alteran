@@ -6,20 +6,13 @@ Accepted
 
 ## Context
 
-Alteran is both a product and a project template/runtime manager. Its own source
-repository should resemble a real Alteran-managed project closely enough that
-repository development reflects real usage, while still preserving repository
-only concerns such as authored source, publication outputs, and documentation.
+Alteran is both a product and a project template/runtime manager. Its own source repository should resemble a real Alteran-managed project closely enough that repository development reflects real usage, while still preserving repository only concerns such as authored source, publication outputs, and documentation.
 
 ## Decision
 
-The Alteran source repository intentionally resembles a managed project,
-including first-class `apps/`, `tools/`, `libs/`, `tests/`, and `.runtime/`,
-while also keeping repository-specific areas such as `src/`, `docs/`,
-`examples/`, and `dist/`.
+The Alteran source repository intentionally resembles a managed project, including first-class `apps/`, `tools/`, `libs/`, `tests/`, and `.runtime/`, while also keeping repository-specific areas such as `src/`, `docs/`, `examples/`, and `dist/`.
 
-The repository is not identical to a normal managed project. It is a related
-but distinct layout with mirrored concepts where practical.
+The repository is not identical to a normal managed project. It is a related but distinct layout with mirrored concepts where practical.
 
 ## Consequences
 
@@ -30,8 +23,7 @@ Positive:
 
 Tradeoffs:
 
-- contributors must understand that similar layouts do not imply identical
-  semantics
+- contributors must understand that similar layouts do not imply identical semantics
 
 ## Rejected Alternatives
 

@@ -2,8 +2,7 @@
 
 Refresh keeps project-generated state coherent with project structure.
 
-If `setup` is the command that gets a project into a usable state, `refresh` is
-the command that keeps that state aligned as the project evolves.
+If `setup` is the command that gets a project into a usable state, `refresh` is the command that keeps that state aligned as the project evolves.
 
 ## Main Commands
 
@@ -25,19 +24,15 @@ alteran reimport tools <dir>
 - ensures per-app config and app `deno.json`
 - regenerates activation files and managed app helper scripts
 
-It does not exist to change your source code. It exists to bring generated
-state and discovered project structure back in sync with the source tree.
+It does not exist to change your source code. It exists to bring generated state and discovered project structure back in sync with the source tree.
 
 ## What `reimport` Does
 
-`reimport` scans a directory, registers discovered apps or tools from that
-directory, and then runs a refresh.
+`reimport` scans a directory, registers discovered apps or tools from that directory, and then runs a refresh.
 
-Use it when you add or move project units outside the normal `app add` and
-`tool add` flow.
+Use it when you add or move project units outside the normal `app add` and `tool add` flow.
 
-Use plain `refresh` when Alteran already knows about the project units and you
-just need generated state rebuilt.
+Use plain `refresh` when Alteran already knows about the project units and you just need generated state rebuilt.
 
 ## When To Run It
 

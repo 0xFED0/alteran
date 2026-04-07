@@ -1,7 +1,6 @@
 # Run, Task, Deno, And X
 
-Alteran exposes several execution routes on purpose. They are similar, but they
-are not interchangeable.
+Alteran exposes several execution routes on purpose. They are similar, but they are not interchangeable.
 
 ## Command Summary
 

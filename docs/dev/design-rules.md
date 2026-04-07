@@ -15,13 +15,11 @@ These rules should guide future Alteran changes.
 
 ## Documentation Rule
 
-Do not let high-level docs silently drift away from specs, ADRs, and actual
-behavior. README is the front door, not the whole house.
+Do not let high-level docs silently drift away from specs, ADRs, and actual behavior. README is the front door, not the whole house.
 
 ## Repository Rule
 
-The repository should mirror the managed project model where useful, but remain
-honest about repository-only authored source and publication concerns.
+The repository should mirror the managed project model where useful, but remain honest about repository-only authored source and publication concerns.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

@@ -19,8 +19,7 @@ The default scaffold creates:
 alteran tool run seed
 ```
 
-Tools run through Alteran-managed Deno and participate in Alteran logging and
-context propagation.
+Tools run through Alteran-managed Deno and participate in Alteran logging and context propagation.
 
 ## Why Use Tools Instead Of A Scripts Folder
 

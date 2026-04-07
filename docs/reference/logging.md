@@ -25,13 +25,11 @@
 
 ## Aggregation Rule
 
-Child runs aggregate into the same root invocation directory rather than
-creating separate top-level log trees.
+Child runs aggregate into the same root invocation directory rather than creating separate top-level log trees.
 
 ## Custom Mirror Destination
 
-If `ALTERAN_CUSTOM_LOG_DIR` is set, Alteran may mirror the current root log
-tree there as an additional copy target.
+If `ALTERAN_CUSTOM_LOG_DIR` is set, Alteran may mirror the current root log tree there as an additional copy target.
 
 That does not replace the canonical project-local root under `.runtime/logs/`.
 

@@ -5,13 +5,11 @@
 This example simulates project growth in two realistic ways:
 
 - a staged app is moved into `apps/` and discovered by `alteran refresh`;
-- an external tool stays in `incoming-tools/` and is registered through
-  `alteran reimport`.
+- an external tool stays in `incoming-tools/` and is registered through `alteran reimport`.
 
 ## Why it matters
 
-Alteran is not only a one-time scaffold generator. It can resynchronize project
-state when new runnable units are introduced as the project evolves.
+Alteran is not only a one-time scaffold generator. It can resynchronize project state when new runnable units are introduced as the project evolves.
 
 ## Project shape / tree overview
 
@@ -60,8 +58,7 @@ alteran tool run audit-report
 
 - `catalog` is present from the start;
 - the committed `.env` keeps setup local to the repository source tree;
-- `admin-console` becomes part of the managed workspace after it moves into
-  `apps/` and you run `refresh`;
+- `admin-console` becomes part of the managed workspace after it moves into `apps/` and you run `refresh`;
 - `audit-report` becomes registered after `reimport tools`;
 - `alteran.json` and root `deno.json` update after synchronization commands;
 - newly imported units become runnable through normal Alteran commands.

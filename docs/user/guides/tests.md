@@ -23,8 +23,7 @@ Plain Deno route:
 deno test -A
 ```
 
-Use the managed route when you want test runs to participate in Alteran's local
-runtime and logging context.
+Use the managed route when you want test runs to participate in Alteran's local runtime and logging context.
 
 ## Good Practice
 

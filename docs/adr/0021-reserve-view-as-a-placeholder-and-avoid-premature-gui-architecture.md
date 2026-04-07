@@ -6,19 +6,13 @@ Accepted
 
 ## Context
 
-Alteran is expected to support future GUI/view-related work, but the current
-project focus is runtime management, scaffolding, and execution flows.
-Over-specifying `view` too early would force architectural commitments before
-real requirements exist.
+Alteran is expected to support future GUI/view-related work, but the current project focus is runtime management, scaffolding, and execution flows. Over-specifying `view` too early would force architectural commitments before real requirements exist.
 
 ## Decision
 
-Alteran reserves `view/` and the conceptual `view` task as first-class
-placeholders, but intentionally leaves GUI/view architecture under-specified for
-now.
+Alteran reserves `view/` and the conceptual `view` task as first-class placeholders, but intentionally leaves GUI/view architecture under-specified for now.
 
-Alteran explicitly avoids becoming a desktop framework, IPC framework, or native
-host platform in the current iteration.
+Alteran explicitly avoids becoming a desktop framework, IPC framework, or native host platform in the current iteration.
 
 ## Consequences
 
@@ -35,5 +29,4 @@ Tradeoffs:
 
 ### Fully design the GUI/view subsystem now
 
-Rejected because requirements are not mature enough and premature architecture
-would likely calcify the wrong abstractions.
+Rejected because requirements are not mature enough and premature architecture would likely calcify the wrong abstractions.

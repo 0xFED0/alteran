@@ -4,13 +4,11 @@
 
 This example starts almost empty on purpose.
 
-It demonstrates the first Alteran story: a near-empty directory becomes a usable
-managed project after bootstrap and activation.
+It demonstrates the first Alteran story: a near-empty directory becomes a usable managed project after bootstrap and activation.
 
 ## Why it matters
 
-Alteran is not only a collection of scripts. Its core promise is local,
-reproducible project entry with a project-owned runtime layout.
+Alteran is not only a collection of scripts. Its core promise is local, reproducible project entry with a project-owned runtime layout.
 
 ## Project shape / tree overview
 
@@ -61,11 +59,9 @@ source ./examples/01-bootstrap-empty-folder/activate
 ## What to observe
 
 - `ALTERAN_HOME` points at `./.runtime`.
-- The committed `.env` points `ALTERAN_SRC` at the repository `src/` tree, so
-  setup can materialize Alteran from local authored source in this checkout.
+- The committed `.env` points `ALTERAN_SRC` at the repository `src/` tree, so setup can materialize Alteran from local authored source in this checkout.
 - Local runtime material appears under `.runtime/`.
-- Root project markers such as `alteran.json`, `deno.json`, and `activate` are
-  created locally.
+- Root project markers such as `alteran.json`, `deno.json`, and `activate` are created locally.
 - The example is usable immediately even though it did not start with app code.
 
 ## Key Alteran concepts demonstrated

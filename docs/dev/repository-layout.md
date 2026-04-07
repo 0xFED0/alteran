@@ -1,7 +1,6 @@
 # Repository Layout
 
-The Alteran repository intentionally resembles a managed Alteran project while
-also keeping repository-only areas.
+The Alteran repository intentionally resembles a managed Alteran project while also keeping repository-only areas.
 
 ## High-Level Tree
 
@@ -46,8 +45,7 @@ projects/alteran/
 
 ## Why The Layout Mirrors Managed Projects
 
-The repository is meant to dogfood the managed-project model without pretending
-that repository-specific authored source and publication concerns do not exist.
+The repository is meant to dogfood the managed-project model without pretending that repository-specific authored source and publication concerns do not exist.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

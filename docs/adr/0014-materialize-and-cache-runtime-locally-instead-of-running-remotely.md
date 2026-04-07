@@ -6,19 +6,13 @@ Accepted
 
 ## Context
 
-Alteran supports remote bootstrap sources and publication artifacts, but normal
-project use must remain stable, reproducible, and independent of constant remote
-availability.
+Alteran supports remote bootstrap sources and publication artifacts, but normal project use must remain stable, reproducible, and independent of constant remote availability.
 
-Executing core runtime code directly from remote URLs on every run would make
-ordinary operation fragile and harder to inspect or debug.
+Executing core runtime code directly from remote URLs on every run would make ordinary operation fragile and harder to inspect or debug.
 
 ## Decision
 
-Remote sources may be used during bootstrap, update, or controlled acquisition
-flows. Regular Alteran operation runs against locally materialized runtime files
-under `.runtime/` rather than re-fetching or re-executing remote modules on
-every invocation.
+Remote sources may be used during bootstrap, update, or controlled acquisition flows. Regular Alteran operation runs against locally materialized runtime files under `.runtime/` rather than re-fetching or re-executing remote modules on every invocation.
 
 ## Consequences
 

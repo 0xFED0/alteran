@@ -1,7 +1,6 @@
 # Testing
 
-Alteran testing is guided by product specs, examples specs, and ADRs rather
-than implementation convenience alone.
+Alteran testing is guided by product specs, examples specs, and ADRs rather than implementation convenience alone.
 
 ## Main Test Categories
 
@@ -44,10 +43,7 @@ Expected developer tasks include:
 
 ## Execution Guidance
 
-When testing high-leverage product flows, prefer exercising them through
-Alteran entrypoints rather than only through plain `deno test`. This helps
-catch project-context, logging, and managed-execution regressions that plain
-Deno runs may miss.
+When testing high-leverage product flows, prefer exercising them through Alteran entrypoints rather than only through plain `deno test`. This helps catch project-context, logging, and managed-execution regressions that plain Deno runs may miss.
 
 ## Related Source
 

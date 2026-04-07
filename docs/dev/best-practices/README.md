@@ -8,8 +8,7 @@ This directory collects practical Alteran development guidance derived from:
 - test harness failures
 - recurring implementation pain
 
-These notes are advisory, not normative. If they conflict with `docs/spec/` or
-`docs/adr/`, the spec and ADRs win.
+These notes are advisory, not normative. If they conflict with `docs/spec/` or `docs/adr/`, the spec and ADRs win.
 
 ## Recommended Reading Order
 
