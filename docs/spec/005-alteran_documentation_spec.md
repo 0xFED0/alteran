@@ -22,6 +22,10 @@ This document covers:
 
 This document does not define GitHub-specific repository contribution workflows. Those may be documented separately.
 
+Optional AI-oriented operational overlays may be documented separately as long
+as they remain subordinate to the main documentation model rather than
+replacing it.
+
 ---
 
 ## 2. Documentation Goals
@@ -96,6 +100,14 @@ A fifth related layer must exist for architectural reasoning:
 Canonical ADR record files may live in `docs/adr/` as long as
 `docs/dev/adr/index.md` exists as the development-doc entrypoint that explains
 where the records live and links into them.
+
+Alteran may also keep optional AI-oriented operational overlays such as:
+
+- `docs/ai-user/` for a portable user-project AI bundle
+- `docs/ai-dev/` for repository-scoped AI guidance
+
+These overlays are not part of the main human documentation layers and must
+not replace them.
 
 ### 3.1. Responsibility of each layer
 

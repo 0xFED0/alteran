@@ -1,0 +1,49 @@
+Alteran AI routing index
+
+Primary repository-level AI routing:
+- AGENTS.md
+
+Canonical source of truth:
+- docs/spec/001-alteran_spec.md
+- docs/spec/006-alteran_best_practice_rules_spec.md
+- docs/spec/007-alteran-ai-docs-spec.md
+- docs/adr/
+- docs/user/
+- docs/dev/
+- docs/reference/
+
+Operational overlays:
+- .github/copilot-instructions.md
+- docs/ai-dev/README.md
+- docs/ai-dev/agents/README.md
+- docs/ai-dev/agents/alteran-expert.md
+- docs/ai-dev/agents/alteran-reviewer.md
+- docs/ai-dev/repository-rules.md
+- docs/ai-dev/skills/spec-and-doc-sync.md
+- docs/ai-dev/skills/bootstrap-and-generated-surfaces.md
+- docs/ai-dev/skills/managed-execution-and-context.md
+- docs/ai-dev/skills/command-surface-and-terminology.md
+- docs/ai-user/AGENTS.md
+- docs/ai-user/llms.txt
+- docs/ai-user/README.md
+- docs/ai-user/agents/README.md
+- docs/ai-user/agents/alteran-expert.md
+- docs/ai-user/rules/core-rules.md
+- docs/ai-user/skills/bootstrap-and-entry.md
+- docs/ai-user/skills/apps-tools-and-libs.md
+- docs/ai-user/skills/managed-execution-and-logging.md
+
+Key repository rules:
+- Keep normative architecture in docs/spec/, not in AI overlays.
+- Keep setup as the only live bootstrap command surface; do not revive init.
+- Keep setup separate from generated local activate.
+- Treat src/ as authored source and .runtime/ as generated local state.
+- Keep project context and canonical logs project-scoped.
+- Use archive sources for installation/materialization and run sources for execution bootstrap.
+- Use docs/ai-dev/repository-rules.md as the hard maintainer summary before high-leverage edits.
+
+Change policy:
+- Update docs/spec/ first when public behavior, layout, naming, config, testing, or publication contracts change.
+- Update docs/adr/ when the change is architectural.
+- Update docs/user/, docs/dev/, and docs/reference/ next.
+- Update AGENTS.md, .github/copilot-instructions.md, repository llms.txt, and docs/ai-dev/ last.

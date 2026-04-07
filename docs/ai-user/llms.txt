@@ -1,0 +1,24 @@
+Alteran portable AI user bundle
+
+Entry files:
+- AGENTS.md
+- README.md
+
+Agent profiles:
+- agents/alteran-expert.md
+
+Rules:
+- rules/core-rules.md
+
+Skills:
+- skills/bootstrap-and-entry.md
+- skills/apps-tools-and-libs.md
+- skills/managed-execution-and-logging.md
+
+Key user-facing rules:
+- Use setup for bootstrap and repair.
+- Use activate only to enter an already prepared local environment.
+- On Unix, activate is sourced.
+- Plain Deno stays plain unless Alteran is the explicit route.
+- .runtime/ is recoverable local project state.
+- Do not revive init as the live bootstrap command.

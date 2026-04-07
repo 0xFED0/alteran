@@ -32,6 +32,12 @@ No. It is a reserved placeholder, not the current center of the product.
 
 Yes. That is part of the core project model.
 
+## Is There A Portable AI Bundle For User Projects?
+
+Yes. Alteran provides a portable AI user bundle under `docs/ai-user/`. It is
+meant to be copied into an ordinary Alteran project and customized there if
+needed.
+
 ## Navigation
 - Home: [Docs Index](../README.md)
 - Previous: [Troubleshooting](./troubleshooting.md)
