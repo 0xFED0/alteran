@@ -29,6 +29,8 @@ Expected developer tasks include:
 - user-centered scenarios
 - deterministic fixtures where practical
 - honest platform scope
+- hermetic execution context
+- docs and examples treated as product surfaces
 
 ## Important Coverage Areas
 
@@ -38,6 +40,14 @@ Expected developer tasks include:
 - refresh and config synchronization
 - standalone app launcher contract
 - examples as executable documentation
+- project-scoped logging and managed execution boundaries
+
+## Execution Guidance
+
+When testing high-leverage product flows, prefer exercising them through
+Alteran entrypoints rather than only through plain `deno test`. This helps
+catch project-context, logging, and managed-execution regressions that plain
+Deno runs may miss.
 
 ## Related Source
 

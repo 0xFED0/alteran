@@ -43,6 +43,17 @@ Discovery is structure-driven:
 
 Existing entry metadata such as `shell_aliases` is preserved when possible.
 
+If `shell_aliases` is explicitly present as `[]` or `null`, that explicit
+state should be respected rather than replaced by automatic reseeding.
+
+## Path Resolution Rule
+
+Config-driven paths resolve from the owning config context, not from arbitrary
+caller `PWD`.
+
+If sync behavior changes based on where the caller happened to `cd`, treat that
+as a bug.
+
 ## Navigation
 - Home: [Docs Index](../README.md)
 - Previous: [Command Model](./command-model.md)

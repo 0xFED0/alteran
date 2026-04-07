@@ -42,6 +42,10 @@ They stage:
 
 Generated local activation artifacts are not part of release payloads.
 
+Publication tooling should be treated as product-critical. If the public
+bootstrap story changes, publication outputs, tests, and docs should change
+together.
+
 ## Navigation
 - Home: [Docs Index](../README.md)
 - Previous: [Testing](./testing.md)

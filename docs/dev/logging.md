@@ -13,6 +13,10 @@ Logs live under:
 
 That project-local root is authoritative for run identity and debugging.
 
+If `ALTERAN_CUSTOM_LOG_DIR` is used, it should be treated as an additional
+copy or mirror destination, not as a replacement for the canonical project
+root.
+
 ## Root Invocation Model
 
 One root Alteran invocation gets one root log directory. Child runs do not
@@ -34,6 +38,9 @@ as:
 - `ALTERAN_ROOT_LOG_DIR`
 - `ALTERAN_LOG_MODE`
 - `ALTERAN_LOG_CONTEXT_JSON`
+
+That inherited context is only valid inside the same project boundary. Foreign
+project runs should not silently adopt another project's root log tree.
 
 ## LogTape Boundary
 

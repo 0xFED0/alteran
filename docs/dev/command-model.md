@@ -25,6 +25,10 @@ Commands are split between:
 Cross-project execution is explicit through `alteran external ...`, not a
 hidden second mode of ordinary commands.
 
+Valid external context anchors are explicit Alteran-owned config files such as
+`alteran.json` and `app.json`. `deno.json` is not treated as an Alteran
+context anchor.
+
 ## Why This Matters
 
 - help output stays teachable
@@ -39,6 +43,9 @@ Alteran provides:
   and `adeno`
 - entry-scoped `shell_aliases` for apps and tools
 - a separate top-level `shell_aliases` map for arbitrary shell shortcuts
+
+User-visible aliases should stay explicit in config rather than hidden behind
+implicit generation rules.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

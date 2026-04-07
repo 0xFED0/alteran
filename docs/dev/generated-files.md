@@ -14,6 +14,9 @@ have to maintain fragile shell and sync artifacts manually.
 `setup` and `setup.bat` are public bootstrap files, but they are also generated
 from Alteran-owned templates.
 
+That means contributors should normally fix the generator/template first, then
+resync the committed bootstrap files.
+
 ## App-Level Generated Files
 
 Managed apps receive local helper scripts such as:
@@ -32,6 +35,11 @@ The launchers are generated local surfaces and should be treated as such. The
 setup files are also Alteran-generated, but they belong to the app bootstrap
 contract rather than to the app's authored source tree.
 
+In other words:
+
+- tracked bootstrap surfaces may still be generated
+- generated local launchers do not automatically become tracked product files
+
 ## Publication-Generated Files
 
 Publication tooling generates staged output under:
@@ -46,6 +54,10 @@ Generated files should be:
 - reproducible
 - owned by Alteran templates or sync logic
 - safe to regenerate
+
+Generated does not mean unimportant. Some generated files are part of the
+public product story and should be treated with the same care as authored
+source.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

@@ -43,6 +43,10 @@ Managed execution sets project-scoped variables such as:
 That context is valid for nested same-project runs, but not as a shell-global
 identity that should leak across projects.
 
+If a command intentionally targets another Alteran project, it should do so
+through an explicit boundary such as `alteran external ...`, not by
+accidentally inheriting the current project's environment.
+
 ## Navigation
 - Home: [Docs Index](../README.md)
 - Previous: [Generated Files](./generated-files.md)
