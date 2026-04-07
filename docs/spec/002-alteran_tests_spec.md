@@ -15,10 +15,10 @@ The test suite must answer four questions:
 
 This document complements:
 
-- `projects/alteran/.specs/alteran_spec.md`
-- `projects/alteran/docs/adr/0001-run-sources-vs-archive-sources.md`
-- `projects/alteran/docs/adr/0002-linux-runtime-support-scope.md`
-- related future ADRs under `projects/alteran/docs/adr/`
+- `docs/spec/001-alteran_spec.md`
+- `docs/adr/0001-run-sources-vs-archive-sources.md`
+- `docs/adr/0002-linux-runtime-support-scope.md`
+- related future ADRs under `docs/adr/`
 
 ## 2. Guiding Principles
 
@@ -87,7 +87,7 @@ These tests should cover:
 
 Current file:
 
-- `projects/alteran/tests/alteran_unit_test.ts`
+- `tests/alteran_unit_test.ts`
 
 ### 4.2 Repository-level e2e tests
 
@@ -107,7 +107,7 @@ They should cover:
 
 Current file:
 
-- `projects/alteran/tests/alteran_e2e_test.ts`
+- `tests/alteran_e2e_test.ts`
 
 ### 4.3 Windows-specific e2e tests
 
@@ -125,7 +125,7 @@ These tests cover:
 
 Current file:
 
-- `projects/alteran/tests/alteran_windows_e2e_test.ts`
+- `tests/alteran_windows_e2e_test.ts`
 
 These tests must be skipped on non-Windows hosts using explicit `ignore` conditions rather than early `return`.
 
@@ -142,7 +142,7 @@ They exist to validate:
 
 Current file:
 
-- `projects/alteran/tests/alteran_docker_e2e_test.ts`
+- `tests/alteran_docker_e2e_test.ts`
 
 ## 5. Required User-Facing Scenarios
 
@@ -243,7 +243,7 @@ The current support boundary for Linux is governed by ADR 0002.
 
 ### 7.1 Shared helpers are preferred
 
-When multiple tests need the same setup or assertions, the shared logic should move into helper modules under `projects/alteran/tests/`.
+When multiple tests need the same setup or assertions, the shared logic should move into helper modules under `tests/`.
 
 Examples include:
 
@@ -264,7 +264,7 @@ This keeps tests deterministic and allows controlled reproduction of bootstrap b
 
 Current helper:
 
-- `projects/alteran/tests/bootstrap_fixture.ts`
+- `tests/bootstrap_fixture.ts`
 
 ### 7.3 Docker fixture strategy
 
@@ -302,7 +302,7 @@ Harness bugs should be fixed so that the suite reveals product behavior more acc
 
 If a test cannot be written correctly, or if the specification and product are blocked by an unresolved contradiction, the problem should be documented under:
 
-- `projects/alteran/tests/issues.md`
+- `tests/issues.md`
 
 The rest of the suite should continue moving forward.
 

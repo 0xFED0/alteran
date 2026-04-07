@@ -75,7 +75,7 @@ The publication-local `deno.json` exists because `deno publish` requires the pre
 
 The repository may also publish through a tag-triggered GitHub Actions workflow.
 
-In the current monorepo-style layout, those workflow files live at the repository root under `.github/workflows/` and operate on `projects/alteran/` as the product directory.
+In the current repository layout, those workflow files live under `.github/workflows/` at the Alteran repository root and operate on `.` as the product directory.
 
 The intended flow is:
 

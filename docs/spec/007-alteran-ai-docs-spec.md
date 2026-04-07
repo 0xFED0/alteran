@@ -486,7 +486,7 @@ For Alteran specifically:
 - allow `docs/ai-dev/repository-rules.md` as a strict derived summary for mandatory maintainer constraints
 - allow `docs/ai-dev/skills/` for repeated high-value repository workflows
 - prefer updating `docs/user/`, `docs/dev/`, and `docs/reference/` before expanding AI-only overlays
-- avoid reviving hidden or legacy documentation roots such as `.spec/` or a parallel `docs/specs/` tree
+- avoid reviving hidden or legacy documentation roots or parallel spec trees outside the canonical `docs/spec/` layout
 - do not reintroduce removed bootstrap vocabulary such as `init` when the live product contract uses `setup`
 - do not teach AI overlays to pass heavyweight LogTape config through env when the live contract requires project-local configuration from `alteran.json`
 

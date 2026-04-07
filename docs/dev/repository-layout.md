@@ -5,7 +5,7 @@ The Alteran repository intentionally resembles a managed Alteran project while a
 ## High-Level Tree
 
 ```text
-projects/alteran/
+alteran/
   setup
   setup.bat
   activate

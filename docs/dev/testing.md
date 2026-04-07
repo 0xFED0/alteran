@@ -58,7 +58,7 @@ At minimum, CI should include:
 - docker e2e tests on Linux
 - Windows e2e tests on Windows
 
-In the current repository layout, GitHub Actions workflow files live at the repository root under `.github/workflows/` and target `projects/alteran/`.
+In the current repository layout, GitHub Actions workflow files live under `.github/workflows/` at the Alteran repository root and target `.`.
 
 ## Related Source
 
