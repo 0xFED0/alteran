@@ -37,6 +37,7 @@ import {
   createAppScaffold,
   createStandaloneAppScaffold,
   createToolScaffold,
+  ensureManagedAppScripts,
 } from "./scaffold.ts";
 import {
   readActivateBatTemplate,
@@ -202,6 +203,8 @@ function getManagedProjectGitignoreBlock(): string {
     "activate",
     "activate.bat",
     ".runtime/",
+    "apps/*/app",
+    "apps/*/app.bat",
     "apps/*/.runtime/",
     "dist/",
     GITIGNORE_END,
@@ -801,6 +804,16 @@ export async function ensureLocalDeno(
   const normalizedDesiredVersion = desiredVersion?.trim();
 
   if (await exists(paths.denoPath)) {
+    const currentExecutable = resolve(Deno.execPath());
+    const managedExecutable = resolve(paths.denoPath);
+    if (
+      currentExecutable === managedExecutable &&
+      (!normalizedDesiredVersion ||
+        versionSatisfiesRequirement(Deno.version.deno, normalizedDesiredVersion))
+    ) {
+      return paths.denoPath;
+    }
+
     const installedVersion = await readInstalledDenoVersion(paths.denoPath);
     if (
       !normalizedDesiredVersion ||
@@ -923,6 +936,7 @@ export async function refreshProject(
   for (const appName of Object.keys(config.apps).sort()) {
     await ensureAppConfig(projectDir, appName);
     await syncAppDenoConfig(projectDir, appName);
+    await ensureManagedAppScripts(projectDir, appName);
   }
   await ensureActivationFiles(projectDir);
 

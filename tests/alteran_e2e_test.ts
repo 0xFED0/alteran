@@ -37,6 +37,68 @@ function hostDenoPath(): string {
   return `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`;
 }
 
+async function createLocalDenoReleaseDir(): Promise<string> {
+  const tempDir = await Deno.makeTempDir({ prefix: "alteran-deno-source-" });
+  const platform = detectPlatform();
+  const releaseRoot = join(tempDir, "release");
+  const version = Deno.version.deno;
+  const normalizedVersion = version.startsWith("v") ? version : `v${version}`;
+  const versionDir = join(releaseRoot, normalizedVersion);
+  const archiveName = `deno-${platform.archiveTarget}.zip`;
+  const stagingDir = join(tempDir, "staging");
+
+  await Deno.mkdir(versionDir, { recursive: true });
+  await Deno.mkdir(stagingDir, { recursive: true });
+  await Deno.copyFile(Deno.execPath(), join(stagingDir, platform.denoBinaryName));
+  if (!IS_WINDOWS) {
+    await Deno.chmod(join(stagingDir, platform.denoBinaryName), 0o755);
+  }
+  await Deno.writeTextFile(
+    join(releaseRoot, "release-latest.txt"),
+    `${normalizedVersion}\n`,
+  );
+
+  const zipOutput = await new Deno.Command("zip", {
+    args: ["-jq", join(versionDir, archiveName), join(stagingDir, platform.denoBinaryName)],
+    stdout: "null",
+    stderr: "piped",
+  }).output();
+  if (!zipOutput.success) {
+    throw new Error(
+      `Failed to create local Deno archive source: ${decode(zipOutput.stderr)}`,
+    );
+  }
+
+  return releaseRoot;
+}
+
+async function seedManagedDeno(projectDir: string): Promise<void> {
+  const platform = detectPlatform();
+  const denoDir = join(projectDir, ".runtime", "deno", platform.id);
+  const denoPath = join(denoDir, "bin", platform.denoBinaryName);
+  const hostCacheDir = join(
+    ALTERAN_REPO_DIR,
+    ".runtime",
+    "deno",
+    platform.id,
+    "cache",
+  );
+  const targetCacheDir = join(denoDir, "cache");
+  await Deno.mkdir(join(denoDir, "bin"), { recursive: true });
+  await Deno.mkdir(targetCacheDir, { recursive: true });
+  await Deno.copyFile(Deno.execPath(), denoPath);
+  try {
+    await copyDirectory(hostCacheDir, targetCacheDir);
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+  if (!IS_WINDOWS) {
+    await Deno.chmod(denoPath, 0o755);
+  }
+}
+
 async function runZsh(
   script: string,
   options: {
@@ -54,6 +116,20 @@ async function runZsh(
     stdout: "piped",
     stderr: "piped",
   }).output();
+}
+
+async function tryStartFixtureServer(rootDir: string): Promise<{
+  baseUrl: string;
+  close: () => Promise<void>;
+} | null> {
+  try {
+    return await startStaticFileServer(rootDir);
+  } catch (error) {
+    if (error instanceof Deno.errors.PermissionDenied) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function makeRepoCopy(prefix: string): Promise<string> {
@@ -203,6 +279,258 @@ Deno.test("addApp and addTool update registries and env aliases", async () => {
   if (!shellenv.includes("alias atest='alteran test'")) {
     throw new Error("Expected generated test alias in shellenv");
   }
+});
+
+Deno.test("managed app setup and launcher scripts are generated and refresh can restore them", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-app-scripts-" });
+  await seedManagedDeno(projectDir);
+  await initProject(projectDir);
+  await addApp(projectDir, "hello");
+
+  const managedGitignore = await Deno.readTextFile(join(projectDir, ".gitignore"));
+  for (const expected of [
+    "apps/*/app",
+    "apps/*/app.bat",
+  ]) {
+    if (!managedGitignore.includes(expected)) {
+      throw new Error(`Expected managed .gitignore to include ${expected}`);
+    }
+  }
+  for (const unexpected of ["apps/*/setup", "apps/*/setup.bat"]) {
+    if (managedGitignore.includes(unexpected)) {
+      throw new Error(`Expected managed .gitignore not to ignore ${unexpected}`);
+    }
+  }
+
+  for (const path of [
+    join(projectDir, "apps", "hello", "setup"),
+    join(projectDir, "apps", "hello", "setup.bat"),
+    join(projectDir, "apps", "hello", "app"),
+    join(projectDir, "apps", "hello", "app.bat"),
+  ]) {
+    await removeIfExists(path);
+  }
+
+  await refreshProject(projectDir);
+
+  for (const path of [
+    join(projectDir, "apps", "hello", "setup"),
+    join(projectDir, "apps", "hello", "setup.bat"),
+    join(projectDir, "apps", "hello", "app"),
+    join(projectDir, "apps", "hello", "app.bat"),
+  ]) {
+    await Deno.stat(path);
+  }
+});
+
+Deno.test({
+  name: "managed app launcher runs from another working directory",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const projectDir = await Deno.makeTempDir({ prefix: "alteran-managed-app-" });
+    await seedManagedDeno(projectDir);
+    await initProject(projectDir);
+    await addApp(projectDir, "hello");
+
+    const output = await runZsh(
+      `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} one two`,
+      {
+        env: {
+          PATH: hostDenoPath(),
+        },
+      },
+    );
+
+    if (!output.success) {
+      throw new Error(
+        `Expected managed app launcher to succeed. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+      );
+    }
+
+    const stdout = decode(output.stdout);
+    if (!stdout.includes("App hello started")) {
+      throw new Error(`Expected managed app launcher stdout, got: ${stdout}`);
+    }
+    if (!stdout.includes("one") || !stdout.includes("two")) {
+      throw new Error(`Expected managed app launcher args to propagate, got: ${stdout}`);
+    }
+  },
+});
+
+Deno.test({
+  name: "managed app launcher can bootstrap the managed project when runtime is missing",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-managed-app-bootstrap-",
+    });
+    const localDenoReleaseDir = await createLocalDenoReleaseDir();
+    const localDenoServer = await tryStartFixtureServer(localDenoReleaseDir);
+    if (localDenoServer === null) {
+      await removeIfExists(dirname(localDenoReleaseDir));
+      return;
+    }
+    await seedManagedDeno(projectDir);
+    await initProject(projectDir);
+    await addApp(projectDir, "hello");
+    await removeIfExists(join(projectDir, ".runtime"));
+
+    try {
+      const output = await runZsh(
+        `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} alpha beta`,
+        {
+          env: {
+            PATH: hostDenoPath(),
+            DENO_SOURCES: localDenoServer.baseUrl,
+            ALTERAN_RUN_SOURCES: ALTERAN_ENTRY_PATH,
+            ALTERAN_SRC: join(ALTERAN_REPO_DIR, "src"),
+          },
+        },
+      );
+
+      if (!output.success) {
+        throw new Error(
+          `Expected managed app launcher to bootstrap missing runtime. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+        );
+      }
+
+      await Deno.stat(join(projectDir, ".runtime", "alteran", "mod.ts"));
+      const stdout = decode(output.stdout);
+      if (!stdout.includes("App hello started")) {
+        throw new Error(`Expected managed app bootstrap launcher stdout, got: ${stdout}`);
+      }
+    } finally {
+      await localDenoServer.close();
+      await removeIfExists(dirname(localDenoReleaseDir));
+    }
+  },
+});
+
+Deno.test({
+  name: "managed app launcher rejects a mismatched app.json id",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-managed-app-id-mismatch-",
+    });
+    await seedManagedDeno(projectDir);
+    await initProject(projectDir);
+    await addApp(projectDir, "hello");
+
+    await Deno.writeTextFile(
+      join(projectDir, "apps", "hello", "app.json"),
+      JSON.stringify(
+        {
+          name: "hello",
+          id: "not-hello",
+          version: "0.1.0",
+          title: "hello",
+          standalone: false,
+          view: { enabled: false },
+          entry: {
+            core: "./core/mod.ts",
+            view: "./view",
+            app: "app",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+
+    const output = await runZsh(
+      `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))}`,
+      {
+        env: {
+          PATH: hostDenoPath(),
+        },
+      },
+    );
+
+    if (output.success) {
+      throw new Error(
+        "Expected managed app launcher to fail when app.json id does not match the generated launcher identity",
+      );
+    }
+
+    const stderr = decode(output.stderr);
+    if (!stderr.includes("app.json id 'hello'")) {
+      throw new Error(
+        `Expected clear app id mismatch error, got: ${stderr}`,
+      );
+    }
+  },
+});
+
+Deno.test({
+  name: "standalone app launcher auto-runs local setup when runtime is missing",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const appDir = await Deno.makeTempDir({ prefix: "alteran-standalone-app-" });
+    const localDenoReleaseDir = await createLocalDenoReleaseDir();
+    const localDenoServer = await tryStartFixtureServer(localDenoReleaseDir);
+    if (localDenoServer === null) {
+      await removeIfExists(dirname(localDenoReleaseDir));
+      return;
+    }
+    const exitCode = await runCli(["app", "setup", appDir]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected standalone app scaffold to be created, got exit code ${exitCode}`);
+    }
+
+    const standaloneGitignore = await Deno.readTextFile(join(appDir, ".gitignore"));
+    for (const expected of [".runtime/", "app", "app.bat"]) {
+      if (!standaloneGitignore.includes(expected)) {
+        throw new Error(`Expected standalone app .gitignore to include ${expected}`);
+      }
+    }
+    for (const unexpected of ["setup", "setup.bat"]) {
+      if (standaloneGitignore.includes(unexpected)) {
+        throw new Error(`Expected standalone app .gitignore not to ignore ${unexpected}`);
+      }
+    }
+
+    await removeIfExists(join(appDir, ".runtime"));
+
+    try {
+      const output = await runZsh(
+        `cd /tmp && ${JSON.stringify(join(appDir, "app"))} red blue`,
+        {
+          env: {
+            PATH: hostDenoPath(),
+            DENO_SOURCES: localDenoServer.baseUrl,
+          },
+        },
+      );
+
+      if (!output.success) {
+        throw new Error(
+          `Expected standalone app launcher to auto-setup and succeed. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+        );
+      }
+
+      const platform = detectPlatform();
+      const localDenoPath = join(
+        appDir,
+        ".runtime",
+        "deno",
+        platform.id,
+        "bin",
+        platform.denoBinaryName,
+      );
+      await Deno.stat(localDenoPath);
+      const stdout = decode(output.stdout);
+      if (!stdout.includes("Standalone app")) {
+        throw new Error(`Expected standalone app launcher stdout, got: ${stdout}`);
+      }
+      if (!stdout.includes("red") || !stdout.includes("blue")) {
+        throw new Error(`Expected standalone app launcher args to propagate, got: ${stdout}`);
+      }
+    } finally {
+      await localDenoServer.close();
+      await removeIfExists(dirname(localDenoReleaseDir));
+    }
+  },
 });
 
 Deno.test({
