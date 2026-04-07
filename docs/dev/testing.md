@@ -45,6 +45,21 @@ Expected developer tasks include:
 
 When testing high-leverage product flows, prefer exercising them through Alteran entrypoints rather than only through plain `deno test`. This helps catch project-context, logging, and managed-execution regressions that plain Deno runs may miss.
 
+## CI Expectations
+
+Repository automation should cover the main supported test surfaces rather than only a single smoke suite.
+
+At minimum, CI should include:
+
+- `deno check` for Alteran source, tools, and test files
+- unit tests
+- repository e2e tests
+- docs/examples tests
+- docker e2e tests on Linux
+- Windows e2e tests on Windows
+
+In the current repository layout, GitHub Actions workflow files live at the repository root under `.github/workflows/` and target `projects/alteran/`.
+
 ## Related Source
 
 - [Test spec](../spec/002-alteran_tests_spec.md)

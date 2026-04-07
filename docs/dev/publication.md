@@ -75,12 +75,17 @@ The publication-local `deno.json` exists because `deno publish` requires the pre
 
 The repository may also publish through a tag-triggered GitHub Actions workflow.
 
+In the current monorepo-style layout, those workflow files live at the repository root under `.github/workflows/` and operate on `projects/alteran/` as the product directory.
+
 The intended flow is:
 
 - create a version tag such as `v0.1.0`
+- run the shared repository test workflow first
 - verify the tag matches `ALTERAN_VERSION`
 - run `publish_jsr --version current`
 - authenticate with repository secret `JSR_TOKEN`
+- prepare a release zip from the same staged publication payload
+- attach that zip to the GitHub release created from the version tag
 
 Publication tooling should be treated as product-critical. If the public bootstrap story changes, publication outputs, tests, and docs should change together.
 

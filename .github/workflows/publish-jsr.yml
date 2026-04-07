@@ -6,11 +6,15 @@ on:
       - "v*"
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # The OIDC ID token is used for authentication with JSR.
+      id-token: write
 
     steps:
       - name: Checkout
@@ -22,7 +26,7 @@ jobs:
           deno-version: v2.x
 
       - name: Verify tag matches Alteran version
-        working-directory: projects/alteran
+        working-directory: .
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           SOURCE_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
@@ -32,7 +36,7 @@ jobs:
           fi
 
       - name: Publish to JSR
-        working-directory: projects/alteran
+        working-directory: .
         env:
           JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
-        run: deno run -A ./alteran.ts tool run publish_jsr --version current
+        run: deno run -A ./alteran.ts tool run publish_jsr

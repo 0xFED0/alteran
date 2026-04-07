@@ -1,0 +1,67 @@
+name: test
+
+on:
+  workflow_call:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "./**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    paths:
+      - "./**"
+      - ".github/workflows/test.yml"
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check source and tests
+        working-directory: .
+        run: |
+          deno check alteran.ts src/alteran/**/*.ts tests/*.ts tests/examples/*.ts tests/docs/*.ts tools/**/*.ts
+
+      - name: Run unit tests
+        working-directory: .
+        run: deno run -A ./alteran.ts test -A ./tests/alteran_unit_test.ts
+
+      - name: Run repository e2e tests
+        working-directory: .
+        run: deno run -A ./alteran.ts test -A ./tests/alteran_e2e_test.ts
+
+      - name: Run docs and examples tests
+        working-directory: .
+        run: deno run -A ./alteran.ts test -A ./tests/examples/*.ts ./tests/docs/*.ts
+
+      - name: Run docker e2e tests
+        working-directory: .
+        run: deno run -A ./alteran.ts test -A ./tests/alteran_docker_e2e_test.ts
+
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run windows e2e tests
+        working-directory: .
+        shell: pwsh
+        run: deno run -A ./alteran.ts test -A ./tests/alteran_windows_e2e_test.ts

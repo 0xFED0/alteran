@@ -1,0 +1,50 @@
+name: publish-release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Resolve Alteran version
+        working-directory: .
+        run: |
+          echo "ALTERAN_VERSION=$(deno eval 'import { ALTERAN_VERSION } from \"./src/alteran/version.ts\"; console.log(ALTERAN_VERSION)')" >> "$GITHUB_ENV"
+
+      - name: Verify tag matches Alteran version
+        working-directory: .
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$TAG_VERSION" != "$ALTERAN_VERSION" ]; then
+            echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $ALTERAN_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Prepare release artifacts
+        working-directory: .
+        run: |
+          deno run -A ./alteran.ts tool run prepare_jsr
+          deno run -A ./alteran.ts tool run prepare_zip
+
+      - name: Publish GitHub release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
