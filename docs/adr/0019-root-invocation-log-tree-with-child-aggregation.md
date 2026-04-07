@@ -6,26 +6,18 @@ Accepted
 
 ## Context
 
-Alteran needs process logging that preserves parent/child relationships without
-exploding into a forest of unrelated top-level per-process log directories.
+Alteran needs process logging that preserves parent/child relationships without exploding into a forest of unrelated top-level per-process log directories.
 
-The logging model should make it easy to inspect one root invocation as a
-coherent execution tree.
+The logging model should make it easy to inspect one root invocation as a coherent execution tree.
 
 ## Decision
 
-Alteran logs are organized by root invocation category and root invocation
-directory. Child processes do not create their own top-level run directories.
-Instead:
+Alteran logs are organized by root invocation category and root invocation directory. Child processes do not create their own top-level run directories. Instead:
 
-- child stdout/stderr are captured into the root invocation’s `stdout.log` and
-  `stderr.log`
-- child lifecycle and trace data are recorded in the root invocation’s
-  `events.jsonl`
+- child stdout/stderr are captured into the root invocation’s `stdout.log` and `stderr.log`
+- child lifecycle and trace data are recorded in the root invocation’s `events.jsonl`
 
-The canonical root invocation directory always remains under the current
-project's `.runtime/logs/...`, even if Alteran later mirrors/copies logs to an
-external custom location.
+The canonical root invocation directory always remains under the current project's `.runtime/logs/...`, even if Alteran later mirrors/copies logs to an external custom location.
 
 ## Consequences
 

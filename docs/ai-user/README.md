@@ -1,10 +1,8 @@
 # Portable AI User Bundle
 
-This directory is a self-contained AI helper bundle for ordinary Alteran
-projects.
+This directory is a self-contained AI helper bundle for ordinary Alteran projects.
 
-It is designed to be copied into another Alteran-managed project and extended
-there with project-specific instructions.
+It is designed to be copied into another Alteran-managed project and extended there with project-specific instructions.
 
 ## Start Here
 
@@ -21,8 +19,7 @@ Then use:
 ## What This Bundle Covers
 
 - bootstrap and entry with `setup` and `activate`
-- Alteran project shape with `apps/`, `tools/`, `libs/`, `tests/`, and
-  `.runtime/`
+- Alteran project shape with `apps/`, `tools/`, `libs/`, `tests/`, and `.runtime/`
 - working with apps and tools
 - managed execution vs plain Deno
 - logging and project-local runtime context

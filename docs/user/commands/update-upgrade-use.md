@@ -12,8 +12,7 @@ alteran use --deno=<version>
 
 ## `update`
 
-`alteran update` is dependency-update flow for the current project. Think
-normal Deno dependency maintenance, not Alteran runtime policy.
+`alteran update` is dependency-update flow for the current project. Think normal Deno dependency maintenance, not Alteran runtime policy.
 
 ## `upgrade`
 
@@ -26,8 +25,7 @@ This command is about installed tooling, not desired project policy.
 
 ## `use`
 
-`alteran use --deno=<version>` changes project configuration for the desired
-managed Deno version, then refreshes the project.
+`alteran use --deno=<version>` changes project configuration for the desired managed Deno version, then refreshes the project.
 
 ## Practical Difference
 

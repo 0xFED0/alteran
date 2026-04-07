@@ -48,8 +48,7 @@
 - `ax`
 - `adeno`
 
-Generated shell output can also include per-entry aliases from registry
-`shell_aliases` and arbitrary top-level `shell_aliases`.
+Generated shell output can also include per-entry aliases from registry `shell_aliases` and arbitrary top-level `shell_aliases`.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

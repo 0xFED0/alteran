@@ -1,7 +1,6 @@
 # Managed Execution
 
-Managed execution is how Alteran adds project context and logging without
-pretending that bare Deno changed semantics.
+Managed execution is how Alteran adds project context and logging without pretending that bare Deno changed semantics.
 
 ## Preinit
 
@@ -40,12 +39,9 @@ Managed execution sets project-scoped variables such as:
 - `ALTERAN_ROOT_RUN_ID`
 - `ALTERAN_ROOT_LOG_DIR`
 
-That context is valid for nested same-project runs, but not as a shell-global
-identity that should leak across projects.
+That context is valid for nested same-project runs, but not as a shell-global identity that should leak across projects.
 
-If a command intentionally targets another Alteran project, it should do so
-through an explicit boundary such as `alteran external ...`, not by
-accidentally inheriting the current project's environment.
+If a command intentionally targets another Alteran project, it should do so through an explicit boundary such as `alteran external ...`, not by accidentally inheriting the current project's environment.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

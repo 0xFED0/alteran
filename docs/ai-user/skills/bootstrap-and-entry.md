@@ -11,10 +11,8 @@
 1. Use `setup` as the bootstrap and repair command.
 2. Enter the environment through `activate`.
 3. On Unix, use `source ./activate`.
-4. Treat `activate` as a local entry helper, not as the place for repair or
-   download logic.
-5. If entry or runtime state looks stale after moving the project, rerun
-   `setup`.
+4. Treat `activate` as a local entry helper, not as the place for repair or download logic.
+5. If entry or runtime state looks stale after moving the project, rerun `setup`.
 
 ## Done Checklist
 

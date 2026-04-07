@@ -6,12 +6,9 @@ The examples are intentionally kept as source-first trees:
 
 - committed files show the authored project shape;
 - public `setup` / `setup.bat` are tracked bootstrap entrypoints;
-- generated `activate` / `activate.bat` and `.runtime/` are materialized
-  locally.
+- generated `activate` / `activate.bat` and `.runtime/` are materialized locally.
 
-Managed project examples in this repository also include a small committed
-`.env` file that points `ALTERAN_SRC` at the repository `src/` tree. That keeps
-`./setup` local and inspectable when you run an example from this checkout.
+Managed project examples in this repository also include a small committed `.env` file that points `ALTERAN_SRC` at the repository `src/` tree. That keeps `./setup` local and inspectable when you run an example from this checkout.
 
 ## Core examples
 
@@ -37,8 +34,7 @@ From inside a managed example directory:
 source ./activate
 ```
 
-For examples that evolve after setup, continue with the commands shown in the
-example README.
+For examples that evolve after setup, continue with the commands shown in the example README.
 
 Standalone app examples document their own app-local `setup` / launcher flow.
 

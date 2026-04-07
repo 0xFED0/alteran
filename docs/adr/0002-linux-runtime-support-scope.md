@@ -6,27 +6,19 @@ Accepted
 
 ## Context
 
-Alteran activates projects by materializing and then preferring a project-local
-managed Deno runtime under `.runtime/deno/{os}-{arch}/`.
+Alteran activates projects by materializing and then preferring a project-local managed Deno runtime under `.runtime/deno/{os}-{arch}/`.
 
-For Linux, current Deno release assets published by the Deno project are GNU
-targets such as `deno-x86_64-unknown-linux-gnu.zip` and
-`deno-aarch64-unknown-linux-gnu.zip`.
+For Linux, current Deno release assets published by the Deno project are GNU targets such as `deno-x86_64-unknown-linux-gnu.zip` and `deno-aarch64-unknown-linux-gnu.zip`.
 
-Official upstream references indicate that Alpine support is not provided by a
-plain musl-native Deno release artifact:
+Official upstream references indicate that Alpine support is not provided by a plain musl-native Deno release artifact:
 
 - Deno releases expose GNU Linux archives, not musl archives.
 - `denoland/deno:bin` is built from `...-unknown-linux-gnu.zip`.
-- `denoland/deno:alpine` adds extra glibc loader and library shims to make the
-  GNU binary run on Alpine.
+- `denoland/deno:alpine` adds extra glibc loader and library shims to make the GNU binary run on Alpine.
 
-That means a project-local Deno downloaded by Alteran for Linux cannot be
-assumed to work on Alpine/musl environments.
+That means a project-local Deno downloaded by Alteran for Linux cannot be assumed to work on Alpine/musl environments.
 
-Even if the base environment already contains a working global `deno` command,
-Alteran activation still switches the shell to the project-local managed Deno
-runtime, so Alpine remains unsupported end-to-end.
+Even if the base environment already contains a working global `deno` command, Alteran activation still switches the shell to the project-local managed Deno runtime, so Alpine remains unsupported end-to-end.
 
 ## Decision
 
@@ -46,14 +38,12 @@ Positive:
 
 - supported Linux behavior is honest and deterministic
 - test matrix matches real platform guarantees
-- avoids shipping a misleading "works on Alpine" claim based on partial bootstrap
-  success
+- avoids shipping a misleading "works on Alpine" claim based on partial bootstrap success
 
 Tradeoffs:
 
 - Alpine containers and hosts are not supported at the moment
-- users who need Alpine must provide their own compatibility strategy outside
-  Alteran, or use a GNU-based environment instead
+- users who need Alpine must provide their own compatibility strategy outside Alteran, or use a GNU-based environment instead
 
 ## Revisit Conditions
 

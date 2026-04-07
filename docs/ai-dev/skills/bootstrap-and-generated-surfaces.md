@@ -2,8 +2,7 @@
 
 ## Use When
 
-- changing `setup`, `setup.bat`, `activate`, `activate.bat`, or app launcher
-  surfaces
+- changing `setup`, `setup.bat`, `activate`, `activate.bat`, or app launcher surfaces
 - touching bootstrap templates or generated script behavior
 - fixing drift between generator logic and committed bootstrap files
 
@@ -19,15 +18,11 @@
 
 ## Steps
 
-1. Identify whether the change belongs to public bootstrap, generated local
-   activation, or launcher behavior.
+1. Identify whether the change belongs to public bootstrap, generated local activation, or launcher behavior.
 2. Update the generator or template source first.
-3. Keep `setup` responsible for bootstrap, repair, materialization, and source
-   selection.
-4. Keep generated `activate` narrow, absolute-path-based, and sourced-only on
-   Unix.
-5. Regenerate or resync any committed bootstrap outputs affected by the
-   generator change.
+3. Keep `setup` responsible for bootstrap, repair, materialization, and source selection.
+4. Keep generated `activate` narrow, absolute-path-based, and sourced-only on Unix.
+5. Regenerate or resync any committed bootstrap outputs affected by the generator change.
 6. Recheck docs, examples, and tests that describe the touched surface.
 
 ## Done Checklist

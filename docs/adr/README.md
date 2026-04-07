@@ -2,8 +2,7 @@
 
 This directory contains Architecture Decision Records for Alteran.
 
-ADR files capture decisions that are not obvious from the final specification
-alone and that benefit from explicit rationale, tradeoffs, and consequences.
+ADR files capture decisions that are not obvious from the final specification alone and that benefit from explicit rationale, tradeoffs, and consequences.
 
 ## Index
 
@@ -37,5 +36,4 @@ alone and that benefit from explicit rationale, tradeoffs, and consequences.
 
 ## Notes
 
-These ADRs intentionally focus on decisions that are easy to forget, easy to
-misinterpret, or likely to trigger future “why is it like this?” questions.
+These ADRs intentionally focus on decisions that are easy to forget, easy to misinterpret, or likely to trigger future “why is it like this?” questions.

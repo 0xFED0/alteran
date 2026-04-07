@@ -9,9 +9,7 @@ This example runs the same probe code in two modes:
 
 ## Why it matters
 
-Alteran is intentionally not just a shortcut for Deno. Managed execution adds
-preinit context, runtime environment variables, and log capture while still
-running normal Deno code.
+Alteran is intentionally not just a shortcut for Deno. Managed execution adds preinit context, runtime environment variables, and log capture while still running normal Deno code.
 
 ## Project shape / tree overview
 

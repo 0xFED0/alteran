@@ -2,14 +2,11 @@
 
 ## What this example shows
 
-This example runs a tool that prints to both stdout and stderr and then starts a
-child Alteran-managed run.
+This example runs a tool that prints to both stdout and stderr and then starts a child Alteran-managed run.
 
 ## Why it matters
 
-Console text disappears quickly. Alteran keeps an inspectable runtime history
-under `.runtime/logs/`, including per-run metadata and parent-child execution
-relationships.
+Console text disappears quickly. Alteran keeps an inspectable runtime history under `.runtime/logs/`, including per-run metadata and parent-child execution relationships.
 
 ## Project shape / tree overview
 

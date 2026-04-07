@@ -12,8 +12,7 @@
 2. Keep tools under `tools/`.
 3. Keep shared reusable libraries under root `libs/`.
 4. Use Alteran command surfaces for app and tool work where appropriate.
-5. Preserve the single `@libs/...` import model when describing or editing
-   library usage.
+5. Preserve the single `@libs/...` import model when describing or editing library usage.
 
 ## Done Checklist
 

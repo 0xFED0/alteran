@@ -6,9 +6,7 @@ Accepted
 
 ## Context
 
-Alteran wants process-level initialization for managed execution, including
-runtime context setup and logging bootstrap, but it should not silently redefine
-what plain `deno run` or `deno task` means.
+Alteran wants process-level initialization for managed execution, including runtime context setup and logging bootstrap, but it should not silently redefine what plain `deno run` or `deno task` means.
 
 ## Decision
 
@@ -20,8 +18,7 @@ Managed execution paths use this preload mechanism. Conceptually:
 
 - `alteran run ...` and `alteran task ...` run with Alteran preinit
 - plain `deno run` and plain `deno task` remain plain Deno
-- `alteran deno ...` provides Deno execution inside the Alteran environment
-  without pretending that bare Deno changed semantics
+- `alteran deno ...` provides Deno execution inside the Alteran environment without pretending that bare Deno changed semantics
 
 ## Consequences
 

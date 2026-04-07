@@ -2,8 +2,7 @@
 
 ## Use When
 
-- changing managed execution, preinit, `alteran run`, `alteran task`, or
-  `alteran test`
+- changing managed execution, preinit, `alteran run`, `alteran task`, or `alteran test`
 - touching `ALTERAN_*` context propagation
 - changing logging context, root log rules, or cross-project execution
 
@@ -20,16 +19,12 @@
 
 ## Steps
 
-1. Confirm whether the change affects same-project inheritance, cross-project
-   boundaries, or plain-vs-managed execution semantics.
-2. Preserve the rule that plain `deno run` and `deno task` stay plain unless
-   Alteran is the explicit route.
+1. Confirm whether the change affects same-project inheritance, cross-project boundaries, or plain-vs-managed execution semantics.
+2. Preserve the rule that plain `deno run` and `deno task` stay plain unless Alteran is the explicit route.
 3. Treat project-switching entrypoints as hard context boundaries.
 4. Keep canonical logs under `.runtime/logs/` even when custom mirrors exist.
-5. Keep heavy logging configuration in project config, not in transported env
-   payloads.
-6. Revalidate any touched tests or examples that depend on managed execution or
-   logging context.
+5. Keep heavy logging configuration in project config, not in transported env payloads.
+6. Revalidate any touched tests or examples that depend on managed execution or logging context.
 
 ## Done Checklist
 

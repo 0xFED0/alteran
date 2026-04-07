@@ -2,17 +2,13 @@
 
 ## What this example shows
 
-This example shows one Alteran project containing two apps and shared root
-libraries.
+This example shows one Alteran project containing two apps and shared root libraries.
 
-It also demonstrates app-local library shadowing: both apps import the same
-`@libs/greeting` alias, but `hello-cli` overrides the root implementation.
+It also demonstrates app-local library shadowing: both apps import the same `@libs/greeting` alias, but `hello-cli` overrides the root implementation.
 
 ## Why it matters
 
-Alteran is designed for structured multi-app work, not only for a single script.
-Root `libs/` provide shared code, while app-local `libs/` allow intentional
-overrides without inventing a separate monorepo pattern.
+Alteran is designed for structured multi-app work, not only for a single script. Root `libs/` provide shared code, while app-local `libs/` allow intentional overrides without inventing a separate monorepo pattern.
 
 ## Project shape / tree overview
 
@@ -56,12 +52,10 @@ alteran app run ops-report
 ## What to observe
 
 - both apps live under one workspace and are runnable independently;
-- the committed `.env` lets `./setup` materialize Alteran from repository source
-  when run inside this checkout;
+- the committed `.env` lets `./setup` materialize Alteran from repository source when run inside this checkout;
 - `hello-cli` prints a greeting from its app-local `libs/greeting`;
 - `ops-report` prints the shared root greeting from `libs/greeting`;
-- root `deno.json` contains workspace entries and app tasks synchronized by
-  setup/refresh.
+- root `deno.json` contains workspace entries and app tasks synchronized by setup/refresh.
 
 ## Key Alteran concepts demonstrated
 

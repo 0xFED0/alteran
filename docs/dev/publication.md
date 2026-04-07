@@ -1,7 +1,6 @@
 # Publication
 
-Alteran publication is staged and versioned rather than published directly from
-the repository root.
+Alteran publication is staged and versioned rather than published directly from the repository root.
 
 ## Output Directories
 
@@ -42,9 +41,7 @@ They stage:
 
 Generated local activation artifacts are not part of release payloads.
 
-Publication tooling should be treated as product-critical. If the public
-bootstrap story changes, publication outputs, tests, and docs should change
-together.
+Publication tooling should be treated as product-critical. If the public bootstrap story changes, publication outputs, tests, and docs should change together.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

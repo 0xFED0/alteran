@@ -24,19 +24,15 @@ However, the codebase still retained pieces of the old naming model:
 
 This created three kinds of problems:
 
-- users could still discover or rely on a legacy command surface that no longer
-  matched the intended product language
+- users could still discover or rely on a legacy command surface that no longer matched the intended product language
 - code and docs could drift because both names appeared to remain valid
-- contributors and AI systems could accidentally resurrect the old model while
-  trying to preserve compatibility
+- contributors and AI systems could accidentally resurrect the old model while trying to preserve compatibility
 
-At this stage, `init` is not a useful compatibility layer. It is only a source
-of ambiguity.
+At this stage, `init` is not a useful compatibility layer. It is only a source of ambiguity.
 
 ## Decision
 
-Alteran removes `init` completely from its active command surface and internal
-bootstrap vocabulary.
+Alteran removes `init` completely from its active command surface and internal bootstrap vocabulary.
 
 ### Public command model
 
@@ -57,9 +53,7 @@ They should fail explicitly rather than being accepted silently.
 
 ### Internal naming
 
-Internal function names, tests, and generated output references should also use
-`setup` terminology rather than `init` terminology when they refer to the
-current bootstrap model.
+Internal function names, tests, and generated output references should also use `setup` terminology rather than `init` terminology when they refer to the current bootstrap model.
 
 This includes names such as:
 
@@ -70,11 +64,9 @@ rather than legacy `init*` forms.
 
 ### Documentation discipline
 
-User docs, developer docs, specs, tests, and generated help must describe only
-the `setup` command surface for current behavior.
+User docs, developer docs, specs, tests, and generated help must describe only the `setup` command surface for current behavior.
 
-Historical ADRs may still mention earlier design pressure, but current product
-contracts should not present `init` as a live option.
+Historical ADRs may still mention earlier design pressure, but current product contracts should not present `init` as a live option.
 
 ## Consequences
 
@@ -87,19 +79,15 @@ contracts should not present `init` as a live option.
 
 ### Tradeoffs
 
-- old muscle memory or stale notes using `init` now fail instead of continuing
-  through compatibility aliases
-- some historical ADR wording needs explicit interpretation as history rather
-  than current behavior
+- old muscle memory or stale notes using `init` now fail instead of continuing through compatibility aliases
+- some historical ADR wording needs explicit interpretation as history rather than current behavior
 
 ## Rejected alternatives
 
 ### Keep `init` as a permanent alias for convenience
 
-Rejected because it keeps the product language split and encourages further
-documentation and test drift.
+Rejected because it keeps the product language split and encourages further documentation and test drift.
 
 ### Remove `init` only from docs but keep compatibility in code
 
-Rejected because hidden compatibility tends to reappear in examples, tests, and
-AI-generated changes.
+Rejected because hidden compatibility tends to reappear in examples, tests, and AI-generated changes.

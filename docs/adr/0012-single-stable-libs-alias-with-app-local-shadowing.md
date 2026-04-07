@@ -6,9 +6,7 @@ Accepted
 
 ## Context
 
-Alteran supports both project-wide shared libraries and app-local libraries.
-Using separate alias families would expose storage placement in imports and
-create churn when code moves between local and shared scope.
+Alteran supports both project-wide shared libraries and app-local libraries. Using separate alias families would expose storage placement in imports and create churn when code moves between local and shared scope.
 
 ## Decision
 
@@ -21,16 +19,13 @@ In app context, resolution order is:
 1. `apps/<app>/libs/...`
 2. project-root `libs/...`
 
-If both locations provide the same logical library name, the app-local library
-shadows the project-root library. Core Alteran behavior does not treat this as
-an automatic error.
+If both locations provide the same logical library name, the app-local library shadows the project-root library. Core Alteran behavior does not treat this as an automatic error.
 
 ## Consequences
 
 Positive:
 
-- imports remain stable when libraries move between app-local and project-wide
-  placement
+- imports remain stable when libraries move between app-local and project-wide placement
 - exported apps can remain self-contained without import rewriting
 
 Tradeoffs:
@@ -41,5 +36,4 @@ Tradeoffs:
 
 ### Separate `@app-libs/...` and `@libs/...`
 
-Rejected because it bakes current placement into imports and creates avoidable
-churn.
+Rejected because it bakes current placement into imports and creates avoidable churn.

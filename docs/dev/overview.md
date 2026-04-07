@@ -1,7 +1,6 @@
 # Dev Docs Overview
 
-These docs are for changing Alteran itself: the repository, runtime,
-bootstrapping rules, generated files, and publication flow.
+These docs are for changing Alteran itself: the repository, runtime, bootstrapping rules, generated files, and publication flow.
 
 ## Start Here
 
@@ -29,8 +28,7 @@ bootstrapping rules, generated files, and publication flow.
 - `.runtime/` is generated local state
 - the repository mirrors a managed project where helpful, but is not identical
 - the public bootstrap surface must stay separate from generated activation
-- documentation should stay aligned with specs and ADRs, not only accidental
-  current behavior
+- documentation should stay aligned with specs and ADRs, not only accidental current behavior
 
 If you are brand new to the codebase, the most useful starting sequence is:
 

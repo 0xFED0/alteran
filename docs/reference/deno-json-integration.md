@@ -34,8 +34,7 @@ It also projects root and app-local `@libs/...` imports into app-relative form.
 
 ## Preservation Behavior
 
-Refresh tries to preserve unrelated user-defined tasks and imports that are not
-part of Alteran-owned keys.
+Refresh tries to preserve unrelated user-defined tasks and imports that are not part of Alteran-owned keys.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

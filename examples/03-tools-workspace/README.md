@@ -2,8 +2,7 @@
 
 ## What this example shows
 
-This example treats `tools/` as a maintained project surface instead of an
-unstructured scripts folder.
+This example treats `tools/` as a maintained project surface instead of an unstructured scripts folder.
 
 It contains two realistic tools:
 
@@ -12,9 +11,7 @@ It contains two realistic tools:
 
 ## Why it matters
 
-Operational helpers, diagnostics, and project automation age badly when they
-live as ad hoc shell snippets. Alteran gives them the same managed runtime and
-shared library structure as apps.
+Operational helpers, diagnostics, and project automation age badly when they live as ad hoc shell snippets. Alteran gives them the same managed runtime and shared library structure as apps.
 
 ## Project shape / tree overview
 

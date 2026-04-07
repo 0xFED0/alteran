@@ -1,7 +1,6 @@
 # ADR Index
 
-This page is the contributor-facing ADR entrypoint inside the dev docs.
-Canonical ADR record files currently live in `docs/adr/`.
+This page is the contributor-facing ADR entrypoint inside the dev docs. Canonical ADR record files currently live in `docs/adr/`.
 
 ## Start Here
 

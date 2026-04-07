@@ -2,8 +2,7 @@
 
 ## 1. Purpose
 
-**Alteran** is a lightweight project-local runtime and scaffold manager for
-Deno-based automation projects.
+**Alteran** is a lightweight project-local runtime and scaffold manager for Deno-based automation projects.
 
 Its goals are:
 
@@ -14,8 +13,7 @@ Its goals are:
 - support simple bootstrap from an empty folder
 - prepare for future optional GUI/view support without making it central yet
 
-Alteran is **not** currently a desktop framework, IPC framework, or native host
-platform.
+Alteran is **not** currently a desktop framework, IPC framework, or native host platform.
 
 At this stage, `view` is only a placeholder/future extension point.
 
@@ -26,14 +24,12 @@ At this stage, `view` is only a placeholder/future extension point.
 - **Deno is the runtime**
 - Alteran is a **project-local bootstrap + manager**
 - Runtime files live under **`.runtime/`**
-- Alteran exposes a **stable public entrypoint** while keeping its canonical
-  runtime implementation inside the local project runtime
+- Alteran exposes a **stable public entrypoint** while keeping its canonical runtime implementation inside the local project runtime
 - The system supports:
   - local dev environment
   - standalone app folders
   - future bundling/build flows
-- root project structure includes first-class **`apps/`**, **`tools/`**,
-  **`libs/`**, and **`tests/`**
+- root project structure includes first-class **`apps/`**, **`tools/`**, **`libs/`**, and **`tests/`**
 - `view` is optional and not yet fully specified
 - no special IPC protocol is required at this stage
 - bootstrap shell scripts should stay minimal
@@ -56,8 +52,7 @@ These scripts bootstrap the project-local runtime and project skeleton.
 
 ### 3.2 Enter dev environment
 
-A user can activate the local environment so `deno` and `alteran` work without
-global installation.
+A user can activate the local environment so `deno` and `alteran` work without global installation.
 
 ### 3.3 Manage apps/tools
 
@@ -90,14 +85,11 @@ Alteran has two closely related layouts:
 - the **Alteran source repository layout**
 - the **Alteran-managed project layout**
 
-They should resemble each other where practical, while preserving a clear
-distinction between repository-only concerns and normal managed project
-concerns.
+They should resemble each other where practical, while preserving a clear distinction between repository-only concerns and normal managed project concerns.
 
 ### 4.1 Alteran source repository layout
 
-The Alteran source repository should be organized similarly to a real
-Alteran-managed project, with additional repository-oriented directories.
+The Alteran source repository should be organized similarly to a real Alteran-managed project, with additional repository-oriented directories.
 
 Suggested repository layout:
 
@@ -144,13 +136,11 @@ It is a local artifact, not the primary public bootstrap surface.
 
 ##### `setup`
 
-Unix public bootstrap/setup entry for repository development and empty-project
-bootstrap.
+Unix public bootstrap/setup entry for repository development and empty-project bootstrap.
 
 ##### `setup.bat`
 
-Windows public bootstrap/setup entry for repository development and
-empty-project bootstrap.
+Windows public bootstrap/setup entry for repository development and empty-project bootstrap.
 
 ##### `alteran.ts`
 
@@ -162,11 +152,9 @@ It delegates to:
 src/alteran/mod.ts
 ```
 
-This file exists to provide a stable public entrypoint for repository use,
-bootstrap use, and publication preparation.
+This file exists to provide a stable public entrypoint for repository use, bootstrap use, and publication preparation.
 
-It may also include a thin Node.js compatibility bridge whose only purpose is to
-locate or bootstrap Deno and then re-execute Alteran under Deno.
+It may also include a thin Node.js compatibility bridge whose only purpose is to locate or bootstrap Deno and then re-execute Alteran under Deno.
 
 That bridge does not make Alteran itself a Node-native runtime.
 
@@ -199,10 +187,8 @@ Authored source-of-truth for the Alteran repository itself.
 Expected subdirectories include:
 
 - `src/alteran/` — Alteran implementation source
-- `src/tools/` — authored runtime-helper tools that may be materialized into
-  `.runtime/tools/`
-- `src/libs/` — authored runtime-helper libraries that may be materialized into
-  `.runtime/libs/`
+- `src/tools/` — authored runtime-helper tools that may be materialized into `.runtime/tools/`
+- `src/libs/` — authored runtime-helper libraries that may be materialized into `.runtime/libs/`
 
 ##### `src/alteran/templates/`
 
@@ -214,15 +200,11 @@ Alteran-owned templates and generator modules for regenerable files such as:
 - `activate.bat`
 - future generated config/bootstrap files
 
-Bootstrap templates such as `setup` / `setup.bat` and generated activation
-templates such as `activate` / `activate.bat` should be kept as
-embedded string-based source-of-truth in Alteran-owned TypeScript modules such
-as:
+Bootstrap templates such as `setup` / `setup.bat` and generated activation templates such as `activate` / `activate.bat` should be kept as embedded string-based source-of-truth in Alteran-owned TypeScript modules such as:
 
 - `src/alteran/templates/bootstrap.ts`
 
-rather than as neighboring shell-template files that must be read from disk at
-runtime.
+rather than as neighboring shell-template files that must be read from disk at runtime.
 
 ##### `apps/`
 
@@ -273,8 +255,7 @@ Each prepared JSR publication should live under a versioned subdirectory:
 dist/jsr/<version>/
 ```
 
-That versioned directory contains the exact package contents that will be
-published to JSR.
+That versioned directory contains the exact package contents that will be published to JSR.
 
 ##### `dist/zips/`
 
@@ -286,8 +267,7 @@ Each prepared archive release should live under a versioned subdirectory:
 dist/zips/<version>/
 ```
 
-This may contain zip assets prepared from the corresponding versioned
-`dist/jsr/<version>/` bundle for GitHub Releases or similar distribution flows.
+This may contain zip assets prepared from the corresponding versioned `dist/jsr/<version>/` bundle for GitHub Releases or similar distribution flows.
 
 Prepared archive/release payloads should include public bootstrap files such as:
 
@@ -303,8 +283,7 @@ They should not include generated local activation artifacts such as:
 
 Materialized/generated runtime for the repository itself.
 
-In the Alteran source repository, `.runtime/` is not the authored source of
-truth. It should be reproducible from `src/` and should be ignored by Git.
+In the Alteran source repository, `.runtime/` is not the authored source of truth. It should be reproducible from `src/` and should be ignored by Git.
 
 ### 4.2 Alteran-managed project layout
 
@@ -369,19 +348,15 @@ Generated local activation artifacts may also exist:
 
 The project root should not require a public `alteran.ts` file.
 
-That bootstrap/proxy file exists in the Alteran source repository and
-publication package, not as a required long-term public file in every managed
-project root.
+That bootstrap/proxy file exists in the Alteran source repository and publication package, not as a required long-term public file in every managed project root.
 
 ### 4.4 `.gitignore` contract
 
-Both the Alteran source repository and Alteran-managed user projects should
-include a root `.gitignore`.
+Both the Alteran source repository and Alteran-managed user projects should include a root `.gitignore`.
 
 #### Repository `.gitignore`
 
-The Alteran source repository should ignore generated and machine-local
-artifacts while keeping authored source code tracked.
+The Alteran source repository should ignore generated and machine-local artifacts while keeping authored source code tracked.
 
 At minimum it should ignore things such as:
 
@@ -397,22 +372,18 @@ It should continue tracking authored runtime source such as:
 
 #### Managed project `.gitignore`
 
-`alteran setup` should create a project-root `.gitignore` for normal
-Alteran-managed projects.
+`alteran setup` should create a project-root `.gitignore` for normal Alteran-managed projects.
 
-That project-level `.gitignore` should ignore generated/recoverable local state
-such as:
+That project-level `.gitignore` should ignore generated/recoverable local state such as:
 
 - `.runtime/`
 - nested app-local `.runtime/`
 - generated app launchers such as `apps/*/app` and `apps/*/app.bat`
 - reproducible build output such as `dist/`
 
-It should not ignore public bootstrap entrypoints such as root `setup` /
-`setup.bat`.
+It should not ignore public bootstrap entrypoints such as root `setup` / `setup.bat`.
 
-If a standalone app scaffold is created outside the main dev project, that
-standalone app should follow the same policy:
+If a standalone app scaffold is created outside the main dev project, that standalone app should follow the same policy:
 
 - public app-local `setup` / `setup.bat` stay tracked
 - generated app-local `app` / `app.bat` stay ignored
@@ -421,8 +392,7 @@ The intent is:
 
 - track user source and config
 - ignore local runtime/cache/build artifacts
-- make a newly initialized project ready for Git without requiring manual
-  cleanup
+- make a newly initialized project ready for Git without requiring manual cleanup
 
 ---
 
@@ -453,8 +423,7 @@ It is the canonical home of the Alteran system inside a project runtime.
 Expected contents include:
 
 - `mod.ts` — main internal Alteran runtime entrypoint
-- `preinit.ts` — managed-process preload entrypoint for other scripts (this is
-  prerun hook)
+- `preinit.ts` — managed-process preload entrypoint for other scripts (this is prerun hook)
 - `logging/` — logging and LogTape integration files
 - any additional Alteran implementation modules
 
@@ -475,8 +444,7 @@ tool.ts
 tool/
 ```
 
-Examples may include helper tools used by the runtime, bootstrap flow, or future
-view-related work such as `lantea.ts`.
+Examples may include helper tools used by the runtime, bootstrap flow, or future view-related work such as `lantea.ts`.
 
 ### 5.3 `.runtime/libs/`
 
@@ -510,23 +478,17 @@ Current Linux Deno materialization targets GNU-based release archives.
 
 Alpine/musl environments are currently unsupported by Alteran.
 
-This includes environments that already contain a working global `deno`, because
-Alteran activation switches to a project-local managed Deno runtime after
-bootstrap.
+This includes environments that already contain a working global `deno`, because Alteran activation switches to a project-local managed Deno runtime after bootstrap.
 
 ### 5.6 Why cache is platform-specific
 
-`.runtime/deno/{os}-{arch}/cache` avoids cross-platform cache collisions and
-keeps runtime artifacts safe and predictable.
+`.runtime/deno/{os}-{arch}/cache` avoids cross-platform cache collisions and keeps runtime artifacts safe and predictable.
 
 ### 5.7 No dedicated `.runtime/env/`
 
-The target architecture should not require persistent generated env scripts
-under `.runtime/env/`.
+The target architecture should not require persistent generated env scripts under `.runtime/env/`.
 
-Environment activation should instead be produced dynamically through
-`alteran shellenv` and consumed by generated root-level `activate` /
-`activate.bat`.
+Environment activation should instead be produced dynamically through `alteran shellenv` and consumed by generated root-level `activate` / `activate.bat`.
 
 ---
 
@@ -547,19 +509,16 @@ It is used by:
 
 `ALTERAN_HOME` is project-scoped.
 
-It must not be treated as a shell-global Alteran identity that is safe to carry
-across project boundaries.
+It must not be treated as a shell-global Alteran identity that is safe to carry across project boundaries.
 
-When a user enters another project through Alteran bootstrap/activation
-surfaces such as:
+When a user enters another project through Alteran bootstrap/activation surfaces such as:
 
 - `setup`
 - `activate`
 - `shellenv`
 - generated `app` / `app.bat`
 
-that target project becomes authoritative and any foreign inherited
-`ALTERAN_HOME` must be replaced rather than trusted.
+that target project becomes authoritative and any foreign inherited `ALTERAN_HOME` must be replaced rather than trusted.
 
 ### 6.1 Source root override
 
@@ -579,10 +538,7 @@ where the source bundle contains:
 - `tools/`
 - `libs/`
 
-Alteran, public `setup`, and generated `activate` should treat this as a
-source-of-truth location from
-which `.runtime/alteran`, `.runtime/tools`, and `.runtime/libs` may be
-materialized.
+Alteran, public `setup`, and generated `activate` should treat this as a source-of-truth location from which `.runtime/alteran`, `.runtime/tools`, and `.runtime/libs` may be materialized.
 
 The Alteran source repository may place this in a root `.env` file, for example:
 
@@ -590,18 +546,13 @@ The Alteran source repository may place this in a root `.env` file, for example:
 ALTERAN_SRC=./src
 ```
 
-Alteran should load `.env` as an actual environment file for repository/project
-commands rather than treating it as a one-off source hint.
+Alteran should load `.env` as an actual environment file for repository/project commands rather than treating it as a one-off source hint.
 
-When `ALTERAN_SRC` comes from `.env`, path-like values such as `./src`,
-`../other-src`, `~/dev/alteran/src` must be resolved relative to the directory
-containing that `.env` file, not relative to the caller's current working
-directory.
+When `ALTERAN_SRC` comes from `.env`, path-like values such as `./src`, `../other-src`, `~/dev/alteran/src` must be resolved relative to the directory containing that `.env` file, not relative to the caller's current working directory.
 
 ### 6.2 Download source lists
 
-Alteran should support configurable source lists for both Deno and Alteran
-itself.
+Alteran should support configurable source lists for both Deno and Alteran itself.
 
 Environment variables:
 
@@ -611,8 +562,7 @@ Environment variables:
 
 Backward compatibility:
 
-- **`ALTERAN_SOURCES`** may be supported as a legacy alias for
-  `ALTERAN_RUN_SOURCES`
+- **`ALTERAN_SOURCES`** may be supported as a legacy alias for `ALTERAN_RUN_SOURCES`
 
 These act as ordered fallback lists.
 
@@ -620,11 +570,8 @@ Rules:
 
 - if the variable is **unset**, Alteran may use its built-in default source list
 - if the variable is **set**, Alteran must use the provided list as-is
-- if the provided list is empty, Alteran must fail with an explicit message
-  telling the user that the list is empty and can be configured via the
-  corresponding environment variable
-- when download/bootstrap from one source fails, Alteran must continue to the
-  next source
+- if the provided list is empty, Alteran must fail with an explicit message telling the user that the list is empty and can be configured via the corresponding environment variable
+- when download/bootstrap from one source fails, Alteran must continue to the next source
 - if all configured sources fail, Alteran must emit a clear message such as:
   - all configured sources failed
   - check internet connection
@@ -641,14 +588,11 @@ Conceptually, each item is a release-root source from which Alteran can resolve:
 
 #### `ALTERAN_RUN_SOURCES`
 
-`ALTERAN_RUN_SOURCES` is intended for Alteran bootstrap/runtime sources that can
-be invoked directly through Deno.
+`ALTERAN_RUN_SOURCES` is intended for Alteran bootstrap/runtime sources that can be invoked directly through Deno.
 
-Each item should be treated as a Deno-compatible runnable specifier, for
-example:
+Each item should be treated as a Deno-compatible runnable specifier, for example:
 
-- a JSR package specifier when Alteran is published in a Deno-compatible package
-  form
+- a JSR package specifier when Alteran is published in a Deno-compatible package form
 - an HTTPS URL to a runnable Alteran entrypoint
 - another Deno-supported module specifier
 
@@ -656,8 +600,7 @@ This is intentional, but the role of `ALTERAN_RUN_SOURCES` is limited:
 
 - it is for obtaining a runnable Alteran executable
 - it is not the canonical source for materializing `.runtime/alteran`
-- it may be used to bootstrap a temporary Alteran process that then delegates
-  runtime installation/materialization to local source or archive sources
+- it may be used to bootstrap a temporary Alteran process that then delegates runtime installation/materialization to local source or archive sources
 
 Reason:
 
@@ -665,17 +608,13 @@ Reason:
 - it keeps Deno-native specifier support
 - it allows mirrors to be either package-oriented or URL-oriented
 - it avoids locking the design to raw-file-only distribution
-- it avoids treating transient runnable module sources as authoritative install
-  bundles
+- it avoids treating transient runnable module sources as authoritative install bundles
 
-Until a public Alteran package/source is actually available, the built-in
-default for `ALTERAN_RUN_SOURCES` may legitimately be empty, in which case
-bootstrap/update flows must emit the explicit empty-list error described above.
+Until a public Alteran package/source is actually available, the built-in default for `ALTERAN_RUN_SOURCES` may legitimately be empty, in which case bootstrap/update flows must emit the explicit empty-list error described above.
 
 #### `ALTERAN_ARCHIVE_SOURCES`
 
-`ALTERAN_ARCHIVE_SOURCES` is intended for downloadable archive bundles such as
-GitHub Release zip assets.
+`ALTERAN_ARCHIVE_SOURCES` is intended for downloadable archive bundles such as GitHub Release zip assets.
 
 Each item is expected to be a direct archive URL.
 
@@ -683,15 +622,12 @@ Alteran should:
 
 - download the archive into a temporary location
 - extract it locally
-- locate a bootstrapable Alteran entry such as `alteran.ts` with adjacent
-  `src/alteran/mod.ts`
+- locate a bootstrapable Alteran entry such as `alteran.ts` with adjacent `src/alteran/mod.ts`
 - invoke that local extracted entry through Deno
 
-This allows publication artifacts prepared from `dist/jsr/<version>/` to be
-reused as bootstrapable archive releases.
+This allows publication artifacts prepared from `dist/jsr/<version>/` to be reused as bootstrapable archive releases.
 
-Archive sources are the canonical remote source for Alteran runtime
-materialization/install.
+Archive sources are the canonical remote source for Alteran runtime materialization/install.
 
 ---
 
@@ -712,38 +648,29 @@ They are responsible for:
    - path-like inputs must be normalized carefully:
      - `~` should resolve to the caller's home directory
      - relative paths should become absolute before bootstrap starts
-     - behavior must not depend on the caller's current working directory after
-       normalization
+     - behavior must not depend on the caller's current working directory after normalization
 3. determining current OS/arch
 4. checking whether project-local Deno exists
 5. falling back to global Deno if present
 6. downloading local Deno into `.runtime/deno/{os}-{arch}/bin/` if needed
-7. checking whether the local Alteran runtime entry exists at
-   `.runtime/alteran/mod.ts`
+7. checking whether the local Alteran runtime entry exists at `.runtime/alteran/mod.ts`
 8. obtaining the Alteran runtime material either:
-   - from local Alteran repository source material such as `src/alteran/`,
-     `src/tools/`, and `src/libs/`, if available
+   - from local Alteran repository source material such as `src/alteran/`, `src/tools/`, and `src/libs/`, if available
    - or from remote archive/publication sources as fallback
 9. invoking Alteran initialization/setup for the target directory
 10. generating local `activate` / `activate.bat` artifacts for later use
 
-Setup scripts must not implement project scaffolding or project
-synchronization logic themselves.
+Setup scripts must not implement project scaffolding or project synchronization logic themselves.
 
-They only bootstrap enough to run Alteran, then delegate project management to
-Alteran commands.
+They only bootstrap enough to run Alteran, then delegate project management to Alteran commands.
 
-Running `setup` against a target project is also a hard project-context
-boundary.
+Running `setup` against a target project is also a hard project-context boundary.
 
-If the caller shell already contains Alteran runtime/logging variables from a
-different project, `setup` must not treat that foreign context as authoritative
-for the target project.
+If the caller shell already contains Alteran runtime/logging variables from a different project, `setup` must not treat that foreign context as authoritative for the target project.
 
 ### 7.2 Responsibility of generated `activate` / `activate.bat`
 
-These scripts are generated local activation artifacts, not the primary public
-bootstrap surface.
+These scripts are generated local activation artifacts, not the primary public bootstrap surface.
 
 They should remain intentionally lightweight.
 
@@ -755,11 +682,9 @@ They are responsible for:
    - `DENO_INSTALL_ROOT`
 2. exposing an `alteran` function/shim that uses absolute paths
 3. delegating the rest of environment shaping to `alteran shellenv`
-4. avoiding runtime self-location/path discovery where generation-time absolute
-   paths are available
+4. avoiding runtime self-location/path discovery where generation-time absolute paths are available
 
-Generated `activate` / `activate.bat` are local materialized artifacts, not
-portable public bootstrap files.
+Generated `activate` / `activate.bat` are local materialized artifacts, not portable public bootstrap files.
 
 They may assume:
 
@@ -767,9 +692,7 @@ They may assume:
 - one concrete `.runtime` layout
 - one concrete platform-specific Deno path
 
-They should therefore overwrite project-defining runtime variables for the
-target project rather than trying to preserve foreign inherited values from
-another project.
+They should therefore overwrite project-defining runtime variables for the target project rather than trying to preserve foreign inherited values from another project.
 
 They must not promise to remain valid:
 
@@ -777,60 +700,45 @@ They must not promise to remain valid:
 - after copying the generated activation file into a different location
 - across OS/architecture changes
 
-If the project is moved or opened on a different OS/architecture, the supported
-recovery flow is to run `setup` again and regenerate `activate` /
-`activate.bat`.
+If the project is moved or opened on a different OS/architecture, the supported recovery flow is to run `setup` again and regenerate `activate` / `activate.bat`.
 
 For Unix-like shells, generated `activate` should support being sourced:
 
 - `source ./activate`
 
-Entering a project through generated `activate` is a hard project-context
-switch.
+Entering a project through generated `activate` is a hard project-context switch.
 
-It should not preserve a foreign Alteran execution identity from another
-project.
+It should not preserve a foreign Alteran execution identity from another project.
 
-Generated Unix `activate` should be sourced-only. Running it as a regular
-executable should fail with a clear hint to use `source ./activate`.
-It should not promise useful behavior when invoked as a separate process,
-because that cannot affect the caller's current shell environment.
+Generated Unix `activate` should be sourced-only. Running it as a regular executable should fail with a clear hint to use `source ./activate`. It should not promise useful behavior when invoked as a separate process, because that cannot affect the caller's current shell environment.
 
 #### Source-list behavior during bootstrap
 
-When `setup` / `setup.bat` need to download Deno or obtain Alteran from
-remote sources, they must:
+When `setup` / `setup.bat` need to download Deno or obtain Alteran from remote sources, they must:
 
 - read `DENO_SOURCES`
 - read `ALTERAN_RUN_SOURCES`, with optional legacy `ALTERAN_SOURCES` aliasing
 - read `ALTERAN_ARCHIVE_SOURCES`
 - try runnable Alteran sources first to obtain a temporary executable Alteran
-- try archive Alteran sources after runnable sources when no local source/runtime
-  is available for materialization
+- try archive Alteran sources after runnable sources when no local source/runtime is available for materialization
 - iterate over the configured sources in order
 - stop on first successful source
 - continue to the next source after a failed attempt
 - fail with a clear summary if all configured sources fail
-- fail immediately with an explicit message if the relevant configured list is
-  empty
+- fail immediately with an explicit message if the relevant configured list is empty
 
 Important semantic rule:
 
 - `ALTERAN_RUN_SOURCES` are execution/bootstrap sources only
 - `ALTERAN_ARCHIVE_SOURCES` are install/materialization sources
-- if Alteran was launched from a remote runnable source and there is no local
-  authored source or existing installed runtime, runtime materialization must
-  come from `ALTERAN_ARCHIVE_SOURCES`
-- a remote runnable source by itself is not sufficient to authoritatively
-  materialize `.runtime/alteran`
+- if Alteran was launched from a remote runnable source and there is no local authored source or existing installed runtime, runtime materialization must come from `ALTERAN_ARCHIVE_SOURCES`
+- a remote runnable source by itself is not sufficient to authoritatively materialize `.runtime/alteran`
 
 ### 7.3 Stable bootstrap entry
 
-The public bootstrap/proxy entry remains `alteran.ts` in the Alteran repository
-and publication package.
+The public bootstrap/proxy entry remains `alteran.ts` in the Alteran repository and publication package.
 
-In the source repository and publication package, that stable entry may delegate
-into:
+In the source repository and publication package, that stable entry may delegate into:
 
 ```text
 src/alteran/mod.ts
@@ -842,18 +750,15 @@ In a materialized Alteran-managed project, the effective runtime entry remains:
 .runtime/alteran/mod.ts
 ```
 
-This keeps bootstrap/public usage stable while the materialized project-local
-runtime remains self-contained under `.runtime/alteran/`.
+This keeps bootstrap/public usage stable while the materialized project-local runtime remains self-contained under `.runtime/alteran/`.
 
-If `alteran.ts` is invoked from Node.js, it may route into a minimal
-Node-compatibility bootstrap layer that:
+If `alteran.ts` is invoked from Node.js, it may route into a minimal Node-compatibility bootstrap layer that:
 
 - finds or downloads Deno
 - re-executes Alteran under Deno
 - preserves Alteran's Deno-oriented execution model
 
-This compatibility is only for the CLI/bootstrap entrypoint. It is not a goal to
-make the full Alteran runtime/library Node-compatible.
+This compatibility is only for the CLI/bootstrap entrypoint. It is not a goal to make the full Alteran runtime/library Node-compatible.
 
 ---
 
@@ -861,8 +766,7 @@ make the full Alteran runtime/library Node-compatible.
 
 `alteran.ts` is the stable public Alteran entrypoint.
 
-It is responsible for exposing the main Alteran command surface while delegating
-into the canonical project-local runtime entry.
+It is responsible for exposing the main Alteran command surface while delegating into the canonical project-local runtime entry.
 
 ### 8.1 Entry model
 
@@ -884,21 +788,15 @@ The public proxy entrypoint is:
 alteran.ts
 ```
 
-This proxy exists in the Alteran source repository and in the publication
-package.
+This proxy exists in the Alteran source repository and in the publication package.
 
-In those contexts it delegates into the authored source tree, which can then
-materialize `.runtime/alteran/` for normal projects.
+In those contexts it delegates into the authored source tree, which can then materialize `.runtime/alteran/` for normal projects.
 
-The root `alteran.ts` should stay intentionally thin. Runtime detection such as
-"Deno vs Node.js" and "is this the main module" may live in a small internal
-helper module, while the public entrypoint keeps only minimal dispatch logic.
+The root `alteran.ts` should stay intentionally thin. Runtime detection such as "Deno vs Node.js" and "is this the main module" may live in a small internal helper module, while the public entrypoint keeps only minimal dispatch logic.
 
 ### 8.2 Why this split exists
 
-This split keeps the public entry stable while allowing the authored source tree
-to live under `src/alteran/` while normal managed projects continue to use the
-materialized `.runtime/alteran/` layout.
+This split keeps the public entry stable while allowing the authored source tree to live under `src/alteran/` while normal managed projects continue to use the materialized `.runtime/alteran/` layout.
 
 It also avoids treating `.runtime/tools/` as the home of Alteran itself.
 
@@ -917,16 +815,13 @@ Alteran's runtime implementation is responsible for:
 
 ### 8.4 Storage strategy
 
-Alteran runtime files are downloaded or materialized during bootstrap and stored
-locally.
+Alteran runtime files are downloaded or materialized during bootstrap and stored locally.
 
 They should **not** be executed from a remote URL on every run.
 
-Using a URL is acceptable only during bootstrap, update, or controlled
-publication/bootstrap flows.
+Using a URL is acceptable only during bootstrap, update, or controlled publication/bootstrap flows.
 
-This includes source-list driven acquisition through `DENO_SOURCES`,
-`ALTERAN_RUN_SOURCES`, and `ALTERAN_ARCHIVE_SOURCES`.
+This includes source-list driven acquisition through `DENO_SOURCES`, `ALTERAN_RUN_SOURCES`, and `ALTERAN_ARCHIVE_SOURCES`.
 
 ### 8.5 Command scope model
 
@@ -934,36 +829,30 @@ Alteran commands are divided into two groups.
 
 #### External-project commands
 
-These may operate on a project directory even when that project is not currently
-activated:
+These may operate on a project directory even when that project is not currently activated:
 
 - `setup [dir]`
 - `shellenv [dir]`
 
 #### Active-project commands
 
-These operate on the currently activated project and should resolve the project
-through `ALTERAN_HOME`:
+These operate on the currently activated project and should resolve the project through `ALTERAN_HOME`:
 
 - `refresh`
 - `app ...`
 - `tool ...`
 - `reimport ...`
 
-This keeps project-management commands tied to the active dev environment, while
-still allowing bootstrap/setup flows to target projects from outside.
+This keeps project-management commands tied to the active dev environment, while still allowing bootstrap/setup flows to target projects from outside.
 
 The intended normal workflow for another project is therefore:
 
 1. enter that project through `setup`, `activate`, or `shellenv`
 2. then run `alteran app|tool|task|run ...` inside that project context
 
-Ordinary command behavior should not imply an advanced cross-project mode where
-users point `app` / `tool` / `task` families directly at foreign
-`alteran.json`, `app.json`, or `deno.json` files.
+Ordinary command behavior should not imply an advanced cross-project mode where users point `app` / `tool` / `task` families directly at foreign `alteran.json`, `app.json`, or `deno.json` files.
 
-If Alteran supports an advanced cross-project execution mode, it should be
-spelled explicitly through a dedicated command such as:
+If Alteran supports an advanced cross-project execution mode, it should be spelled explicitly through a dedicated command such as:
 
 ```text
 alteran external <path-to-json> <command> ...
@@ -978,12 +867,9 @@ ALTERAN_EXTERNAL_CTX=<path-to-json> alteran external <command> ...
 Rules for this mode:
 
 - it is visually distinct from ordinary active-project commands
-- a positional `<path-to-json>` takes precedence over
-  `ALTERAN_EXTERNAL_CTX`
-- supported anchors should be explicit project/app config files such as
-  `alteran.json` or `app.json`
-- this mode must construct an isolated context for the targeted project instead
-  of silently reusing the caller's active project identity
+- a positional `<path-to-json>` takes precedence over `ALTERAN_EXTERNAL_CTX`
+- supported anchors should be explicit project/app config files such as `alteran.json` or `app.json`
+- this mode must construct an isolated context for the targeted project instead of silently reusing the caller's active project identity
 
 ---
 
@@ -994,8 +880,7 @@ The `setup` / `refresh` flow must generate:
 - `activate`
 - `activate.bat`
 
-These generated root-level scripts are responsible for setting up the dev
-environment.
+These generated root-level scripts are responsible for setting up the dev environment.
 
 ### 9.1 Responsibilities of generated activate scripts
 
@@ -1006,15 +891,12 @@ They should:
 - set `DENO_INSTALL_ROOT` if needed
 - add local Deno to `PATH`
 - expose a convenient `alteran` command using absolute paths
-- delegate dynamic project-specific aliases and additional exports to
-  `alteran shellenv`
-- embed concrete absolute paths at generation time instead of rediscovering the
-  script location at activation time
+- delegate dynamic project-specific aliases and additional exports to `alteran shellenv`
+- embed concrete absolute paths at generation time instead of rediscovering the script location at activation time
 
 ### 9.2 Alias model
 
-Aliases may be implemented through shell alias / DOSKEY-like environment setup
-rather than generating many executable wrapper files.
+Aliases may be implemented through shell alias / DOSKEY-like environment setup rather than generating many executable wrapper files.
 
 This is preferred for dev shells.
 
@@ -1022,12 +904,9 @@ This is preferred for dev shells.
 
 `shellenv` prints environment activation code for the target project.
 
-Like `setup` and generated `activate`, `shellenv` is a project-context
-switching surface.
+Like `setup` and generated `activate`, `shellenv` is a project-context switching surface.
 
-It should generate environment code for the target project and should not treat
-foreign inherited Alteran runtime/logging identity as authoritative across
-project boundaries.
+It should generate environment code for the target project and should not treat foreign inherited Alteran runtime/logging identity as authoritative across project boundaries.
 
 It should:
 
@@ -1050,11 +929,9 @@ Preferred activation flow:
 2. generate or refresh `activate`
 3. `source ./activate` or equivalent local activation flow
 
-Generated Unix `activate` should not rely on executed-mode evaluation such as
-`eval "$(./activate)"`.
+Generated Unix `activate` should not rely on executed-mode evaluation such as `eval "$(./activate)"`.
 
-Direct process execution such as `./activate` is not a supported activation
-flow and should fail clearly.
+Direct process execution such as `./activate` is not a supported activation flow and should fail clearly.
 
 This requires the rule for shellenv:
 
@@ -1105,10 +982,7 @@ Alteran should configure Deno to use that path as `DENO_DIR`.
 
 ## 11. Root `alteran.json`
 
-`alteran.json` is Alteran's own project config. Can be in JSONC format (with
-comments). Note: if you want to modify jsonc file, please use
-non-fmt-destructive approach with jsonc-parser edits-modify methods to persist
-user comment, instead of full clean regeneration file.
+`alteran.json` is Alteran's own project config. Can be in JSONC format (with comments). Note: if you want to modify jsonc file, please use non-fmt-destructive approach with jsonc-parser edits-modify methods to persist user comment, instead of full clean regeneration file.
 
 It should not be mixed into `deno.json`.
 
@@ -1154,8 +1028,7 @@ It stores:
 }
 ```
 
-Exact schema may evolve, but these concepts must exist. Later sections refine
-the runtime and logging parts of this file in more detail.
+Exact schema may evolve, but these concepts must exist. Later sections refine the runtime and logging parts of this file in more detail.
 
 ### 11.3 App/tool registry alias fields
 
@@ -1165,26 +1038,18 @@ Each app or tool registry entry may optionally declare:
 
 Meaning:
 
-- `shell_aliases` is the exact list of shell alias names Alteran should inject
-  for that entry
-- for created or reimported entries whose alias field is missing, Alteran may
-  seed a default first alias such as `app-<name>` or `tool-<name>`
-- if `shell_aliases` is present as an empty array or explicit `null`, that
-  disables automatic alias seeding for that entry
-- alias names are not implicitly transformed once written into
-  `shell_aliases`; they are injected exactly as written
+- `shell_aliases` is the exact list of shell alias names Alteran should inject for that entry
+- for created or reimported entries whose alias field is missing, Alteran may seed a default first alias such as `app-<name>` or `tool-<name>`
+- if `shell_aliases` is present as an empty array or explicit `null`, that disables automatic alias seeding for that entry
+- alias names are not implicitly transformed once written into `shell_aliases`; they are injected exactly as written
 
-Alteran-created or Alteran-reimported entries may still default to
-alias-enabled behavior, but that must become explicit by writing the seeded
-names into `shell_aliases` rather than depending on hidden runtime generation.
+Alteran-created or Alteran-reimported entries may still default to alias-enabled behavior, but that must become explicit by writing the seeded names into `shell_aliases` rather than depending on hidden runtime generation.
 
-If an entry is reimported and the registry already contains user alias settings
-for that entry, those settings should be preserved.
+If an entry is reimported and the registry already contains user alias settings for that entry, those settings should be preserved.
 
 ### 11.4 Top-level shell aliases
 
-Arbitrary shell convenience aliases do not belong inside an individual app or
-tool registry entry.
+Arbitrary shell convenience aliases do not belong inside an individual app or tool registry entry.
 
 They belong in:
 
@@ -1211,10 +1076,7 @@ These aliases:
 
 ## 12. Root `deno.json`
 
-The root `deno.json` configures the whole dev project. Can be in JSONC format
-(with comments). Note: if you want to modify jsonc file, please use
-non-fmt-destructive approach with jsonc-parser edits-modify methods to persist
-user comment, instead of full clean regeneration file.
+The root `deno.json` configures the whole dev project. Can be in JSONC format (with comments). Note: if you want to modify jsonc file, please use non-fmt-destructive approach with jsonc-parser edits-modify methods to persist user comment, instead of full clean regeneration file.
 
 It may include:
 
@@ -1237,13 +1099,11 @@ Example concept:
 }
 ```
 
-Alteran should maintain these entries when apps are registered, removed, or
-refreshed.
+Alteran should maintain these entries when apps are registered, removed, or refreshed.
 
 ### 12.2 Import support
 
-The root `deno.json` is also the natural place for Alteran-managed import
-configuration used by the active project.
+The root `deno.json` is also the natural place for Alteran-managed import configuration used by the active project.
 
 In particular, Alteran should maintain the import surface required for:
 
@@ -1251,26 +1111,22 @@ In particular, Alteran should maintain the import surface required for:
 - `@alteran/...`
 - `@libs/...`
 
-The exact mechanics may evolve, but the logical import surface defined by this
-specification must remain stable.
+The exact mechanics may evolve, but the logical import surface defined by this specification must remain stable.
 
 ---
 
 ## 13. Project Import Mapping, Libraries, and Tests
 
-Alteran-managed projects should expose a stable internal import surface for both
-Alteran runtime modules and project libraries.
+Alteran-managed projects should expose a stable internal import surface for both Alteran runtime modules and project libraries.
 
 ### 13.1 Alteran runtime imports
 
-Inside an Alteran-managed development project, the following logical import
-mapping should be used:
+Inside an Alteran-managed development project, the following logical import mapping should be used:
 
 - `@alteran` -> `.runtime/alteran/mod.ts`
 - `@alteran/...` -> `.runtime/alteran/*`
 
-This gives project code a stable internal import surface for Alteran runtime
-modules and avoids exposing random relative paths into `.runtime/`.
+This gives project code a stable internal import surface for Alteran runtime modules and avoids exposing random relative paths into `.runtime/`.
 
 ### 13.2 Project libraries under `libs/`
 
@@ -1293,8 +1149,7 @@ No manifest is required for project libraries.
 
 Project libraries are not apps or tools.
 
-They are shared code modules, and requiring a manifest for each library would
-add unnecessary ceremony.
+They are shared code modules, and requiring a manifest for each library would add unnecessary ceremony.
 
 The alias mapping should be inferred from the filesystem structure alone.
 
@@ -1323,8 +1178,7 @@ App-local library entry patterns follow the same convention:
 
 ### 13.6 Resolution order for `@libs/...`
 
-When code is executed in app context, the `@libs/...` alias resolves in this
-order:
+When code is executed in app context, the `@libs/...` alias resolves in this order:
 
 1. app-local `apps/<app>/libs/...`
 2. project-root `libs/...`
@@ -1333,29 +1187,23 @@ This is intentional.
 
 ### 13.7 Shadowing behavior
 
-If both locations provide the same library name, the app-local version shadows
-the project-root version.
+If both locations provide the same library name, the app-local version shadows the project-root version.
 
 This is valid behavior.
 
 It is not treated as an automatic error.
 
-If a project wants to detect or forbid shadowing, that should be handled by
-linting, static checks, or a dedicated deduplication tool.
+If a project wants to detect or forbid shadowing, that should be handled by linting, static checks, or a dedicated deduplication tool.
 
 ### 13.8 Why a separate `@app-libs/...` alias is not used
 
-A separate alias such as `@app-libs/...` was considered and rejected because it
-causes unnecessary instability:
+A separate alias such as `@app-libs/...` was considered and rejected because it causes unnecessary instability:
 
-- moving a library between app-local and project-root locations would force
-  import rewrites
+- moving a library between app-local and project-root locations would force import rewrites
 - exported apps would have awkward import behavior after dependency copying
-- the import path would reflect current physical placement instead of stable
-  logical identity
+- the import path would reflect current physical placement instead of stable logical identity
 
-Using a single `@libs/...` alias with local-first resolution avoids those
-problems.
+Using a single `@libs/...` alias with local-first resolution avoids those problems.
 
 ---
 
@@ -1404,30 +1252,21 @@ They should:
 
 - be generated artifacts, not hand-maintained tracked source files
 - be directly executable launch entrypoints for end users
-- support the user expectation that clicking or launching `app` / `app.bat`
-  starts the application
+- support the user expectation that clicking or launching `app` / `app.bat` starts the application
 - not require `source app` or any sourced-shell activation model
 - resolve their own directory early and change into it before launching the app
-- fail clearly if they cannot determine their own location or cannot confirm
-  they are running from the expected app directory
-- validate nearby app markers such as `deno.json` and/or `app.json` before
-  proceeding
-- validate that `app.json` contains the launcher's expected app identity
-  marker, at minimum the expected `id`, so a launcher does not silently accept
-  a different app directory that merely happens to contain plausible marker
-  files
+- fail clearly if they cannot determine their own location or cannot confirm they are running from the expected app directory
+- validate nearby app markers such as `deno.json` and/or `app.json` before proceeding
+- validate that `app.json` contains the launcher's expected app identity marker, at minimum the expected `id`, so a launcher does not silently accept a different app directory that merely happens to contain plausible marker files
 - prefer a ready local launcher/runtime path when available
 - otherwise fall back to:
   - local app/runtime bootstrap state if already materialized
   - global Deno if sufficient to run app bootstrap
   - app-local `setup` / `setup.bat` when runtime material is missing
-- auto-run app-local `setup` / `setup.bat` when needed so the app can
-  self-materialize before first launch
+- auto-run app-local `setup` / `setup.bat` when needed so the app can self-materialize before first launch
 - launch the main app task, equivalent in intent to `alteran app run <name>`
 
-For app launchers, all runtime-sensitive paths should be local to the app
-directory and should be treated as relative-to-app at launcher design time,
-not dependent on the caller's current working directory.
+For app launchers, all runtime-sensitive paths should be local to the app directory and should be treated as relative-to-app at launcher design time, not dependent on the caller's current working directory.
 
 ### 14.4 `core/`
 
@@ -1471,8 +1310,7 @@ This is appropriate for:
 - project tools under `tools/`
 - runtime helper tools under `.runtime/tools/`
 
-It is **not** the canonical storage model for the Alteran runtime itself, which
-lives under `.runtime/alteran/`.
+It is **not** the canonical storage model for the Alteran runtime itself, which lives under `.runtime/alteran/`.
 
 ### 15.2 Tool library policy
 
@@ -1482,8 +1320,7 @@ Reason:
 
 - the `tools/` area already acts as a natural location for tool code
 - if shared code becomes broadly useful, it can be moved into root `libs/`
-- introducing a separate tool-local alias family by default would add complexity
-  without enough payoff
+- introducing a separate tool-local alias family by default would add complexity without enough payoff
 
 ---
 
@@ -1495,8 +1332,7 @@ Apps should use the parent project `.runtime`.
 
 ### 16.2 Standalone behavior
 
-If an app is exported or initialized outside the dev project, `app` / `app.bat`
-may create app-local `.runtime`.
+If an app is exported or initialized outside the dev project, `app` / `app.bat` may create app-local `.runtime`.
 
 That app-local runtime should contain only what is needed, primarily:
 
@@ -1504,17 +1340,13 @@ That app-local runtime should contain only what is needed, primarily:
 - local cache if needed
 - Alteran runtime material needed to launch the app
 
-Standalone app packages should also include canonical app-local `setup` /
-`setup.bat` bootstrap entrypoints.
+Standalone app packages should also include canonical app-local `setup` / `setup.bat` bootstrap entrypoints.
 
-Generated `app` / `app.bat` launchers may invoke that app-local setup
-automatically when the app runtime has not yet been materialized.
+Generated `app` / `app.bat` launchers may invoke that app-local setup automatically when the app runtime has not yet been materialized.
 
-Like `setup`, `activate`, and `shellenv`, launching a standalone app through its
-generated `app` / `app.bat` is a project-context boundary for that app package.
+Like `setup`, `activate`, and `shellenv`, launching a standalone app through its generated `app` / `app.bat` is a project-context boundary for that app package.
 
-Foreign inherited Alteran runtime/logging identity must not remain
-authoritative for the launched app.
+Foreign inherited Alteran runtime/logging identity must not remain authoritative for the launched app.
 
 This means a standalone app should be expected to support:
 
@@ -1522,13 +1354,11 @@ This means a standalone app should be expected to support:
 - automatic local runtime materialization on first run
 - later launches using the already materialized local app runtime
 
-The intended UX is "launch the app" rather than "manually activate the app
-environment first".
+The intended UX is "launch the app" rather than "manually activate the app environment first".
 
 ### 16.3 Export and packaging rules for libraries
 
-When an app is exported as a source package or standalone application seed, any
-shared libraries it depends on must be included in the exported package.
+When an app is exported as a source package or standalone application seed, any shared libraries it depends on must be included in the exported package.
 
 This applies to:
 
@@ -1537,29 +1367,24 @@ This applies to:
 
 ### 16.4 Packaging behavior
 
-If an exported app depends on project-root `libs/...`, those required libraries
-should be copied into the exported package so the exported app remains
-self-contained.
+If an exported app depends on project-root `libs/...`, those required libraries should be copied into the exported package so the exported app remains self-contained.
 
 The exported package may place them into its own `libs/` directory.
 
 This works naturally with the single `@libs/...` alias model.
 
-Because the alias remains the same, no code rewrite is required purely because a
-library moved from shared-project scope into packaged-app scope.
+Because the alias remains the same, no code rewrite is required purely because a library moved from shared-project scope into packaged-app scope.
 
 ### 16.5 Relative path resolution
 
-Relative paths in Alteran-managed config are not interpreted relative to the
-caller shell's current working directory.
+Relative paths in Alteran-managed config are not interpreted relative to the caller shell's current working directory.
 
 They are interpreted relative to the project/config location they belong to:
 
 - root-level config paths relative to the project root / root config file
 - app-local config paths relative to the app directory / app-local config file
 
-This prevents accidental `cd` changes from silently changing the meaning of
-entries such as:
+This prevents accidental `cd` changes from silently changing the meaning of entries such as:
 
 - `./tools/prepare_zip.ts`
 - `./apps/hello-cli`
@@ -1587,8 +1412,7 @@ At this stage it is a placeholder/future hook.
 
 ### 17.3 `app`
 
-Runs the application in orchestrated mode, deciding whether to launch `core`,
-`view`, or both depending on parameters and future app configuration.
+Runs the application in orchestrated mode, deciding whether to launch `core`, `view`, or both depending on parameters and future app configuration.
 
 ---
 
@@ -1604,9 +1428,7 @@ Preferred pattern:
 
 Do **not** collapse `run` into positional magic.
 
-This section establishes the main command-family shape. Later sections refine
-convenience aliases, Deno passthrough, and version-management commands without
-changing this core rule.
+This section establishes the main command-family shape. Later sections refine convenience aliases, Deno passthrough, and version-management commands without changing this core rule.
 
 ### 18.1 Command help contract
 
@@ -1614,8 +1436,7 @@ Alteran should provide built-in help for:
 
 - top-level `alteran --help`
 - `alteran help`
-- each command family such as `alteran app --help`, `alteran tool --help`,
-  `alteran clean --help`
+- each command family such as `alteran app --help`, `alteran tool --help`, `alteran clean --help`
 
 Command-family help should describe:
 
@@ -1623,8 +1444,7 @@ Command-family help should describe:
 - accepted argument forms
 - important variations or examples
 
-If a command normally requires an argument, passing `--help`/`-h` must show help
-instead of treating that flag as ordinary data.
+If a command normally requires an argument, passing `--help`/`-h` must show help instead of treating that flag as ordinary data.
 
 ---
 
@@ -1655,8 +1475,7 @@ Responsibilities:
 - remove related workspace/task/entry-alias entries
 - **must not** delete app files from disk
 
-This removal applies to aliases owned by that app registry entry, not to
-unrelated top-level `shell_aliases`.
+This removal applies to aliases owned by that app registry entry, not to unrelated top-level `shell_aliases`.
 
 ### 19.3 `app purge`
 
@@ -1673,9 +1492,7 @@ List registered/discovered apps.
 
 Run a registered app.
 
-The effect should correspond to the main app launcher behavior used by
-generated standalone `app` / `app.bat` scripts, even if the exact bootstrap
-steps differ between in-project dev mode and standalone app-local mode.
+The effect should correspond to the main app launcher behavior used by generated standalone `app` / `app.bat` scripts, even if the exact bootstrap steps differ between in-project dev mode and standalone app-local mode.
 
 ### 19.6 `app setup <path>`
 
@@ -1698,9 +1515,7 @@ Tools follow the same non-destructive vs destructive distinction:
 - `rm` unregisters
 - `purge` deletes files
 
-If a tool registry entry owned generated or explicit entry aliases, those
-entry-scoped aliases should be removed together with the registry entry.
-Unrelated top-level `shell_aliases` must remain untouched.
+If a tool registry entry owned generated or explicit entry aliases, those entry-scoped aliases should be removed together with the registry entry. Unrelated top-level `shell_aliases` must remain untouched.
 
 ---
 
@@ -1711,8 +1526,7 @@ Supported commands:
 - `alteran reimport apps <dir>`
 - `alteran reimport tools <dir>`
 
-These commands scan directories and import discovered apps/tools into
-Alteran-managed config.
+These commands scan directories and import discovered apps/tools into Alteran-managed config.
 
 They are useful for:
 
@@ -1759,13 +1573,11 @@ Main maintenance/synchronization command:
 
 - **`alteran refresh`**
 
-This command is responsible for bringing the **currently activated project**
-into a consistent state.
+This command is responsible for bringing the **currently activated project** into a consistent state.
 
 ### 23.1 Scope
 
-`refresh` should operate only on the active project resolved through
-`ALTERAN_HOME`.
+`refresh` should operate only on the active project resolved through `ALTERAN_HOME`.
 
 It is not intended as a generic external-project initializer.
 
@@ -1782,15 +1594,10 @@ It is not intended as a generic external-project initializer.
 - sync Alteran/runtime-related import mappings
 - regenerate env scripts if needed
 - verify project skeleton consistency
-- synchronize the effective local Deno runtime with `alteran.json`
-  configuration, especially `deno_version` if present
-- when runtime acquisition/download is needed, use `DENO_SOURCES`,
-  `ALTERAN_RUN_SOURCES`, and `ALTERAN_ARCHIVE_SOURCES` fallback behavior,
-  preferring runnable sources before archive sources
+- synchronize the effective local Deno runtime with `alteran.json` configuration, especially `deno_version` if present
+- when runtime acquisition/download is needed, use `DENO_SOURCES`, `ALTERAN_RUN_SOURCES`, and `ALTERAN_ARCHIVE_SOURCES` fallback behavior, preferring runnable sources before archive sources
 
-`refresh` is a synchronization command. It should bring the current project into
-compliance with declared configuration, but it should not silently choose new
-target versions on its own.
+`refresh` is a synchronization command. It should bring the current project into compliance with declared configuration, but it should not silently choose new target versions on its own.
 
 ### 23.3 Run without arguments
 
@@ -1814,8 +1621,7 @@ Project setup command:
 
 - **`alteran setup [dir]`**
 
-This command is responsible for preparing a project directory so that it becomes
-a valid Alteran project.
+This command is responsible for preparing a project directory so that it becomes a valid Alteran project.
 
 #### Responsibilities of `setup`
 
@@ -1829,8 +1635,7 @@ a valid Alteran project.
 - create or repair generated activation scripts
 - perform a `refresh` as part of setup
 
-When `setup` needs to obtain Deno or Alteran runtime material, it should honor
-the configured source-list behavior from Section 6.1.
+When `setup` needs to obtain Deno or Alteran runtime material, it should honor the configured source-list behavior from Section 6.1.
 
 #### Scope
 
@@ -1839,8 +1644,7 @@ the configured source-list behavior from Section 6.1.
 - the current working directory
 - an explicit external project directory
 
-This makes it suitable for bootstrap flows and for preparing projects outside
-the currently active shell context.
+This makes it suitable for bootstrap flows and for preparing projects outside the currently active shell context.
 
 ---
 
@@ -1851,9 +1655,7 @@ Alteran should support app/tool registration into:
 - Deno tasks
 - shell aliases / DOSKEY aliases
 
-This section covers generated shortcuts tied to registered apps and tools.
-Global convenience aliases such as `alt`, `arun`, `atask`, `ax`, and `adeno` are
-specified later with the broader command surface.
+This section covers generated shortcuts tied to registered apps and tools. Global convenience aliases such as `alt`, `arun`, `atask`, `ax`, and `adeno` are specified later with the broader command surface.
 
 ### 24.1 Deno tasks
 
@@ -1867,8 +1669,7 @@ Useful for:
 
 Useful inside activated shell sessions.
 
-These do not need to be files in `bin/`. They may be emitted into generated
-environment scripts.
+These do not need to be files in `bin/`. They may be emitted into generated environment scripts.
 
 ---
 
@@ -1905,11 +1706,9 @@ Alteran's own runtime entrypoint is:
 
 ### 25.3 Import rule
 
-Entry scripts should import from sibling directories relatively, rather than
-downloading submodules dynamically on every run.
+Entry scripts should import from sibling directories relatively, rather than downloading submodules dynamically on every run.
 
-Bootstrap/update should fetch both the entry script and its support folder when
-this pattern is used.
+Bootstrap/update should fetch both the entry script and its support folder when this pattern is used.
 
 ---
 
@@ -1920,8 +1719,7 @@ Alteran should support an explicit cleanup command:
 - **`alteran clean <scope> [<scope> ...]`**
 - **`alteran compact`**
 
-This command removes generated, downloaded, cached, or otherwise recoverable
-files.
+This command removes generated, downloaded, cached, or otherwise recoverable files.
 
 It must never silently remove user source files or user configuration files.
 
@@ -1937,8 +1735,7 @@ It should instead:
 
 This keeps cleanup behavior predictable and safe.
 
-When scopes are provided, Alteran should accept one or more scopes in a single
-invocation and execute them in the order given.
+When scopes are provided, Alteran should accept one or more scopes in a single invocation and execute them in the order given.
 
 Examples:
 
@@ -1952,8 +1749,7 @@ Examples:
 
 Performs a full safe cleanup.
 
-It should remove regeneratable working runtime state while preserving a usable
-project structure.
+It should remove regeneratable working runtime state while preserving a usable project structure.
 
 It may remove things that can be recreated through:
 
@@ -1978,8 +1774,7 @@ It should preserve:
 - app `view/`
 - other user-authored source/config files
 
-This scope is intended to leave a clean project suitable for sending as a zip
-archive, while preserving all user-owned sources and configuration.
+This scope is intended to leave a clean project suitable for sending as a zip archive, while preserving all user-owned sources and configuration.
 
 It should include cleanup equivalent to:
 
@@ -1993,8 +1788,7 @@ It should include cleanup equivalent to:
 
 It is intended to reduce a project to a compact bootstrap-ready transfer state.
 
-Because this is intentionally destructive to local materialized runtime state,
-it should require an explicit confirmation step by default.
+Because this is intentionally destructive to local materialized runtime state, it should require an explicit confirmation step by default.
 
 Conceptually it should:
 
@@ -2015,9 +1809,7 @@ It should preserve:
 - user source directories such as `apps/`, `tools/`, `libs/`, `tests/`
 - other user-authored source/config files
 
-After `alteran compact`, the project should behave as though Alteran runtime
-artifacts had never been materialized locally, while still being re-hydratable
-from scratch through `setup` / `setup.bat`.
+After `alteran compact`, the project should behave as though Alteran runtime artifacts had never been materialized locally, while still being re-hydratable from scratch through `setup` / `setup.bat`.
 
 #### Confirmation UX
 
@@ -2038,8 +1830,7 @@ to auto-confirm and proceed without prompting, and:
 
 to auto-cancel.
 
-In non-interactive contexts, `alteran compact` without `-y` / `-f` / `-n` should
-fail explicitly rather than silently assuming confirmation.
+In non-interactive contexts, `alteran compact` without `-y` / `-f` / `-n` should fail explicitly rather than silently assuming confirmation.
 
 #### `alteran clean cache`
 
@@ -2057,8 +1848,7 @@ Optional future flag:
 
 #### `alteran clean runtime`
 
-Removes generated and downloaded runtime contents under `.runtime/`, except
-where Alteran explicitly decides to preserve the minimum bootstrap state.
+Removes generated and downloaded runtime contents under `.runtime/`, except where Alteran explicitly decides to preserve the minimum bootstrap state.
 
 This is broader than `cache` and may include:
 
@@ -2069,22 +1859,15 @@ This is broader than `cache` and may include:
 
 This scope should still preserve user-owned project files outside `.runtime/`.
 
-It should also preserve authored runtime source that lives inside `.runtime/`,
-including directories such as:
+It should also preserve authored runtime source that lives inside `.runtime/`, including directories such as:
 
 - `.runtime/alteran/`
 - `.runtime/tools/`
 - `.runtime/libs/`
 
-Because `.runtime/` is Alteran-managed internal space, `alteran clean runtime`
-may also remove unexpected top-level entries under `.runtime/` that are not part
-of the expected Alteran runtime layout. This includes stale legacy directories
-left behind by previous layout versions.
+Because `.runtime/` is Alteran-managed internal space, `alteran clean runtime` may also remove unexpected top-level entries under `.runtime/` that are not part of the expected Alteran runtime layout. This includes stale legacy directories left behind by previous layout versions.
 
-When `alteran clean runtime` is invoked from an active Alteran shell session
-that is currently using the project-local Deno binary, it should preserve that
-active local `bin/deno[.exe]` so subsequent commands such as `alteran refresh`
-continue to work without requiring immediate re-activation or re-download.
+When `alteran clean runtime` is invoked from an active Alteran shell session that is currently using the project-local Deno binary, it should preserve that active local `bin/deno[.exe]` so subsequent commands such as `alteran refresh` continue to work without requiring immediate re-activation or re-download.
 
 #### `alteran clean env`
 
@@ -2106,13 +1889,11 @@ These files must be recreatable through `setup` / `refresh`.
 
 Removes nested app-local `.runtime/` directories used by standalone apps.
 
-This scope is intended for app folders that were initialized or exported outside
-the main dev runtime and later accumulated their own runtime state.
+This scope is intended for app folders that were initialized or exported outside the main dev runtime and later accumulated their own runtime state.
 
 #### `alteran clean logs`
 
-Removes log files and log-derived artifacts under `.runtime/logs/` according to
-the logging layout specified later in this document.
+Removes log files and log-derived artifacts under `.runtime/logs/` according to the logging layout specified later in this document.
 
 It must not remove source files or project configuration.
 
@@ -2126,9 +1907,7 @@ Removes reproducible build and publication output such as:
 
 It must not remove source files.
 
-It must not recreate publication-specific subdirectories such as `dist/jsr/`
-as part of cleanup. The corresponding build or publication tooling is
-responsible for recreating its own output directories when needed.
+It must not recreate publication-specific subdirectories such as `dist/jsr/` as part of cleanup. The corresponding build or publication tooling is responsible for recreating its own output directories when needed.
 
 ### 26.3 Safety rules
 
@@ -2149,8 +1928,7 @@ The following flags are reasonable future extensions:
 - `--yes`
 - `--all-platforms`
 
-They are not required for the first implementation, but the command design
-should leave room for them.
+They are not required for the first implementation, but the command design should leave room for them.
 
 ---
 
@@ -2234,11 +2012,9 @@ This versioned directory is generated by publication tooling.
 
 It is the exact source of truth for what gets published to JSR for that version.
 
-Unversioned top-level payload files directly under `dist/jsr/` are legacy layout
-artifacts and should not be left behind by current publication tooling.
+Unversioned top-level payload files directly under `dist/jsr/` are legacy layout artifacts and should not be left behind by current publication tooling.
 
-The version string should come from Alteran's authored version source under
-`src/alteran/`.
+The version string should come from Alteran's authored version source under `src/alteran/`.
 
 Zip/release artifacts may additionally be prepared under:
 
@@ -2279,8 +2055,7 @@ The intended public command is:
 deno run -A jsr:@alteran setup
 ```
 
-Therefore the Alteran package should publish a root entrypoint for the package
-itself, not only a subpath CLI module.
+Therefore the Alteran package should publish a root entrypoint for the package itself, not only a subpath CLI module.
 
 ### 29.5 Package naming
 
@@ -2320,26 +2095,19 @@ This keeps the split clear:
 
 ### 29.7 Publication package contents
 
-The published JSR package should contain everything needed for the public
-bootstrap/setup flow.
+The published JSR package should contain everything needed for the public bootstrap/setup flow.
 
 In particular, it must contain enough Alteran runtime material so that:
 
 - the public package entry can run `setup`
-- `setup` can copy or materialize the required runtime files into the target
-  project's `.runtime/`
+- `setup` can copy or materialize the required runtime files into the target project's `.runtime/`
 - the resulting initialized project can operate correctly from its local runtime
 
-In practice, the publication package may ship the authored source bundle under
-`src/` and use that as the source-of-truth from which the target project's
-`.runtime/` is materialized.
+In practice, the publication package may ship the authored source bundle under `src/` and use that as the source-of-truth from which the target project's `.runtime/` is materialized.
 
-Publication/release payloads should include public bootstrap files such as
-`setup` / `setup.bat`.
+Publication/release payloads should include public bootstrap files such as `setup` / `setup.bat`.
 
-They should not include generated local activation artifacts such as
-`activate` / `activate.bat`, because those belong to post-setup local project
-state rather than to the public release surface.
+They should not include generated local activation artifacts such as `activate` / `activate.bat`, because those belong to post-setup local project state rather than to the public release surface.
 
 This means the publication package is not just a thin remote stub.
 
@@ -2347,19 +2115,16 @@ It is the seed from which project-local Alteran runtime state can be created.
 
 ### 29.8 Documentation expectations
 
-The generated `dist/jsr/<version>/` package should include explicit package
-metadata such as:
+The generated `dist/jsr/<version>/` package should include explicit package metadata such as:
 
 - package name
 - version
 - exports
 - publication configuration
 
-This may be expressed through `jsr.json` or equivalent supported package
-metadata.
+This may be expressed through `jsr.json` or equivalent supported package metadata.
 
-Repository code intended for publication should use JSDoc appropriately so JSR
-can generate useful package documentation.
+Repository code intended for publication should use JSDoc appropriately so JSR can generate useful package documentation.
 
 The repository should also maintain:
 
@@ -2415,24 +2180,19 @@ Alteran should currently be implemented as:
 2. a project scaffold generator
 3. a multi-app / multi-tool registry manager
 4. a refresh/sync tool for project structure and runtime state
-5. a command router with a stable public entrypoint `alteran.ts` delegating to
-   `.runtime/alteran/mod.ts`
+5. a command router with a stable public entrypoint `alteran.ts` delegating to `.runtime/alteran/mod.ts`
 6. a local runtime layout under `.runtime/`
-7. an explicit command surface with app/tool families, Deno passthrough, and
-   version-management commands
+7. an explicit command surface with app/tool families, Deno passthrough, and version-management commands
 8. a project structure with first-class `apps/`, `tools/`, `libs/`, and `tests/`
 9. a logging system with stdout/stderr capture plus structured event logs
-10. a controlled JSR publication model rooted at `dist/jsr/<version>/`, with
-    optional archive artifacts under `dist/zips/<version>/`
-11. a future-ready system with reserved `view` hooks, but without committing to
-    GUI architecture yet
+10. a controlled JSR publication model rooted at `dist/jsr/<version>/`, with optional archive artifacts under `dist/zips/<version>/`
+11. a future-ready system with reserved `view` hooks, but without committing to GUI architecture yet
 
 ---
 
 ## 33. Managed Preinit and Deno Execution
 
-Alteran-managed script execution should support a preload-based process
-initialization model.
+Alteran-managed script execution should support a preload-based process initialization model.
 
 ### 33.1 Preinit entrypoint
 
@@ -2442,13 +2202,11 @@ A dedicated preload module must exist:
 .runtime/alteran/preinit.ts
 ```
 
-This module is intended to be passed through Deno's preload mechanism when
-Alteran runs scripts and tasks in its managed environment.
+This module is intended to be passed through Deno's preload mechanism when Alteran runs scripts and tasks in its managed environment.
 
 ### 33.2 Purpose of `preinit.ts`
 
-`preinit.ts` is responsible for process-local Alteran initialization before the
-target user script executes.
+`preinit.ts` is responsible for process-local Alteran initialization before the target user script executes.
 
 Examples of responsibilities:
 
@@ -2458,8 +2216,7 @@ Examples of responsibilities:
 - load Alteran-aware environment state
 - prepare process-level helper APIs needed by managed scripts
 
-This preinit hook is also the natural place for Alteran-managed logging
-bootstrap, especially when structured logging integrations are enabled.
+This preinit hook is also the natural place for Alteran-managed logging bootstrap, especially when structured logging integrations are enabled.
 
 It should not perform destructive project synchronization by itself.
 
@@ -2476,8 +2233,7 @@ This means:
 
 - plain `deno run` remains plain Deno behavior
 - plain `deno task` remains plain Deno behavior
-- `alteran run` and `alteran task` run inside Alteran-managed process
-  initialization
+- `alteran run` and `alteran task` run inside Alteran-managed process initialization
 
 ### 33.4 User-facing distinction
 
@@ -2520,12 +2276,9 @@ Project-specific entry aliases are a separate mechanism.
 Rules:
 
 - entry aliases come from each app/tool registry entry's `shell_aliases`
-- for created or reimported entries whose `shell_aliases` field is absent,
-  Alteran may seed a first default alias such as `app-<name>` or `tool-<name>`
-- if `shell_aliases` is present as `[]` or `null`, that disables default alias
-  seeding for that entry
-- arbitrary shell shortcuts belong under top-level `shell_aliases`, not under
-  app/tool registry identity alone
+- for created or reimported entries whose `shell_aliases` field is absent, Alteran may seed a first default alias such as `app-<name>` or `tool-<name>`
+- if `shell_aliases` is present as `[]` or `null`, that disables default alias seeding for that entry
+- arbitrary shell shortcuts belong under top-level `shell_aliases`, not under app/tool registry identity alone
 
 ### 34.3 Preferred alias for Alteran-managed Deno passthrough
 
@@ -2562,8 +2315,7 @@ Alteran should provide managed passthrough commands for Deno.
 
 `alteran deno` runs Deno inside the Alteran environment.
 
-This is useful when the user wants raw Deno behavior, but with Alteran runtime
-resolution and environment variables already applied.
+This is useful when the user wants raw Deno behavior, but with Alteran runtime resolution and environment variables already applied.
 
 Examples:
 
@@ -2576,8 +2328,7 @@ Alias:
 
 - `adeno`
 
-`alteran deno` should be treated primarily as a passthrough/proxy namespace, not
-as a large Alteran-specific command family.
+`alteran deno` should be treated primarily as a passthrough/proxy namespace, not as a large Alteran-specific command family.
 
 ### 34.5.1 `alteran test`
 
@@ -2591,8 +2342,7 @@ This is a convenience shortcut for:
 alteran deno test ...
 ```
 
-It should behave like `deno test`, but executed inside the Alteran-managed
-environment.
+It should behave like `deno test`, but executed inside the Alteran-managed environment.
 
 Examples:
 
@@ -2602,8 +2352,7 @@ Examples:
 
 ### 34.6 `alteran x`
 
-`alteran x` is equivalent in spirit to `deno x`, but executed inside the Alteran
-environment.
+`alteran x` is equivalent in spirit to `deno x`, but executed inside the Alteran environment.
 
 Alias:
 
@@ -2613,8 +2362,7 @@ Alias:
 
 ## 35. Update, Upgrade, Use, and Deno Version Management
 
-Alteran should clearly separate project dependency update, tooling upgrade,
-configuration mutation, and configuration synchronization.
+Alteran should clearly separate project dependency update, tooling upgrade, configuration mutation, and configuration synchronization.
 
 ### 35.1 `alteran update`
 
@@ -2622,8 +2370,7 @@ Alteran should provide:
 
 - **`alteran update`**
 
-This command is conceptually equivalent to running Deno dependency updates for
-the current project.
+This command is conceptually equivalent to running Deno dependency updates for the current project.
 
 Its role is:
 
@@ -2646,11 +2393,9 @@ Default behavior:
 
 - upgrade Alteran itself
 
-This command is for upgrading installed tooling, not for editing project
-configuration.
+This command is for upgrading installed tooling, not for editing project configuration.
 
-When `upgrade` needs to download Alteran or Deno, it should honor the
-source-list behavior from Section 6.1.
+When `upgrade` needs to download Alteran or Deno, it should honor the source-list behavior from Section 6.1.
 
 ### 35.3 Explicit upgrade targets
 
@@ -2672,8 +2417,7 @@ Behavior:
 - `--alteran` / `--alt` explicitly target Alteran itself
 - `--deno` explicitly targets the Alteran-managed Deno runtime
 - each flag acts as both target selector and optional version carrier
-- if no version is specified for a selected target, Alteran should use the
-  latest appropriate version for that target
+- if no version is specified for a selected target, Alteran should use the latest appropriate version for that target
 
 ### 35.4 `alteran use`
 
@@ -2693,11 +2437,9 @@ Behavior:
 
 - validate the provided version/specifier
 - write `deno_version` into `alteran.json`
-- either apply it immediately or instruct the user to run `alteran refresh`,
-  depending on the final implementation choice
+- either apply it immediately or instruct the user to run `alteran refresh`, depending on the final implementation choice
 
-This is the preferred place for project config mutation related to Deno version
-selection.
+This is the preferred place for project config mutation related to Deno version selection.
 
 ### 35.5 Single-version Deno policy
 
@@ -2723,20 +2465,16 @@ It may be:
 
 - an exact version
 - a version range/specifier, if Alteran chooses to support them
-- omitted, in which case Alteran is free to use its default bootstrap/runtime
-  policy
+- omitted, in which case Alteran is free to use its default bootstrap/runtime policy
 
 ### 35.7 Runtime resolution rule
 
 When Alteran needs Deno, it should:
 
 1. check project-local Deno in `.runtime/deno/{os}-{arch}/bin/`
-2. if global or parent Deno is available and satisfies the configured version
-   constraint, it may be used during bootstrap/setup flows
-3. if no available Deno satisfies the configured version requirement, Alteran
-   downloads an appropriate local Deno into the project runtime
-4. once local runtime is established, project execution should prefer the local
-   Deno
+2. if global or parent Deno is available and satisfies the configured version constraint, it may be used during bootstrap/setup flows
+3. if no available Deno satisfies the configured version requirement, Alteran downloads an appropriate local Deno into the project runtime
+4. once local runtime is established, project execution should prefer the local Deno
 
 ### 35.8 `alteran refresh`
 
@@ -2744,17 +2482,14 @@ When Alteran needs Deno, it should:
 
 Behavior:
 
-- if `alteran.json` contains `deno_version`, bring local Deno into compliance
-  with that configured specifier
-- if no `deno_version` is configured, follow Alteran's default bootstrap/runtime
-  policy without mutating config
+- if `alteran.json` contains `deno_version`, bring local Deno into compliance with that configured specifier
+- if no `deno_version` is configured, follow Alteran's default bootstrap/runtime policy without mutating config
 
 `refresh` should not silently choose new target versions on its own.
 
 ### 35.9 `alteran upgrade --deno[=...]`
 
-Alteran should support upgrading the Alteran-managed Deno runtime through the
-top-level command.
+Alteran should support upgrading the Alteran-managed Deno runtime through the top-level command.
 
 Supported forms:
 
@@ -2766,17 +2501,14 @@ alteran upgrade --deno=<version-spec>
 Behavior:
 
 - this is a convenience wrapper over `alteran deno upgrade`
-- `alteran upgrade --deno=<version-spec>` should map conceptually to
-  `alteran deno upgrade --version=<version-spec>`
+- `alteran upgrade --deno=<version-spec>` should map conceptually to `alteran deno upgrade --version=<version-spec>`
 - `alteran upgrade --deno` should map conceptually to `alteran deno upgrade`
 
 This command upgrades the installed Alteran-managed Deno runtime.
 
 It should **not** rewrite `alteran.json` by default.
 
-If the installed/runtime Deno and configured `deno_version` diverge, Alteran may
-emit a warning, but config mutation should remain an explicit action via
-`alteran use --deno=...`.
+If the installed/runtime Deno and configured `deno_version` diverge, Alteran may emit a warning, but config mutation should remain an explicit action via `alteran use --deno=...`.
 
 ### 35.10 `alteran deno upgrade`
 
@@ -2788,12 +2520,9 @@ alteran deno upgrade [--version=<version-spec>]
 
 Behavior:
 
-- acts as a passthrough/proxy invocation of Deno upgrade behavior within the
-  Alteran environment
-- preserves the underlying Deno upgrade semantics rather than reimplementing
-  separate Alteran-specific logic
-- applies to the Alteran-managed local runtime, not the global/system
-  installation
+- acts as a passthrough/proxy invocation of Deno upgrade behavior within the Alteran environment
+- preserves the underlying Deno upgrade semantics rather than reimplementing separate Alteran-specific logic
+- applies to the Alteran-managed local runtime, not the global/system installation
 
 ### 35.11 `DENO_INSTALL_ROOT`
 
@@ -2801,11 +2530,9 @@ Alteran shell environment may need to set:
 
 - **`DENO_INSTALL_ROOT`**
 
-so that local Deno installation and upgrade flows place binaries into the
-correct project-local runtime directory.
+so that local Deno installation and upgrade flows place binaries into the correct project-local runtime directory.
 
-This is especially relevant for `alteran deno upgrade` and
-`alteran upgrade --deno`.
+This is especially relevant for `alteran deno upgrade` and `alteran upgrade --deno`.
 
 ### 35.12 Global Deno safety rule
 
@@ -2817,11 +2544,9 @@ All Alteran-managed upgrades apply only to the project-local runtime.
 
 ## 36. Logging Model
 
-Alteran should provide a logging system for CLI invocations, managed Deno
-execution, structured events, runtime capture, and optional LogTape integration.
+Alteran should provide a logging system for CLI invocations, managed Deno execution, structured events, runtime capture, and optional LogTape integration.
 
-This logging model builds on the managed execution model from Section 33 and is
-extended by the LogTape-specific integration rules in Section 37.
+This logging model builds on the managed execution model from Section 33 and is extended by the LogTape-specific integration rules in Section 37.
 
 The goals are:
 
@@ -2840,8 +2565,7 @@ Alteran supports three logging output forms:
 - `stderr`
 - `events.jsonl`
 
-`stdout` and `stderr` are process stream captures. They are not structured
-logging channels by themselves.
+`stdout` and `stderr` are process stream captures. They are not structured logging channels by themselves.
 
 `events.jsonl` is the structured event stream.
 
@@ -2876,8 +2600,7 @@ Supported top-level keys:
 - `logging.stderr`
 - `logging.logtape`
 
-`logging.stdout` and `logging.stderr` control stream capture and console
-mirroring behavior.
+`logging.stdout` and `logging.stderr` control stream capture and console mirroring behavior.
 
 Their exact schema may evolve, but they are intended to control things such as:
 
@@ -2896,26 +2619,22 @@ If absent or `false`:
 - LogTape is considered disabled
 - Alteran does not require the LogTape package
 - Alteran does not bootstrap LogTape
-- the `@logtape/logtape` proxy remains inert and only re-exports the original
-  package behavior
+- the `@logtape/logtape` proxy remains inert and only re-exports the original package behavior
 
 If set to `true`:
 
 - LogTape is enabled
 - Alteran applies its default LogTape configuration
-- LogTape infrastructure is bootstrapped automatically in Alteran-managed
-  execution
+- LogTape infrastructure is bootstrapped automatically in Alteran-managed execution
 
 If set to an object:
 
 - LogTape is enabled
 - the object is treated as user LogTape configuration
 - Alteran default configuration is deep-merged with the provided object
-- if the user wants a full reset instead of merge, LogTape's own reset mechanism
-  may be used
+- if the user wants a full reset instead of merge, LogTape's own reset mechanism may be used
 
-For `logging.logtape: { ... }`, Alteran default configuration is the base and
-the user object is deep-merged over the defaults.
+For `logging.logtape: { ... }`, Alteran default configuration is the base and the user object is deep-merged over the defaults.
 
 ### 36.4 Log storage layout
 
@@ -2927,9 +2646,7 @@ Logs are stored under:
 
 This is the canonical project-local log root.
 
-Even if Alteran later supports a user-provided external copy target such as
-`ALTERAN_CUSTOM_LOG_DIR`, the canonical root for invocation identity and
-metadata remains under the current project's `.runtime/logs/`.
+Even if Alteran later supports a user-provided external copy target such as `ALTERAN_CUSTOM_LOG_DIR`, the canonical root for invocation identity and metadata remains under the current project's `.runtime/logs/`.
 
 The top-level directories are:
 
@@ -2953,8 +2670,7 @@ Root invocation categories:
 
 Child processes do not change the top-level directory.
 
-All logging for the invocation tree belongs to the root invocation directory
-determined by the root call.
+All logging for the invocation tree belongs to the root invocation directory determined by the root call.
 
 ### 36.5 Per-invocation directory
 
@@ -2981,8 +2697,7 @@ events.jsonl
 metadata.json
 ```
 
-This layout provides chronological sorting, human-readable identification, and a
-stable root directory for all logs of that invocation tree.
+This layout provides chronological sorting, human-readable identification, and a stable root directory for all logs of that invocation tree.
 
 ### 36.6 `metadata.json`
 
@@ -3008,9 +2723,7 @@ Recommended fields:
 }
 ```
 
-The intent of `metadata.json` is to describe the root invocation in a compact
-form, allow quick debugging without parsing `events.jsonl`, and preserve
-execution metadata even if logs are later rotated or partially truncated.
+The intent of `metadata.json` is to describe the root invocation in a compact form, allow quick debugging without parsing `events.jsonl`, and preserve execution metadata even if logs are later rotated or partially truncated.
 
 ### 36.7 Invocation identity
 
@@ -3029,13 +2742,11 @@ Recommended additional metadata:
 - `name`
 - `type`
 
-These identifiers should be available in structured events and, where useful,
-via environment variables.
+These identifiers should be available in structured events and, where useful, via environment variables.
 
 ### 36.8 Environment variables for logging context
 
-Alteran should propagate logging context into child processes through
-environment variables.
+Alteran should propagate logging context into child processes through environment variables.
 
 Recommended variables:
 
@@ -3046,8 +2757,7 @@ Recommended variables:
 - `ALTERAN_LOG_MODE`
 - `ALTERAN_LOG_CONTEXT_JSON`
 
-`ALTERAN_ROOT_LOG_DIR` must always point at a canonical project-local root log
-directory under:
+`ALTERAN_ROOT_LOG_DIR` must always point at a canonical project-local root log directory under:
 
 ```text
 <project>/.runtime/logs/<category>/<run-id>
@@ -3055,11 +2765,9 @@ directory under:
 
 It must not be replaced by an external custom copy destination.
 
-If Alteran supports a custom log mirror/copy destination such as
-`ALTERAN_CUSTOM_LOG_DIR`:
+If Alteran supports a custom log mirror/copy destination such as `ALTERAN_CUSTOM_LOG_DIR`:
 
-- canonical root metadata such as `metadata.json` still belongs under the
-  project-local `.runtime/logs/...`
+- canonical root metadata such as `metadata.json` still belongs under the project-local `.runtime/logs/...`
 - `ALTERAN_ROOT_LOG_DIR` still points to that canonical project-local location
 - the custom location is only an additional copy/mirror target
 
@@ -3067,17 +2775,12 @@ Inherited logging context is valid only when it belongs to the current project.
 
 In practice this means:
 
-- the inherited `ALTERAN_ROOT_LOG_DIR` must lie inside the current project's
-  `.runtime/logs/`
-- inherited `ALTERAN_RUN_ID` / `ALTERAN_ROOT_RUN_ID` must be coherent with that
-  canonical root session metadata
+- the inherited `ALTERAN_ROOT_LOG_DIR` must lie inside the current project's `.runtime/logs/`
+- inherited `ALTERAN_RUN_ID` / `ALTERAN_ROOT_RUN_ID` must be coherent with that canonical root session metadata
 
-If inherited logging variables are foreign or inconsistent, Alteran should
-self-heal by starting a fresh root session for the current project rather than
-failing hard by default.
+If inherited logging variables are foreign or inconsistent, Alteran should self-heal by starting a fresh root session for the current project rather than failing hard by default.
 
-`ALTERAN_LOG_CONTEXT_JSON` should be a JSON string with a recommended shape
-like:
+`ALTERAN_LOG_CONTEXT_JSON` should be a JSON string with a recommended shape like:
 
 ```json
 {
@@ -3092,14 +2795,9 @@ like:
 }
 ```
 
-This is preferred over comma-separated strings because it is less ambiguous,
-easier to extend, avoids delimiter issues, and is future-proof for richer
-metadata.
+This is preferred over comma-separated strings because it is less ambiguous, easier to extend, avoids delimiter issues, and is future-proof for richer metadata.
 
-`ALTERAN_LOG_CONTEXT_JSON` is an internal Alteran-managed propagation payload
-for lightweight parent/child logging context. It must not be treated as a
-general user-facing configuration mechanism, and heavy LogTape configuration
-should not be serialized through environment variables.
+`ALTERAN_LOG_CONTEXT_JSON` is an internal Alteran-managed propagation payload for lightweight parent/child logging context. It must not be treated as a general user-facing configuration mechanism, and heavy LogTape configuration should not be serialized through environment variables.
 
 Recommended `ALTERAN_LOG_MODE` values are:
 
@@ -3115,8 +2813,7 @@ The capture layer is responsible for:
 
 - capturing stdout and stderr from the root invocation tree
 - appending captured output to `stdout.log` and `stderr.log`
-- optionally mirroring those streams to the console according to
-  `logging.stdout` / `logging.stderr`
+- optionally mirroring those streams to the console according to `logging.stdout` / `logging.stderr`
 
 The event layer is responsible for:
 
@@ -3127,20 +2824,15 @@ The event layer is responsible for:
 
 Initial child process capture policy:
 
-- child processes do not create their own top-level `{run_id}_{name}` log
-  directories
-- child stdout and stderr are captured into the root invocation's `stdout.log`
-  and `stderr.log`
-- structured child lifecycle information is recorded in the root invocation's
-  `events.jsonl`
+- child processes do not create their own top-level `{run_id}_{name}` log directories
+- child stdout and stderr are captured into the root invocation's `stdout.log` and `stderr.log`
+- structured child lifecycle information is recorded in the root invocation's `events.jsonl`
 
-Per-child dedicated text log files are an optional future enhancement, not a
-required base behavior.
+Per-child dedicated text log files are an optional future enhancement, not a required base behavior.
 
 ### 36.10 Console mirroring and clean stdout
 
-Console mirroring behavior is configurable through `logging.stdout` and
-`logging.stderr`.
+Console mirroring behavior is configurable through `logging.stdout` and `logging.stderr`.
 
 Expected default model:
 
@@ -3150,10 +2842,8 @@ Expected default model:
 
 Important exception:
 
-- commands like `shellenv` that emit machine-readable shell code must preserve a
-  clean stdout contract
-- diagnostics, warnings, and logging for such commands must go to stderr or
-  structured events, not to stdout
+- commands like `shellenv` that emit machine-readable shell code must preserve a clean stdout contract
+- diagnostics, warnings, and logging for such commands must go to stderr or structured events, not to stdout
 
 ### 36.11 Structured event model
 
@@ -3221,20 +2911,16 @@ If `logging.logtape` is `true`:
 
 - Alteran enables LogTape with default configuration
 - Alteran-managed `run` and `task` execution bootstrap LogTape automatically
-- the bootstrap reads the effective `logging.logtape` setting from the current
-  project's `alteran.json`
-- structured LogTape records are written into the root invocation's
-  `events.jsonl`
-- any configured text-oriented sinks may also emit to stdout/stderr depending on
-  the effective config
+- the bootstrap reads the effective `logging.logtape` setting from the current project's `alteran.json`
+- structured LogTape records are written into the root invocation's `events.jsonl`
+- any configured text-oriented sinks may also emit to stdout/stderr depending on the effective config
 
 If `logging.logtape` is an object:
 
 - Alteran default LogTape config is deep-merged with it
 - user overrides take precedence
 - user may explicitly reset config using native LogTape reset behavior if needed
-- the object is read from the current project's `alteran.json`, not propagated
-  as a heavyweight environment variable
+- the object is read from the current project's `alteran.json`, not propagated as a heavyweight environment variable
 
 ### 37.3 Bootstrap and extension files
 
@@ -3249,12 +2935,9 @@ Planned files:
 - `logtape_cfg_mock.ts`
 - `logtape_ext.ts`
 
-`logtape_cfg_mock.ts` is the Alteran-side LogTape bootstrap/configuration
-entrypoint. It performs initial LogTape configure when LogTape is enabled and
-re-exports the original `@logtape/logtape` API.
+`logtape_cfg_mock.ts` is the Alteran-side LogTape bootstrap/configuration entrypoint. It performs initial LogTape configure when LogTape is enabled and re-exports the original `@logtape/logtape` API.
 
-`logtape_ext.ts` provides explicit optional helpers and extensions beyond plain
-LogTape and should be exposed through:
+`logtape_ext.ts` provides explicit optional helpers and extensions beyond plain LogTape and should be exposed through:
 
 ```text
 @alteran/logging/logtape_ext
@@ -3277,33 +2960,26 @@ Alteran may remap only the bare LogTape specifier:
 }
 ```
 
-This remapping is used only for Alteran-managed Deno execution inside the
-project.
+This remapping is used only for Alteran-managed Deno execution inside the project.
 
 Important rules:
 
 - only the bare `@logtape/logtape` specifier is remapped
-- subpath imports such as `@logtape/logtape/...` continue to resolve to the
-  original package unless explicitly remapped
+- subpath imports such as `@logtape/logtape/...` continue to resolve to the original package unless explicitly remapped
 - the proxy module performs bootstrap and then re-exports native LogTape API
 
-Even if the proxy module exists, it should remain inert when `logging.logtape`
-is disabled. In that case it should effectively behave as a plain re-export
-without Alteran-side configure.
+Even if the proxy module exists, it should remain inert when `logging.logtape` is disabled. In that case it should effectively behave as a plain re-export without Alteran-side configure.
 
 ### 37.5 Top-level `await` in the proxy module
 
-The LogTape proxy/config bootstrap may use top-level `await` when running in
-Alteran-managed Deno execution.
+The LogTape proxy/config bootstrap may use top-level `await` when running in Alteran-managed Deno execution.
 
 This is acceptable because:
 
 - execution is controlled by Alteran
 - the environment is Deno-only
 - there is no target requirement for browser compatibility
-- Node.js compatibility, if present at all, is limited to a thin bootstrap
-  bridge in the top-level proxy entrypoint rather than the Alteran runtime
-  itself
+- Node.js compatibility, if present at all, is limited to a thin bootstrap bridge in the top-level proxy entrypoint rather than the Alteran runtime itself
 
 ### 37.6 Category model for Alteran
 
@@ -3341,27 +3017,19 @@ Planned helpers:
 - `getChildWith(category, context)`
 - `withCategoryAndContext(category, context, fn)`
 
-`getChildWith(...)` is syntax sugar that combines child category selection and
-context attachment in one helper.
+`getChildWith(...)` is syntax sugar that combines child category selection and context attachment in one helper.
 
-`withCategoryAndContext([...], {...}, () => { ... })` is a scoped helper useful
-for subroutines, nested tasks, and structured execution blocks.
+`withCategoryAndContext([...], {...}, () => { ... })` is a scoped helper useful for subroutines, nested tasks, and structured execution blocks.
 
-Alteran may add `getChildWith(...)` through an interface declaration plus
-prototype extension for the logger type, but such additions should remain inside
-Alteran's explicit extension module and should not be silently injected into the
-standard LogTape API import unless intentionally desired.
+Alteran may add `getChildWith(...)` through an interface declaration plus prototype extension for the logger type, but such additions should remain inside Alteran's explicit extension module and should not be silently injected into the standard LogTape API import unless intentionally desired.
 
 ### 37.8 Retention and cleanup
 
 Logs are expected to grow over time.
 
-Cleanup is already conceptually supported through `clean`, including
-`clean logs`.
+Cleanup is already conceptually supported through `clean`, including `clean logs`.
 
-Additional retention behavior should be configurable through logging-related
-settings, especially under `logging.stdout`, `logging.stderr`,
-`logging.logtape`, or related logging configuration fields.
+Additional retention behavior should be configurable through logging-related settings, especially under `logging.stdout`, `logging.stderr`, `logging.logtape`, or related logging configuration fields.
 
 Potential controls may include:
 

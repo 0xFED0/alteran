@@ -2,11 +2,9 @@
 
 ## 1. Purpose
 
-This document defines the purpose, scope, structure, and operating rules of the
-Alteran test suite.
+This document defines the purpose, scope, structure, and operating rules of the Alteran test suite.
 
-It exists so that the test suite is guided by explicit product expectations
-rather than by the current implementation alone.
+It exists so that the test suite is guided by explicit product expectations rather than by the current implementation alone.
 
 The test suite must answer four questions:
 
@@ -28,42 +26,34 @@ This document complements:
 
 Tests should follow the Alteran specification first.
 
-If current code behaves differently from the specification, the test should
-prefer the specification unless the specification is clearly ambiguous or
-internally contradictory.
+If current code behaves differently from the specification, the test should prefer the specification unless the specification is clearly ambiguous or internally contradictory.
 
 ### 2.2 Signal over greenness
 
 The goal is not to make all tests green at any cost.
 
-The goal is to surface important user-facing breakage, especially in scenarios
-that are:
+The goal is to surface important user-facing breakage, especially in scenarios that are:
 
 - common
 - plausible
 - easy for a user to attempt
 - dangerous when broken
 
-If a test reproduces a realistic product bug, the test should remain strict
-rather than being weakened to match the current bug.
+If a test reproduces a realistic product bug, the test should remain strict rather than being weakened to match the current bug.
 
 ### 2.3 User-centered scenarios
 
-The suite should prioritize the user-facing bootstrap and activation flows of
-Alteran rather than only internal implementation details.
+The suite should prioritize the user-facing bootstrap and activation flows of Alteran rather than only internal implementation details.
 
 ### 2.4 Deterministic where possible
 
-Tests should prefer local, self-hosted, deterministic inputs over public
-network dependencies.
+Tests should prefer local, self-hosted, deterministic inputs over public network dependencies.
 
 ### 2.5 Honest platform scope
 
-Supported behavior, unsupported behavior, and exploratory behavior must be
-clearly separated.
+Supported behavior, unsupported behavior, and exploratory behavior must be clearly separated.
 
-If a platform is intentionally unsupported by product ADR, tests should reflect
-that honestly.
+If a platform is intentionally unsupported by product ADR, tests should reflect that honestly.
 
 ## 3. Test Suite Goals
 
@@ -76,8 +66,7 @@ The Alteran suite exists to verify that:
 - cleanup commands are safe and consistent with the specification
 - bootstrap works from realistic source combinations
 - standalone app launchers can auto-materialize and launch a basic app flow
-- Windows activation behavior is covered explicitly rather than inferred from
-  Unix behavior
+- Windows activation behavior is covered explicitly rather than inferred from Unix behavior
 - Docker bootstrap paths are exercised in isolated environments
 
 ## 4. Test Categories
@@ -102,8 +91,7 @@ Current file:
 
 ### 4.2 Repository-level e2e tests
 
-These tests create temporary projects or repository copies and exercise Alteran
-through real commands and generated files.
+These tests create temporary projects or repository copies and exercise Alteran through real commands and generated files.
 
 They should cover:
 
@@ -139,13 +127,11 @@ Current file:
 
 - `projects/alteran/tests/alteran_windows_e2e_test.ts`
 
-These tests must be skipped on non-Windows hosts using explicit `ignore`
-conditions rather than early `return`.
+These tests must be skipped on non-Windows hosts using explicit `ignore` conditions rather than early `return`.
 
 ### 4.4 Docker e2e tests
 
-Docker tests validate bootstrap and activation in minimal isolated Linux
-environments.
+Docker tests validate bootstrap and activation in minimal isolated Linux environments.
 
 They exist to validate:
 
@@ -164,23 +150,19 @@ The suite should explicitly cover the following bootstrap/activation entrypaths.
 
 ### 5.1 Copied bootstrap scripts
 
-The user copies `setup` and `setup.bat` into a target directory and runs
-them there.
+The user copies `setup` and `setup.bat` into a target directory and runs them there.
 
-This is a first-class scenario because it represents bootstrap from an empty or
-near-empty folder.
+This is a first-class scenario because it represents bootstrap from an empty or near-empty folder.
 
 ### 5.2 Direct setup script invocation with explicit target
 
 The user runs repository `setup` and supplies a target directory.
 
-This covers a common bootstrap flow from a checked-out Alteran source
-repository.
+This covers a common bootstrap flow from a checked-out Alteran source repository.
 
 ### 5.3 Repository environment activation plus `alteran setup`
 
-The user enters an Alteran-capable repository environment and sets up some
-other target directory through `alteran setup`.
+The user enters an Alteran-capable repository environment and sets up some other target directory through `alteran setup`.
 
 ### 5.4 Direct `deno run alteran.ts ...`
 
@@ -197,13 +179,11 @@ The suite must cover bootstrap from:
 - runnable sources
 - archive sources
 
-These should be hosted by test-local fixtures rather than public network
-resources.
+These should be hosted by test-local fixtures rather than public network resources.
 
 ### 5.6 Generated Unix activation semantics
 
-The suite must cover generated Unix `activate` behavior as a sourced-only
-artifact.
+The suite must cover generated Unix `activate` behavior as a sourced-only artifact.
 
 This includes:
 
@@ -219,19 +199,16 @@ At minimum, the contract test should verify:
 
 - a basic app launcher can be executed directly by the user
 - no `source app` style flow is required or supported
-- if the app-local runtime is missing, launcher-triggered setup/bootstrap can
-  materialize enough runtime to proceed
+- if the app-local runtime is missing, launcher-triggered setup/bootstrap can materialize enough runtime to proceed
 - the launcher then runs the main app task successfully
 - a later launch can reuse the already materialized app-local runtime
-- the launcher rejects a mismatched `app.json` identity instead of silently
-  treating a different app directory as valid
+- the launcher rejects a mismatched `app.json` identity instead of silently treating a different app directory as valid
 
 ## 6. Platform Coverage Rules
 
 ### 6.1 Unix-like shells
 
-Unix shell tests should exercise sourced activation semantics, especially cases
-that can break shell state or path resolution.
+Unix shell tests should exercise sourced activation semantics, especially cases that can break shell state or path resolution.
 
 Examples include:
 
@@ -243,8 +220,7 @@ Examples include:
 
 ### 6.2 Windows
 
-Windows tests should treat `.bat`, `cmd`, and PowerShell behavior as native
-surfaces, not as approximations of Unix shell behavior.
+Windows tests should treat `.bat`, `cmd`, and PowerShell behavior as native surfaces, not as approximations of Unix shell behavior.
 
 The suite should continue to include:
 
@@ -253,16 +229,13 @@ The suite should continue to include:
 - PowerShell to `cmd /c call ...`
 - spaces in repository and target paths
 - legacy source env aliases where still supported
-- direct execution of generated `app.bat` launchers for supported standalone app
-  scenarios
+- direct execution of generated `app.bat` launchers for supported standalone app scenarios
 
 ### 6.3 Linux in Docker
 
-Docker coverage should focus on supported GNU-based Linux environments and on
-bootstrap isolation.
+Docker coverage should focus on supported GNU-based Linux environments and on bootstrap isolation.
 
-Exploratory tests for unsupported Linux variants may exist, but their meaning
-must stay clear and must not silently redefine product support.
+Exploratory tests for unsupported Linux variants may exist, but their meaning must stay clear and must not silently redefine product support.
 
 The current support boundary for Linux is governed by ADR 0002.
 
@@ -270,8 +243,7 @@ The current support boundary for Linux is governed by ADR 0002.
 
 ### 7.1 Shared helpers are preferred
 
-When multiple tests need the same setup or assertions, the shared logic should
-move into helper modules under `projects/alteran/tests/`.
+When multiple tests need the same setup or assertions, the shared logic should move into helper modules under `projects/alteran/tests/`.
 
 Examples include:
 
@@ -288,8 +260,7 @@ Remote bootstrap tests should use self-hosted local fixtures that expose:
 - a runnable source bundle
 - an archive source bundle
 
-This keeps tests deterministic and allows controlled reproduction of bootstrap
-behavior.
+This keeps tests deterministic and allows controlled reproduction of bootstrap behavior.
 
 Current helper:
 
@@ -297,17 +268,13 @@ Current helper:
 
 ### 7.3 Docker fixture strategy
 
-Docker bind-mounted temporary fixtures should live under repository-controlled
-paths rather than host-specific system temp locations when required for
-container runtime compatibility.
+Docker bind-mounted temporary fixtures should live under repository-controlled paths rather than host-specific system temp locations when required for container runtime compatibility.
 
-This avoids environment-specific mount failures and keeps Docker tests stable on
-development setups such as Colima.
+This avoids environment-specific mount failures and keeps Docker tests stable on development setups such as Colima.
 
 ### 7.4 Ignore unsupported host conditions explicitly
 
-If a test requires Windows or Docker availability, it should use `ignore`
-metadata rather than pass as `ok (0ms)` by returning early.
+If a test requires Windows or Docker availability, it should use `ignore` metadata rather than pass as `ok (0ms)` by returning early.
 
 ## 8. Failure Interpretation Rules
 
@@ -318,8 +285,7 @@ A failure should be treated as a product bug when:
 - the scenario is aligned with the specification
 - the setup is realistic
 - the fixture is valid
-- the failure happens after bootstrap/setup has succeeded enough to exercise the
-  intended behavior
+- the failure happens after bootstrap/setup has succeeded enough to exercise the intended behavior
 
 ### 8.2 Test harness bug
 
@@ -330,13 +296,11 @@ A failure should be treated as test-infrastructure breakage when:
 - a local test server serves the wrong content or content type
 - the test injects contradictory environment assumptions
 
-Harness bugs should be fixed so that the suite reveals product behavior more
-accurately.
+Harness bugs should be fixed so that the suite reveals product behavior more accurately.
 
 ### 8.3 Known open issues
 
-If a test cannot be written correctly, or if the specification and product are
-blocked by an unresolved contradiction, the problem should be documented under:
+If a test cannot be written correctly, or if the specification and product are blocked by an unresolved contradiction, the problem should be documented under:
 
 - `projects/alteran/tests/issues.md`
 
@@ -354,13 +318,11 @@ Expected tasks:
 - `test:docker`
 - `test`
 
-These tasks are part of the expected developer workflow and should stay in sync
-with the actual test file layout.
+These tasks are part of the expected developer workflow and should stay in sync with the actual test file layout.
 
 ## 10. Non-Goals
 
-The test suite does not need to exhaustively enumerate every theoretical shell,
-container, or path combination.
+The test suite does not need to exhaustively enumerate every theoretical shell, container, or path combination.
 
 It should instead optimize for:
 

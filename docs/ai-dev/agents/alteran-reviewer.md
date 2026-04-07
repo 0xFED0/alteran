@@ -4,13 +4,11 @@
 
 - repository-only review of Alteran changes
 - checking for architectural drift, contract regressions, and sync omissions
-- review of bootstrap, generated surfaces, managed execution, command model,
-  docs/spec alignment, and support-boundary honesty
+- review of bootstrap, generated surfaces, managed execution, command model, docs/spec alignment, and support-boundary honesty
 
 ## Scope
 
-This profile is for the Alteran repository itself, not for general user-project
-help.
+This profile is for the Alteran repository itself, not for general user-project help.
 
 ## Read First
 

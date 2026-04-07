@@ -2,8 +2,7 @@
 
 ## 1. Purpose
 
-This document defines implementation-oriented rules and contributor guardrails
-for working on Alteran itself.
+This document defines implementation-oriented rules and contributor guardrails for working on Alteran itself.
 
 Its audience includes:
 
@@ -11,12 +10,9 @@ Its audience includes:
 - occasional contributors
 - coding agents and AI assistants
 
-Unlike `docs/dev/best-practices/`, this document is normative. It exists to
-pin down high-value engineering rules that are easy to forget, easy to violate,
-and capable of causing wide regressions when ignored.
+Unlike `docs/dev/best-practices/`, this document is normative. It exists to pin down high-value engineering rules that are easy to forget, easy to violate, and capable of causing wide regressions when ignored.
 
-The companion files under `docs/dev/best-practices/` are human-friendly
-summaries derived from this spec, not a higher authority.
+The companion files under `docs/dev/best-practices/` are human-friendly summaries derived from this spec, not a higher authority.
 
 ---
 
@@ -32,9 +28,7 @@ Authority order remains:
 4. this best-practice rules spec for implementation guardrails
 5. `docs/dev/best-practices/` for contributor-facing summaries
 
-If this file conflicts with `001-alteran_spec.md` or another numbered spec,
-the more specific or higher-level normative spec must win and this file should
-be corrected.
+If this file conflicts with `001-alteran_spec.md` or another numbered spec, the more specific or higher-level normative spec must win and this file should be corrected.
 
 ---
 
@@ -69,17 +63,13 @@ Contributors must not blur these buckets casually.
 
 ### 3.3 Fix generators, not only outputs
 
-When a change affects generated files, the source-of-truth generator or
-template must be updated first unless the generated file itself is the true
-source-of-truth.
+When a change affects generated files, the source-of-truth generator or template must be updated first unless the generated file itself is the true source-of-truth.
 
-Manual spot-fixes to generated outputs must not be used as a substitute for
-fixing the generating logic.
+Manual spot-fixes to generated outputs must not be used as a substitute for fixing the generating logic.
 
 ### 3.4 Keep the repository honest
 
-The repository must represent real distinctions instead of hiding them behind
-convenient naming.
+The repository must represent real distinctions instead of hiding them behind convenient naming.
 
 Examples:
 
@@ -92,8 +82,7 @@ If asymmetry is intentional, it should remain explicit.
 
 ### 3.5 Do not create split-brain trees
 
-Contributors must avoid creating parallel locations that both claim to be the
-source of truth for the same concern.
+Contributors must avoid creating parallel locations that both claim to be the source of truth for the same concern.
 
 This includes:
 
@@ -110,11 +99,9 @@ This includes:
 
 `setup` is the public bootstrap, repair, and materialization surface.
 
-`activate` is a generated local entrypoint for entering an already prepared
-environment.
+`activate` is a generated local entrypoint for entering an already prepared environment.
 
-Contributors must not quietly move bootstrap, repair, or download behavior
-into `activate`.
+Contributors must not quietly move bootstrap, repair, or download behavior into `activate`.
 
 ### 4.2 Keep `activate` lightweight and deterministic
 
@@ -124,14 +111,11 @@ Generated `activate` should:
 - avoid runtime path cleverness when generation already knows the correct path
 - be sourced-only on Unix
 
-If a project moved or changed platform/runtime layout, the recovery path is
-`setup`, not a smarter `activate`.
+If a project moved or changed platform/runtime layout, the recovery path is `setup`, not a smarter `activate`.
 
 ### 4.3 Set runtime cache boundaries early
 
-Activation and generated launchers must establish the correct local Deno cache
-boundary before invoking Deno in a way that could resolve or write
-dependencies.
+Activation and generated launchers must establish the correct local Deno cache boundary before invoking Deno in a way that could resolve or write dependencies.
 
 In practice this means `DENO_DIR` must be set early.
 
@@ -141,8 +125,7 @@ Shell or batch scripts should orchestrate, not own product policy.
 
 Complex project decisions belong in TypeScript whenever possible.
 
-When the shell layer grows complicated enough to encode architectural policy,
-contributors should move the decision logic into TypeScript.
+When the shell layer grows complicated enough to encode architectural policy, contributors should move the decision logic into TypeScript.
 
 ### 4.5 Prefer path certainty over shell cleverness
 
@@ -152,13 +135,11 @@ Contributors should:
 - embed known absolute paths in generated local scripts
 - prefer simple and robust shell snippets over dynamic path tricks
 
-Avoid shell-specific magic if the value can be determined once at generation
-time.
+Avoid shell-specific magic if the value can be determined once at generation time.
 
 ### 4.6 Use run sources only for execution bootstrap
 
-`ALTERAN_RUN_SOURCES` are execution sources, not canonical installation
-sources.
+`ALTERAN_RUN_SOURCES` are execution sources, not canonical installation sources.
 
 Canonical runtime materialization should prefer:
 
@@ -166,16 +147,13 @@ Canonical runtime materialization should prefer:
 2. already materialized local runtime
 3. archive sources
 
-Contributors must not reintroduce designs where remote runnable sources become
-the authoritative source for local materialization.
+Contributors must not reintroduce designs where remote runnable sources become the authoritative source for local materialization.
 
 ### 4.7 Avoid recursive bootstrap designs
 
-A running bootstrap path must not re-enter the same bootstrap path through the
-same remote source unless that flow is intentionally bounded and safe.
+A running bootstrap path must not re-enter the same bootstrap path through the same remote source unless that flow is intentionally bounded and safe.
 
-If a design relies on "bootstrap by recursively calling bootstrap", it should
-be treated as suspect.
+If a design relies on "bootstrap by recursively calling bootstrap", it should be treated as suspect.
 
 ### 4.8 Be honest about platform support
 
@@ -195,33 +173,27 @@ Known unsupported scenarios must not be quietly treated as supported.
 
 ### 5.1 Prefer explicit user-visible config
 
-If behavior is visible to the user, it should be represented explicitly in
-config when practical.
+If behavior is visible to the user, it should be represented explicitly in config when practical.
 
 This especially applies to aliases and shell conveniences.
 
-Boolean or magical hidden transforms should not replace clear explicit config
-when the user may need to understand or edit the result.
+Boolean or magical hidden transforms should not replace clear explicit config when the user may need to understand or edit the result.
 
 ### 5.2 Preserve user-authored entry state on refresh or reimport
 
-Refresh and reimport should update discovered structure without erasing
-user-authored intent such as:
+Refresh and reimport should update discovered structure without erasing user-authored intent such as:
 
 - explicit alias lists
 - intentional path overrides
 - preserved metadata
 
-Discovery logic must not aggressively rewrite entry state unless the contract
-explicitly says so.
+Discovery logic must not aggressively rewrite entry state unless the contract explicitly says so.
 
 ### 5.3 Resolve paths from the owning config context
 
-Paths in `alteran.json` and `app.json` must resolve from the owning config
-context, not from arbitrary caller `PWD`.
+Paths in `alteran.json` and `app.json` must resolve from the owning config context, not from arbitrary caller `PWD`.
 
-Contributors must treat accidental `PWD`-relative behavior as a bug unless the
-command contract explicitly requires it.
+Contributors must treat accidental `PWD`-relative behavior as a bug unless the command contract explicitly requires it.
 
 ### 5.4 Treat project context as project-scoped
 
@@ -241,15 +213,13 @@ Crossing into another project through:
 - generated app launchers
 - `alteran external`
 
-must replace or sanitize foreign inherited context rather than implicitly
-reusing it.
+must replace or sanitize foreign inherited context rather than implicitly reusing it.
 
 ### 5.5 Keep cross-project execution explicit
 
 Normal commands should not secretly target foreign Alteran projects.
 
-Cross-project operation must remain explicit and noticeable through dedicated
-surfaces such as:
+Cross-project operation must remain explicit and noticeable through dedicated surfaces such as:
 
 - `setup <dir>`
 - `alteran external ...`
@@ -260,11 +230,9 @@ surfaces such as:
 
 Managed behavior belongs to explicit Alteran entrypoints.
 
-Plain Deno should remain plain unless the user intentionally entered managed
-execution through Alteran-owned commands or generated launchers.
+Plain Deno should remain plain unless the user intentionally entered managed execution through Alteran-owned commands or generated launchers.
 
-Contributors must treat accidental bypass of managed context in Alteran-owned
-flows as a product bug.
+Contributors must treat accidental bypass of managed context in Alteran-owned flows as a product bug.
 
 ### 5.7 Keep canonical logging project-local
 
@@ -272,9 +240,7 @@ The canonical root log tree belongs under:
 
 `<project>/.runtime/logs/`
 
-External or custom log destinations may mirror or copy logs, but they must not
-replace the canonical project-local root log identity unless the product spec
-explicitly changes.
+External or custom log destinations may mirror or copy logs, but they must not replace the canonical project-local root log identity unless the product spec explicitly changes.
 
 ### 5.8 Messages are part of the interface
 
@@ -284,8 +250,7 @@ Error and status messages should state:
 - why that branch failed
 - what the user can try next
 
-Vague failure summaries should be avoided when more actionable messaging is
-possible.
+Vague failure summaries should be avoided when more actionable messaging is possible.
 
 ---
 
@@ -293,16 +258,13 @@ possible.
 
 ### 6.1 Prefer signal over artificial greenness
 
-Tests should expose real product behavior. They should not be weakened merely
-to remove noise from CI or local runs.
+Tests should expose real product behavior. They should not be weakened merely to remove noise from CI or local runs.
 
-Unsupported scenarios should be modeled honestly rather than made to look green
-through vague assertions.
+Unsupported scenarios should be modeled honestly rather than made to look green through vague assertions.
 
 ### 6.2 Test through real product flows
 
-High-value coverage should prefer real user flows over synthetic helper-only
-tests when practical.
+High-value coverage should prefer real user flows over synthetic helper-only tests when practical.
 
 Important examples include:
 
@@ -315,18 +277,15 @@ Important examples include:
 
 ### 6.3 Maintain test hermeticity
 
-Tests that spawn or activate other Alteran projects must carefully control
-inherited environment and working-directory assumptions.
+Tests that spawn or activate other Alteran projects must carefully control inherited environment and working-directory assumptions.
 
 Contributors should assume that leaked context is a likely failure mode.
 
 ### 6.4 Prefer deterministic local fixtures
 
-Tests should prefer local, deterministic fixtures over external network
-dependencies whenever practical.
+Tests should prefer local, deterministic fixtures over external network dependencies whenever practical.
 
-If a test requires local servers, archives, or release fixtures, those
-requirements should be explicit and reproducible.
+If a test requires local servers, archives, or release fixtures, those requirements should be explicit and reproducible.
 
 ### 6.5 Treat examples as contracts
 
@@ -340,11 +299,9 @@ If an example appears supported, contributors should keep it:
 
 ### 6.6 Treat docs flows as product flows
 
-Quick-start, copied-project, and executable documentation flows must be treated
-as product surfaces, not as editorial extras.
+Quick-start, copied-project, and executable documentation flows must be treated as product surfaces, not as editorial extras.
 
-Tests must not pass only because the repository or developer machine is
-already warmed up.
+Tests must not pass only because the repository or developer machine is already warmed up.
 
 ### 6.7 Reproduce first, then generalize
 
@@ -354,17 +311,13 @@ When fixing a regression:
 2. add or tighten the relevant test
 3. then generalize helpers if useful
 
-Contributors should avoid "fixing" a regression only by broad speculative
-refactoring.
+Contributors should avoid "fixing" a regression only by broad speculative refactoring.
 
 ### 6.8 Revalidate beyond the narrow failing test
 
-Changes to setup, activation, generated scripts, runtime materialization,
-examples, docs flows, or logging should trigger broader validation than the
-single failing test.
+Changes to setup, activation, generated scripts, runtime materialization, examples, docs flows, or logging should trigger broader validation than the single failing test.
 
-At minimum, contributors should revisit nearby unit, e2e, example, or docs
-coverage that shares the same surface.
+At minimum, contributors should revisit nearby unit, e2e, example, or docs coverage that shares the same surface.
 
 ---
 
@@ -372,11 +325,9 @@ coverage that shares the same surface.
 
 ### 7.1 Prefer small orchestration units
 
-Much of Alteran runtime code coordinates files, paths, env, process spawning,
-and generated artifacts.
+Much of Alteran runtime code coordinates files, paths, env, process spawning, and generated artifacts.
 
-Contributors should keep orchestration code small enough that one reader can
-visually follow:
+Contributors should keep orchestration code small enough that one reader can visually follow:
 
 - discovery
 - normalization
@@ -400,33 +351,27 @@ Helpers should make it obvious whether they:
 
 Alteran often has ordered fallback logic.
 
-Contributors should prefer structures that make the priority order visually
-obvious instead of hiding it under deep nesting.
+Contributors should prefer structures that make the priority order visually obvious instead of hiding it under deep nesting.
 
 ### 7.4 Keep environment reads near boundaries
 
 Environment variables are global mutable state.
 
-Boundary helpers should read and normalize env values, then pass normalized
-data inward explicitly whenever practical.
+Boundary helpers should read and normalize env values, then pass normalized data inward explicitly whenever practical.
 
-Deep helpers should not silently depend on ambient env unless that is their
-clear and narrow purpose.
+Deep helpers should not silently depend on ambient env unless that is their clear and narrow purpose.
 
 ### 7.5 Keep generated script templates understandable
 
 Generated shell or batch templates must remain readable enough to audit.
 
-Contributors must not turn templates into opaque string blobs that are hard to
-inspect, compare, or reason about.
+Contributors must not turn templates into opaque string blobs that are hard to inspect, compare, or reason about.
 
 ### 7.6 Keep terminology stable
 
-Preferred public terms should remain consistent across code, docs, help text,
-and tests.
+Preferred public terms should remain consistent across code, docs, help text, and tests.
 
-Legacy names that survive only for compatibility must be treated as legacy, not
-as equal preferred vocabulary.
+Legacy names that survive only for compatibility must be treated as legacy, not as equal preferred vocabulary.
 
 ### 7.7 Update specs before derived docs
 
@@ -437,16 +382,13 @@ When behavior changes materially:
 3. update user/dev/reference docs
 4. update best-practices notes or AI overlays
 
-Contributors must not let README files or advisory notes become the de facto
-primary source of truth.
+Contributors must not let README files or advisory notes become the de facto primary source of truth.
 
 ### 7.8 Treat publication tooling as product-critical
 
-Publication helpers such as `prepare_jsr` and `prepare_zip` encode real product
-assumptions.
+Publication helpers such as `prepare_jsr` and `prepare_zip` encode real product assumptions.
 
-Contributors must keep release outputs aligned with the current public product
-story and not treat publication tooling as disposable repo-only glue.
+Contributors must keep release outputs aligned with the current public product story and not treat publication tooling as disposable repo-only glue.
 
 ---
 
@@ -456,14 +398,11 @@ These rules apply especially strongly to coding agents and AI assistants.
 
 ### 8.1 Do not invent alternate architecture
 
-An AI assistant must not introduce a second architecture model that conflicts
-with existing specs and ADRs simply because it seems locally convenient.
+An AI assistant must not introduce a second architecture model that conflicts with existing specs and ADRs simply because it seems locally convenient.
 
 ### 8.2 Prefer explicit over magical behavior
 
-When choosing between a hidden clever shortcut and an explicit, visible, and
-configurable mechanism, the assistant should prefer the explicit mechanism
-unless the spec already requires the hidden one.
+When choosing between a hidden clever shortcut and an explicit, visible, and configurable mechanism, the assistant should prefer the explicit mechanism unless the spec already requires the hidden one.
 
 ### 8.3 Preserve repository cleanliness
 
@@ -485,25 +424,21 @@ For Alteran, code changes frequently require coordinated updates to:
 - docs
 - specs or ADRs
 
-An AI assistant should assume these are part of the same change unless the
-current request explicitly narrows scope.
+An AI assistant should assume these are part of the same change unless the current request explicitly narrows scope.
 
 ### 8.5 Keep support claims honest
 
 AI assistants must not silently broaden support statements in docs or code.
 
-If behavior is not truly supported or not validated, the assistant should keep
-that scope explicit.
+If behavior is not truly supported or not validated, the assistant should keep that scope explicit.
 
 ---
 
 ## 9. Specification For `docs/dev/best-practices/`
 
-This section defines the minimum intended file set and content contract for the
-contributor-facing best-practices directory.
+This section defines the minimum intended file set and content contract for the contributor-facing best-practices directory.
 
-The purpose of those files is to provide concise, practical summaries derived
-from numbered specs, ADRs, and recurrent regressions.
+The purpose of those files is to provide concise, practical summaries derived from numbered specs, ADRs, and recurrent regressions.
 
 They are not meant to become another normative source.
 
@@ -515,8 +450,7 @@ The repository should contain:
 
 ### 9.2 Required files
 
-The directory should contain exactly these core files unless a later spec
-intentionally changes the set:
+The directory should contain exactly these core files unless a later spec intentionally changes the set:
 
 - `README.md`
 - `safety-and-repository-hygiene.md`
@@ -613,8 +547,7 @@ Those files should:
 
 ### 9.10 Reproducibility requirement
 
-If the best-practices directory had to be recreated from scratch, it should be
-possible to rebuild the required files using:
+If the best-practices directory had to be recreated from scratch, it should be possible to rebuild the required files using:
 
 - `001-alteran_spec.md`
 - `002-alteran_tests_spec.md`

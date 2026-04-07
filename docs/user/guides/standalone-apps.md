@@ -1,7 +1,6 @@
 # Standalone Apps
 
-Standalone apps are a supported but more advanced story than the normal
-in-project development flow.
+Standalone apps are a supported but more advanced story than the normal in-project development flow.
 
 ## Create A Standalone App Scaffold
 
@@ -28,8 +27,7 @@ This creates a separate app folder with:
 
 ## Identity Check
 
-The launcher validates `app.json` identity instead of silently treating the
-wrong directory as valid.
+The launcher validates `app.json` identity instead of silently treating the wrong directory as valid.
 
 ## Related Example
 

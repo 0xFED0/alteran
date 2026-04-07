@@ -26,23 +26,19 @@ The easiest things to leak are:
 - bootstrap source env vars
 - inherited working directory assumptions
 
-If a test spawns another Alteran project, scrub foreign context first unless
-inheritance is the thing being tested.
+If a test spawns another Alteran project, scrub foreign context first unless inheritance is the thing being tested.
 
 ## Prefer Deterministic Local Fixtures
 
 - Prefer self-hosted local fixtures for bootstrap/archive tests.
 - Avoid external infrastructure in ordinary test flows.
-- Be explicit about harness prerequisites such as shells, zip tools, loopback
-  binding, and local Deno availability.
+- Be explicit about harness prerequisites such as shells, zip tools, loopback binding, and local Deno availability.
 
 ## Examples Are Contracts, Not Decorations
 
 - Examples are part of the public story.
-- If an example looks supported, it should be runnable, documented honestly,
-  and exercised by tests.
-- Example tests should prove the specific teaching point of the example, not
-  just "command exited 0".
+- If an example looks supported, it should be runnable, documented honestly, and exercised by tests.
+- Example tests should prove the specific teaching point of the example, not just "command exited 0".
 
 ## Docs Flows Are Product Flows
 
@@ -60,9 +56,7 @@ When a bug appears:
 
 ## Do Not Stop At The First Green Check
 
-After touching high-leverage surfaces such as setup, activation, runtime
-materialization, generated scripts, examples, or docs, rerun more than the
-narrow failing test.
+After touching high-leverage surfaces such as setup, activation, runtime materialization, generated scripts, examples, or docs, rerun more than the narrow failing test.
 
 At minimum, revisit:
 
@@ -78,8 +72,7 @@ At minimum, revisit:
 - example tests write logs into the repo instead of the temp project
 - harness compensates for the bug instead of exposing it
 - tests return early and still look like success
-- a regression was "fixed" by weakening the assertion until it stopped proving
-  anything
+- a regression was "fixed" by weakening the assertion until it stopped proving anything
 
 ## Related Source Of Truth
 

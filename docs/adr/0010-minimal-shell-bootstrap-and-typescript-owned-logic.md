@@ -6,10 +6,7 @@ Accepted
 
 ## Context
 
-Bootstrap scripts are necessary because an empty project may begin with only
-`activate` / `activate.bat`. But once shell logic grows beyond bootstrap duties,
-it becomes harder to maintain, test, and keep consistent across Unix and
-Windows.
+Bootstrap scripts are necessary because an empty project may begin with only `activate` / `activate.bat`. But once shell logic grows beyond bootstrap duties, it becomes harder to maintain, test, and keep consistent across Unix and Windows.
 
 ## Decision
 
@@ -24,9 +21,7 @@ They may:
 - locate/bootstrap Alteran
 - invoke environment assurance and activation
 
-Project scaffolding, synchronization, registry management, runtime policy, and
-other product behavior belong in TypeScript runtime modules, not in shell/batch
-files.
+Project scaffolding, synchronization, registry management, runtime policy, and other product behavior belong in TypeScript runtime modules, not in shell/batch files.
 
 ## Consequences
 

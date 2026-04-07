@@ -6,9 +6,7 @@ Accepted
 
 ## Context
 
-Alteran has its own runtime code, but it may also materialize helper tools used
-for bootstrap, maintenance, or future extensions. If everything is treated as
-"just a tool", the runtime itself loses a clear architectural identity.
+Alteran has its own runtime code, but it may also materialize helper tools used for bootstrap, maintenance, or future extensions. If everything is treated as "just a tool", the runtime itself loses a clear architectural identity.
 
 ## Decision
 
@@ -24,8 +22,7 @@ Shared runtime libraries live under:
 
 - `.runtime/libs/`
 
-The regular helper `tool.ts` + `tool/` pattern applies to runtime helper tools,
-not to Alteran’s canonical runtime layout.
+The regular helper `tool.ts` + `tool/` pattern applies to runtime helper tools, not to Alteran’s canonical runtime layout.
 
 ## Consequences
 
@@ -42,5 +39,4 @@ Tradeoffs:
 
 ### Put everything under `.runtime/tools/`
 
-Rejected because it weakens the distinction between the platform runtime and
-optional helpers.
+Rejected because it weakens the distinction between the platform runtime and optional helpers.

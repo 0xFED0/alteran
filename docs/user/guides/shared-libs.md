@@ -1,7 +1,6 @@
 # Shared Libraries
 
-Shared project code lives under the root `libs/` directory and is imported
-through `@libs/...`.
+Shared project code lives under the root `libs/` directory and is imported through `@libs/...`.
 
 ## Root Shared Libraries
 
@@ -25,8 +24,7 @@ Inside app context, Alteran resolves `@libs/...` in this order:
 1. `apps/<app>/libs/...`
 2. root `libs/...`
 
-This means an app can override a shared library with an app-local version
-without rewriting imports.
+This means an app can override a shared library with an app-local version without rewriting imports.
 
 ## Why This Exists
 

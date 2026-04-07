@@ -4,8 +4,7 @@
 
 - modifying the Alteran repository itself
 - understanding current Alteran user-facing behavior while changing repo code
-- onboarding work where Alteran-specific terminology, structure, and command
-  semantics matter more than generic Deno or TypeScript advice
+- onboarding work where Alteran-specific terminology, structure, and command semantics matter more than generic Deno or TypeScript advice
 
 ## Do Not Use As
 

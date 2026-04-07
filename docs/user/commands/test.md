@@ -32,8 +32,7 @@ alteran test --filter activate
 
 ## Project Test Layout
 
-Project tests normally live under the top-level `tests/` directory, which is a
-first-class project category alongside `apps/` and `tools/`.
+Project tests normally live under the top-level `tests/` directory, which is a first-class project category alongside `apps/` and `tools/`.
 
 ## Related Docs
 

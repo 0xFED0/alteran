@@ -11,12 +11,9 @@
 | `ALTERAN_SRC` | Local authored Alteran source root override |
 | `ALTERAN_EXTERNAL_CTX` | Default anchor for `alteran external` |
 
-Source-list variables are parsed as lists. In current Alteran behavior they can
-be separated with spaces or semicolons.
+Source-list variables are parsed as lists. In current Alteran behavior they can be separated with spaces or semicolons.
 
-`ALTERAN_EXTERNAL_CTX` is only for explicit foreign-project execution and
-should point at `alteran.json` or `app.json`. `deno.json` is not a valid
-external context anchor.
+`ALTERAN_EXTERNAL_CTX` is only for explicit foreign-project execution and should point at `alteran.json` or `app.json`. `deno.json` is not a valid external context anchor.
 
 ## Activation Variables
 
@@ -26,8 +23,7 @@ external context anchor.
 | `DENO_DIR` | Managed Deno cache directory |
 | `DENO_INSTALL_ROOT` | Managed Deno platform root |
 
-These are normally set for you by `activate`, `activate.bat`, or another
-Alteran entrypoint such as a generated launcher.
+These are normally set for you by `activate`, `activate.bat`, or another Alteran entrypoint such as a generated launcher.
 
 ## Managed Execution And Logging Variables
 
@@ -42,22 +38,15 @@ Alteran entrypoint such as a generated launcher.
 | `ALTERAN_LOGTAPE_ENABLED` | Whether LogTape integration is enabled |
 | `ALTERAN_LOG_CONTEXT_JSON` | Internal structured logging context payload used by managed child processes |
 
-`ALTERAN_ROOT_LOG_DIR` always points at the canonical project-local log tree.
-`ALTERAN_CUSTOM_LOG_DIR`, when set, is an additional mirror/copy target rather
-than a replacement root.
+`ALTERAN_ROOT_LOG_DIR` always points at the canonical project-local log tree. `ALTERAN_CUSTOM_LOG_DIR`, when set, is an additional mirror/copy target rather than a replacement root.
 
-`ALTERAN_LOG_CONTEXT_JSON` is an Alteran-managed internal propagation variable,
-not a user-facing configuration surface. LogTape configuration should come from
-the current project's `alteran.json`, not from a serialized env payload.
+`ALTERAN_LOG_CONTEXT_JSON` is an Alteran-managed internal propagation variable, not a user-facing configuration surface. LogTape configuration should come from the current project's `alteran.json`, not from a serialized env payload.
 
 ## Path Semantics
 
-Project-related paths are interpreted relative to the project or config they
-belong to, not relative to an arbitrary caller working directory.
+Project-related paths are interpreted relative to the project or config they belong to, not relative to an arbitrary caller working directory.
 
-For `ALTERAN_SRC`, a relative path from `.env` is resolved against the location
-of that `.env` file rather than against whichever directory happened to call
-Alteran.
+For `ALTERAN_SRC`, a relative path from `.env` is resolved against the location of that `.env` file rather than against whichever directory happened to call Alteran.
 
 ## Related References
 

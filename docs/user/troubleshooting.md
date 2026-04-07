@@ -12,8 +12,7 @@ Running `./activate` as a subprocess is not the intended Unix contract.
 
 ## `activate` Or `activate.bat` Is Missing
 
-Run `setup` again. Activation files are generated local artifacts, not the
-public bootstrap surface.
+Run `setup` again. Activation files are generated local artifacts, not the public bootstrap surface.
 
 ## Alteran Cannot Materialize Its Runtime
 
@@ -27,19 +26,15 @@ Runnable sources alone do not count as canonical install sources.
 
 ## The Project Uses The Wrong Runtime Or Log Context
 
-Reactivate the intended project. Alteran context is project-scoped, and a fresh
-`setup`, `activate`, `shellenv`, or generated app launcher should reset
-foreign inherited context.
+Reactivate the intended project. Alteran context is project-scoped, and a fresh `setup`, `activate`, `shellenv`, or generated app launcher should reset foreign inherited context.
 
 ## Linux Works Poorly On Alpine
 
-Current Linux support targets GNU-based environments. Alpine or musl-based
-systems are outside the supported scope.
+Current Linux support targets GNU-based environments. Alpine or musl-based systems are outside the supported scope.
 
 ## I Moved The Project Directory
 
-Rerun `setup`. Generated activation files are tied to one concrete project
-location and runtime layout.
+Rerun `setup`. Generated activation files are tied to one concrete project location and runtime layout.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

@@ -11,11 +11,9 @@ Alteran bootstrap behavior depends on source classes such as:
 - runnable sources
 - archive sources
 
-End-to-end tests need to verify these flows without depending on public network
-availability or third-party hosting semantics.
+End-to-end tests need to verify these flows without depending on public network availability or third-party hosting semantics.
 
-At the same time, remote-source tests must still behave like real network
-bootstrap, including:
+At the same time, remote-source tests must still behave like real network bootstrap, including:
 
 - HTTP URLs
 - archive download paths
@@ -23,23 +21,19 @@ bootstrap, including:
 
 Public network fixtures are too flaky and too hard to control for this purpose.
 
-Docker environments also introduce host-specific bind-mount constraints, for
-example when system temp directories are not shared into the container runtime.
+Docker environments also introduce host-specific bind-mount constraints, for example when system temp directories are not shared into the container runtime.
 
 ## Decision
 
-Alteran remote bootstrap tests should use locally generated, self-hosted
-fixtures.
+Alteran remote bootstrap tests should use locally generated, self-hosted fixtures.
 
 Specifically:
 
 1. Tests should generate a local runnable bundle from repository content.
 2. Tests should generate a local archive bundle from repository content.
-3. Tests should serve those fixtures from a local HTTP server under test
-   control.
+3. Tests should serve those fixtures from a local HTTP server under test control.
 4. Docker tests should consume the same class of locally generated fixtures.
-5. Docker bind-mounted fixture directories should use repository-controlled
-   shared paths when needed for container compatibility.
+5. Docker bind-mounted fixture directories should use repository-controlled shared paths when needed for container compatibility.
 
 ## Consequences
 
@@ -53,8 +47,7 @@ Positive:
 Tradeoffs:
 
 - test support code becomes more sophisticated
-- fixture MIME types, bind mounts, and serving behavior must be maintained
-  carefully
+- fixture MIME types, bind mounts, and serving behavior must be maintained carefully
 
 ## Rejected Alternatives
 

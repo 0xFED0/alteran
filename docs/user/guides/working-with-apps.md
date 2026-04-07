@@ -22,8 +22,7 @@ This scaffolds:
 alteran app run hello
 ```
 
-Alteran resolves the app directory, reads its `deno.json`, and runs the app
-task inside the managed environment.
+Alteran resolves the app directory, reads its `deno.json`, and runs the app task inside the managed environment.
 
 ## Remove vs Purge
 
@@ -32,9 +31,7 @@ task inside the managed environment.
 
 ## App-Local Libraries
 
-Apps can own local libraries under `apps/<name>/libs/`. In app context,
-`@libs/...` resolution prefers the app-local library first and then falls back
-to the root `libs/` directory.
+Apps can own local libraries under `apps/<name>/libs/`. In app context, `@libs/...` resolution prefers the app-local library first and then falls back to the root `libs/` directory.
 
 ## Related Example
 

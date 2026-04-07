@@ -10,9 +10,7 @@ Most Alteran runtime code orchestrates:
 - spawned processes
 - generated artifacts
 
-Keep functions small enough that one reader can hold the control flow in their
-head. Prefer discovery, normalization, and side effects to be visually
-separable.
+Keep functions small enough that one reader can hold the control flow in their head. Prefer discovery, normalization, and side effects to be visually separable.
 
 ## Favor Explicit Names Over Dense Cleverness
 
@@ -37,8 +35,7 @@ Alteran often has:
 - archive fallback
 - failure path
 
-Early returns make that order visible. Deep nesting tends to hide the real
-contract.
+Early returns make that order visible. Deep nesting tends to hide the real contract.
 
 ## Keep Environment Reads Near Boundary Code
 
@@ -49,8 +46,7 @@ Prefer:
 - boundary helper reads env
 - normalized values get passed down explicitly
 
-Avoid letting deep helpers depend on ambient env unless that is their whole
-purpose.
+Avoid letting deep helpers depend on ambient env unless that is their whole purpose.
 
 ## Keep Shell And Batch Output Readable
 
@@ -61,6 +57,18 @@ When TypeScript generates shell or batch code:
 - keep Unix and Windows variants conceptually aligned
 
 The generator should explain the output, not dump an opaque string blob.
+
+## Keep Markdown Paragraphs Natural
+
+Do not hard-wrap ordinary prose paragraphs just to satisfy an arbitrary source line width.
+
+Prefer one natural line per paragraph unless Markdown syntax requires line-level structure, such as:
+
+- lists
+- headings
+- tables
+- block quotes
+- fenced code blocks
 
 ## Specs First, Then Docs, Then Notes
 
@@ -83,13 +91,11 @@ Prefer current public terms consistently:
 - `external`
 - `shell_aliases`
 
-If old terms survive as compatibility aliases, document them as legacy rather
-than as the preferred story.
+If old terms survive as compatibility aliases, document them as legacy rather than as the preferred story.
 
 ## Treat Publication Tooling As Product-Critical
 
-`prepare_jsr` and `prepare_zip` are not random repo scripts. They encode real
-product assumptions about what Alteran publishes.
+`prepare_jsr` and `prepare_zip` are not random repo scripts. They encode real product assumptions about what Alteran publishes.
 
 Keep publication surfaces aligned with the current product story:
 

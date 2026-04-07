@@ -6,22 +6,17 @@ Accepted
 
 ## Context
 
-Alteran wants optional structured application logging support without making
-LogTape a mandatory dependency or invasive requirement for all projects.
+Alteran wants optional structured application logging support without making LogTape a mandatory dependency or invasive requirement for all projects.
 
-It also needs a controlled bootstrap point when managed execution enables
-Alteran-side logging behavior.
+It also needs a controlled bootstrap point when managed execution enables Alteran-side logging behavior.
 
 ## Decision
 
 LogTape integration is optional and controlled by `logging.logtape`.
 
-When enabled, Alteran may remap only the bare `@logtape/logtape` import to an
-internal proxy module under `.runtime/alteran/logging/`, which performs
-bootstrap/configuration and then re-exports the effective API.
+When enabled, Alteran may remap only the bare `@logtape/logtape` import to an internal proxy module under `.runtime/alteran/logging/`, which performs bootstrap/configuration and then re-exports the effective API.
 
-Subpath imports are not implicitly remapped. When LogTape is disabled, the proxy
-remains effectively inert.
+Subpath imports are not implicitly remapped. When LogTape is disabled, the proxy remains effectively inert.
 
 ## Consequences
 

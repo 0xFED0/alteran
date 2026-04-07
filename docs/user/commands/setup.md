@@ -20,8 +20,7 @@ alteran shellenv [dir] [--shell=sh|batch]
 - creates or updates `alteran.json`, `deno.json`, and `.gitignore`
 - synchronizes discovered apps and tools
 
-If a project was moved, partially cleaned, or entered on a fresh machine,
-`setup` is the command that restores it to a working state.
+If a project was moved, partially cleaned, or entered on a fresh machine, `setup` is the command that restores it to a working state.
 
 The intended public package form is:
 
@@ -29,29 +28,22 @@ The intended public package form is:
 deno run -A jsr:@alteran setup
 ```
 
-Inside the Alteran source repository itself, the equivalent bootstrap surface
-is the checked-in `./setup` script.
+Inside the Alteran source repository itself, the equivalent bootstrap surface is the checked-in `./setup` script.
 
 ## Target Directory Semantics
 
 - `alteran setup` with no directory targets the current directory
 - `alteran setup <dir>` bootstraps another directory explicitly
 
-This is an external-project command by design. It is allowed to target another
-directory explicitly because bootstrap and repair are exactly the moments when
-you often are not already inside the final project environment.
+This is an external-project command by design. It is allowed to target another directory explicitly because bootstrap and repair are exactly the moments when you often are not already inside the final project environment.
 
 ## What `shellenv` Does
 
-`alteran shellenv` prints dynamic shell code for the current project so that
-generated activation files can stay small and computed from current project
-state.
+`alteran shellenv` prints dynamic shell code for the current project so that generated activation files can stay small and computed from current project state.
 
-Most users do not need to call `shellenv` directly every day. It mainly exists
-as the mechanism behind generated activation and other controlled entrypoints.
+Most users do not need to call `shellenv` directly every day. It mainly exists as the mechanism behind generated activation and other controlled entrypoints.
 
-Typical use is indirect through `activate`, but it can also be called
-explicitly:
+Typical use is indirect through `activate`, but it can also be called explicitly:
 
 ```sh
 eval "$(alteran shellenv)"
@@ -63,8 +55,7 @@ For Windows batch output:
 alteran shellenv --shell=batch
 ```
 
-If you only want to start using the project, prefer `setup` and then
-`activate`. Reach for `shellenv` when you need explicit shell integration.
+If you only want to start using the project, prefer `setup` and then `activate`. Reach for `shellenv` when you need explicit shell integration.
 
 ## Related Docs
 

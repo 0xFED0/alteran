@@ -13,8 +13,7 @@ Alteran is sensitive to broad regressions because one change can affect:
 - docs
 - publication
 
-Prefer changes that preserve user state and repository state unless destruction
-is explicitly part of the intended behavior.
+Prefer changes that preserve user state and repository state unless destruction is explicitly part of the intended behavior.
 
 ## Know What Kind Of File You Are Touching
 
@@ -68,8 +67,7 @@ As a rule:
 - generated app launchers should be ignored
 - versioned publication output should be ignored unless intentionally staged
 
-But do not over-apply ignore rules to public bootstrap surfaces that are meant
-to stay tracked.
+But do not over-apply ignore rules to public bootstrap surfaces that are meant to stay tracked.
 
 ## Keep The Repository Honest
 
@@ -81,8 +79,7 @@ Examples:
 - `.runtime/` is generated local state
 - root `setup` is a public bootstrap file
 - root `activate` is a generated local artifact
-- examples may intentionally commit generated bootstrap surfaces as docs/product
-  fixtures
+- examples may intentionally commit generated bootstrap surfaces as docs/product fixtures
 
 That asymmetry is healthy when it is honest and documented.
 
@@ -95,8 +92,7 @@ Examples and docs should not accumulate:
 - stale release artifacts
 - hidden dependency on developer-local state
 
-If an example is checked in, it should either be canonical or clearly marked as
-fixture-like.
+If an example is checked in, it should either be canonical or clearly marked as fixture-like.
 
 ## Prefer Additive Migration Before Hard Removal
 

@@ -9,15 +9,11 @@ Alteran gives a Deno-based project:
 - a project-local managed Deno runtime under `.runtime/`
 - first-class `apps/`, `tools/`, `libs/`, and `tests/`
 - managed execution with logging and context injection
-- a portable project folder that can be copied to another machine and restored
-  by running `setup`
+- a portable project folder that can be copied to another machine and restored by running `setup`
 
-That portability is a core reason Alteran keeps the runtime local to the
-project instead of assuming one global installation on every machine.
+That portability is a core reason Alteran keeps the runtime local to the project instead of assuming one global installation on every machine.
 
-Alteran is not a desktop framework, not an IPC framework, and not a
-replacement for plain Deno. `view/` exists as a reserved extension point, but
-it is not the center of the current product story.
+Alteran is not a desktop framework, not an IPC framework, and not a replacement for plain Deno. `view/` exists as a reserved extension point, but it is not the center of the current product story.
 
 ## Read This Next
 

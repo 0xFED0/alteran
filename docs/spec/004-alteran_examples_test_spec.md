@@ -114,8 +114,7 @@ Scenario tests should answer the question:
 
 **Does the full intended user scenario still behave as promised?**
 
-For standalone-app-oriented examples, scenario validation should include the
-launcher contract itself, for example:
+For standalone-app-oriented examples, scenario validation should include the launcher contract itself, for example:
 
 - launching `app` / `app.bat` directly rather than through sourced shell setup;
 - first launch with missing app-local runtime material;
@@ -408,8 +407,6 @@ Alteran examples must be treated as executable documentation.
 
 They must not merely look convincing; they must keep working.
 
-Every maintained example must be automatically validated.
-Core examples require stronger scenario coverage.
-README quick start must be tested explicitly.
+Every maintained example must be automatically validated. Core examples require stronger scenario coverage. README quick start must be tested explicitly.
 
 The goal is to preserve trust: if Alteran shows a user that something works, the repository must continuously verify that this is still true.
