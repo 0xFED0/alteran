@@ -1,93 +1,42 @@
 #!/usr/bin/env sh
 
-ACTIVATE_HAD_E=0
-ACTIVATE_HAD_U=0
-case $- in
-  *e*) ACTIVATE_HAD_E=1 ;;
-esac
-case $- in
-  *u*) ACTIVATE_HAD_U=1 ;;
-esac
-
-set -eu
-
-is_sourced() {
-  (return 0 2>/dev/null)
-}
-
-finish_activate() {
-  activate_status=${1:-0}
-  if [ "$ACTIVATE_HAD_E" -eq 1 ]; then
-    set -e
-  else
-    set +e
-  fi
-  if [ "$ACTIVATE_HAD_U" -eq 1 ]; then
-    set -u
-  else
-    set +u
-  fi
-  if is_sourced; then
-    return "$activate_status"
-  fi
-  exit "$activate_status"
-}
-
-if [ -n "${ZSH_VERSION:-}" ]; then
-  SCRIPT_PATH=${(%):-%N}
-elif [ -n "${BASH_VERSION:-}" ]; then
-  SCRIPT_PATH=$(eval 'printf "%s\n" "${BASH_SOURCE[0]}"')
-else
-  SCRIPT_PATH=$0
-fi
-while [ -L "$SCRIPT_PATH" ]; do
-  SCRIPT_PATH=$(readlink "$SCRIPT_PATH")
-done
-
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)
-TARGET_DIR=${1:-$SCRIPT_DIR}
-
 load_dotenv_file() {
   dot_env=$1
   [ -f "$dot_env" ] || return 0
-
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
-      ''|\#*) continue ;;
+      ''|'#'*) continue ;;
     esac
-
     key=${line%%=*}
     value=${line#*=}
     key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     value=$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [ -n "$key" ] || continue
-
     case "$key" in
-      *[!A-Za-z0-9_]*)
-        continue
-        ;;
+      *[!A-Za-z0-9_]*) continue ;;
     esac
-
-    case "$value" in
-      \"*\") value=${value#\"}; value=${value%\"} ;;
-      \'*\') value=${value#\'}; value=${value%\'} ;;
-    esac
-
     eval "existing=\${$key+x}"
-    if [ "$existing" != "x" ]; then
-      export "$key=$value"
-    fi
+    [ "$existing" = "x" ] || export "$key=$value"
   done < "$dot_env"
 }
+
+abspath() {
+  path=${1:-.}
+  case "$path" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s/%s\n' "$HOME" "${path#~/}" ;;
+    /*) printf '%s\n' "$path" ;;
+    *) printf '%s/%s\n' "$PWD" "$path" ;;
+  esac
+}
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+TARGET_DIR=$(abspath "${1:-$SCRIPT_DIR}")
+mkdir -p "$TARGET_DIR" >/dev/null 2>&1 || true
 
 load_dotenv_file "$TARGET_DIR/.env"
 load_dotenv_file "$SCRIPT_DIR/.env"
 
-# Configurable download source lists.
-# Override from the caller environment or .env if needed, for example:
-#   DENO_SOURCES="https://mirror-1.example/deno https://dl.deno.land/release"
-#   ALTERAN_RUN_SOURCES="jsr:@alteran https://mirror.example/alteran/alteran.ts"
-#   ALTERAN_ARCHIVE_SOURCES="https://github.com/org/repo/releases/download/v0.1.0/alteran-v0.1.0.zip"
 if [ "${ALTERAN_SRC+x}" != "x" ] && [ "${ALTERUN_SRC+x}" = "x" ]; then
   ALTERAN_SRC=$ALTERUN_SRC
   export ALTERAN_SRC
@@ -96,11 +45,7 @@ if [ "${DENO_SOURCES+x}" != "x" ]; then
   DENO_SOURCES="https://dl.deno.land/release"
 fi
 if [ "${ALTERAN_RUN_SOURCES+x}" != "x" ]; then
-  if [ "${ALTERAN_SOURCES+x}" = "x" ]; then
-    ALTERAN_RUN_SOURCES=$ALTERAN_SOURCES
-  else
-    ALTERAN_RUN_SOURCES=""
-  fi
+  ALTERAN_RUN_SOURCES=${ALTERAN_SOURCES-}
 fi
 if [ "${ALTERAN_ARCHIVE_SOURCES+x}" != "x" ]; then
   ALTERAN_ARCHIVE_SOURCES=""
@@ -122,9 +67,18 @@ case "$UNAME_M" in
   *) ALTERAN_ARCH="$UNAME_M" ;;
 esac
 
+SCRIPT_DENO="$SCRIPT_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
+TARGET_DENO="$TARGET_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
 DENO_RUNTIME_ROOT="$TARGET_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH"
-LOCAL_DENO="$DENO_RUNTIME_ROOT/bin/deno"
+BOOTSTRAP_DENO=""
 ALTERAN_ENTRY=""
+ARCHIVE_TEMP_ROOT=""
+
+cleanup() {
+  [ -z "$ARCHIVE_TEMP_ROOT" ] || rm -rf "$ARCHIVE_TEMP_ROOT"
+}
+
+trap cleanup EXIT INT TERM
 
 is_blank() {
   [ -z "$(printf '%s' "${1:-}" | tr -d '[:space:]')" ]
@@ -147,18 +101,15 @@ latest_metadata_urls_for_source() {
   normalized=${source%/}
   printf '%s\n' "$normalized/release-latest.txt"
   case "$normalized" in
-    */release)
-      printf '%s\n' "${normalized%/release}/release-latest.txt"
-      ;;
+    */release) printf '%s\n' "${normalized%/release}/release-latest.txt" ;;
   esac
 }
 
 resolve_latest_deno_version() {
   if is_blank "$DENO_SOURCES"; then
-    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running activate." >&2
+    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running setup." >&2
     return 1
   fi
-
   for source in $DENO_SOURCES; do
     for latest_url in $(latest_metadata_urls_for_source "$source"); do
       if DENO_VERSION=$(curl -fsSL "$latest_url" 2>/dev/null); then
@@ -167,22 +118,19 @@ resolve_latest_deno_version() {
       fi
     done
   done
-
   printf '%s\n' "Failed to resolve the latest Deno version from all configured sources. Check your internet connection or extend DENO_SOURCES." >&2
   return 1
 }
 
 download_local_deno() {
   if is_blank "$DENO_SOURCES"; then
-    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running activate." >&2
+    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running setup." >&2
     return 1
   fi
-
   if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-    printf '%s\n' "Alteran bootstrap requires either a global deno or local curl+unzip to download a project-local runtime." >&2
+    printf '%s\n' "Alteran setup requires either a global deno or local curl+unzip to download a project-local runtime." >&2
     return 1
   fi
-
   DENO_TARGET=$(resolve_deno_target) || {
     printf '%s\n' "Unsupported platform for local Deno bootstrap: $ALTERAN_OS-$ALTERAN_ARCH" >&2
     return 1
@@ -190,38 +138,31 @@ download_local_deno() {
   DENO_VERSION=$(resolve_latest_deno_version) || return 1
   DENO_ARCHIVE_NAME="deno-$DENO_TARGET.zip"
   DENO_ARCHIVE="$DENO_RUNTIME_ROOT/$DENO_ARCHIVE_NAME"
-
   mkdir -p "$DENO_RUNTIME_ROOT/bin"
-
   for source in $DENO_SOURCES; do
     DENO_URL="${source%/}/$DENO_VERSION/$DENO_ARCHIVE_NAME"
-    if curl -fsSL "$DENO_URL" -o "$DENO_ARCHIVE"; then
-      if unzip -oq "$DENO_ARCHIVE" -d "$DENO_RUNTIME_ROOT/bin"; then
-        rm -f "$DENO_ARCHIVE"
-        chmod +x "$LOCAL_DENO"
-        return 0
-      fi
+    if curl -fsSL "$DENO_URL" -o "$DENO_ARCHIVE" && unzip -oq "$DENO_ARCHIVE" -d "$DENO_RUNTIME_ROOT/bin"; then
+      rm -f "$DENO_ARCHIVE"
+      chmod +x "$TARGET_DENO"
+      return 0
     fi
     rm -f "$DENO_ARCHIVE"
   done
-
   printf '%s\n' "Failed to download Deno from all configured sources. Check your internet connection or extend DENO_SOURCES." >&2
   return 1
 }
 
 bootstrap_alteran_from_run_sources() {
   if is_blank "$ALTERAN_RUN_SOURCES"; then
-    printf '%s\n' "Cannot bootstrap Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running activate." >&2
+    printf '%s\n' "Cannot bootstrap Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running setup." >&2
     return 1
   fi
-
   for source in $ALTERAN_RUN_SOURCES; do
     if "$BOOTSTRAP_DENO" run -A "$source" help >/dev/null 2>&1; then
       ALTERAN_ENTRY="$source"
       return 0
     fi
   done
-
   printf '%s\n' "Failed to bootstrap Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES." >&2
   return 1
 }
@@ -229,105 +170,68 @@ bootstrap_alteran_from_run_sources() {
 find_archive_alteran_entry() {
   extract_dir=$1
   mod_path=$(find "$extract_dir" -type f -path '*/src/alteran/mod.ts' 2>/dev/null | head -n 1 || true)
-  if [ -z "$mod_path" ]; then
-    return 1
-  fi
-
+  [ -n "$mod_path" ] || return 1
   archive_root=$(dirname "$(dirname "$(dirname "$mod_path")")")
   entry_path="$archive_root/alteran.ts"
-  if [ -f "$entry_path" ]; then
-    printf '%s' "$entry_path"
-    return 0
-  fi
-
-  return 1
+  [ -f "$entry_path" ] || return 1
+  printf '%s' "$entry_path"
 }
 
 bootstrap_alteran_from_archive_sources() {
   if is_blank "$ALTERAN_ARCHIVE_SOURCES"; then
-    printf '%s\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES is empty. Set ALTERAN_ARCHIVE_SOURCES before running activate." >&2
+    printf '%s\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES is empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
     return 1
   fi
-
   if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
     printf '%s\n' "Archive-based Alteran bootstrap requires curl and unzip." >&2
     return 1
   fi
-
   for source in $ALTERAN_ARCHIVE_SOURCES; do
     temp_root=$(mktemp -d "${TMPDIR:-/tmp}/alteran-archive.XXXXXX") || return 1
     archive_path="$temp_root/alteran.zip"
     extract_dir="$temp_root/extract"
     mkdir -p "$extract_dir"
-
-    if curl -fsSL "$source" -o "$archive_path" &&
-      unzip -oq "$archive_path" -d "$extract_dir"; then
+    if curl -fsSL "$source" -o "$archive_path" && unzip -oq "$archive_path" -d "$extract_dir"; then
       archive_entry=$(find_archive_alteran_entry "$extract_dir" || true)
-      if [ -n "$archive_entry" ] &&
-        "$BOOTSTRAP_DENO" run -A "$archive_entry" init "$TARGET_DIR" >&2; then
-        if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
-          ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
-        else
-          ALTERAN_ENTRY="$archive_entry"
-        fi
-        rm -rf "$temp_root"
+      if [ -n "$archive_entry" ]; then
+        ARCHIVE_TEMP_ROOT="$temp_root"
+        ALTERAN_ENTRY="$archive_entry"
         return 0
       fi
     fi
-
     rm -rf "$temp_root"
   done
-
   printf '%s\n' "Failed to download Alteran from all configured archive sources. Check your internet connection or extend ALTERAN_ARCHIVE_SOURCES." >&2
   return 1
 }
 
 main() {
-  if [ -x "$LOCAL_DENO" ]; then
-    BOOTSTRAP_DENO="$LOCAL_DENO"
+  if [ -x "$SCRIPT_DENO" ]; then
+    BOOTSTRAP_DENO="$SCRIPT_DENO"
+  elif [ -x "$TARGET_DENO" ]; then
+    BOOTSTRAP_DENO="$TARGET_DENO"
   elif command -v deno >/dev/null 2>&1; then
     BOOTSTRAP_DENO=$(command -v deno)
   else
     mkdir -p "$DENO_RUNTIME_ROOT"
-    if ! download_local_deno; then
-      return 1
-    fi
-    BOOTSTRAP_DENO="$LOCAL_DENO"
+    download_local_deno || return 1
+    BOOTSTRAP_DENO="$TARGET_DENO"
   fi
 
   if [ -f "$SCRIPT_DIR/alteran.ts" ] && [ -f "$SCRIPT_DIR/src/alteran/mod.ts" ]; then
     ALTERAN_ENTRY="$SCRIPT_DIR/alteran.ts"
+  elif [ -f "$SCRIPT_DIR/.runtime/alteran/mod.ts" ]; then
+    ALTERAN_ENTRY="$SCRIPT_DIR/.runtime/alteran/mod.ts"
   elif [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
     ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
   else
-    if ! bootstrap_alteran_from_run_sources; then
-      if ! bootstrap_alteran_from_archive_sources; then
-        printf '%s\n' "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES." >&2
-        return 1
-      fi
-    fi
+    bootstrap_alteran_from_run_sources || bootstrap_alteran_from_archive_sources || {
+      printf '%s\n' "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES." >&2
+      return 1
+    }
   fi
 
-  if ! "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" ensure-env "$TARGET_DIR" >&2; then
-    return 1
-  fi
-  if [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
-    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
-  else
-    printf '%s\n' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/alteran/mod.ts." >&2
-    return 1
-  fi
-  if [ ! -f "$TARGET_DIR/.runtime/env/enter-env.sh" ]; then
-    printf '%s\n' "Alteran bootstrap did not materialize $TARGET_DIR/.runtime/env/enter-env.sh." >&2
-    return 1
-  fi
-
-  shellenv_output=$("$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" shellenv "$TARGET_DIR") || return 1
-  eval "$shellenv_output"
+  "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" setup "$TARGET_DIR"
 }
 
-if main "$@"; then
-  finish_activate 0
-else
-  finish_activate $?
-fi
+main "$@"

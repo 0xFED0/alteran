@@ -7,6 +7,7 @@ import {
   cleanProjectScopes,
   compactProject,
   ensureProjectEnv,
+  generateBatchEnv,
   generateShellEnv,
   initProject,
   initStandaloneApp,
@@ -20,6 +21,7 @@ import {
   removeTool,
   resolveActiveProjectDir,
   runApp,
+  setupProject,
   runDenoX,
   runScript,
   runTask,
@@ -34,6 +36,7 @@ export {
   cleanProject,
   compactProject,
   ensureProjectEnv,
+  generateBatchEnv,
   generateShellEnv,
   initProject,
   passthroughDeno,
@@ -41,6 +44,7 @@ export {
   resolveActiveProjectDir,
   runApp,
   runScript,
+  setupProject,
   runTask,
   runTool,
   useDenoVersion,
@@ -50,10 +54,9 @@ function printHelp(): void {
   console.log(`Alteran
 
 Commands:
-  alteran init [dir]
-  alteran ensure-env [dir]
+  alteran setup [dir]
   alteran refresh
-  alteran shellenv [dir]
+  alteran shellenv [dir] [--shell=sh|batch]
   alteran app add|rm|purge|ls|run|init <name>
   alteran tool add|rm|purge|ls|run <name>
   alteran reimport apps|tools <dir>
@@ -152,7 +155,7 @@ Usage:
 Scopes:
   cache         Remove .runtime/deno/{platform}/cache
   runtime       Remove generated runtime state under .runtime/
-  env           Remove generated env scripts
+  env           Remove generated activate / activate.bat
   app-runtimes  Remove nested apps/*/.runtime/
   logs          Remove .runtime/logs/
   builds        Remove dist/ output
@@ -185,13 +188,14 @@ Behavior:
   - removes the root .runtime/ directory completely
   - removes nested apps/*/.runtime/ directories
   - removes dist/ output completely
-  - preserves user source files, configs, and activate scripts
+  - removes generated activate / activate.bat
+  - preserves user source files, configs, and setup scripts
   - asks for confirmation before making destructive changes unless -y/-f is set
   - cancels immediately when -n is set
 
 After compact, the project should be re-hydratable from scratch through:
-  . ./activate
-  activate.bat`);
+  ./setup
+  setup.bat`);
 }
 
 function printCompactWarning(projectDir: string): void {
@@ -203,15 +207,16 @@ It will remove:
   - .runtime/
   - apps/*/.runtime/
   - dist/
+  - activate / activate.bat
 
 It will keep:
-  - activate / activate.bat
+  - setup / setup.bat
   - alteran.json / deno.json / deno.lock
   - .env / .gitignore
   - apps/ tools/ libs/ tests/
   - user-authored source and config files
 
-The project should still be re-hydratable later through activate.`,
+The project should still be re-hydratable later through setup.`,
   );
 }
 
@@ -340,6 +345,38 @@ function parseUpgradeOption(
   return undefined;
 }
 
+function parseShellenvArgs(rest: string[]): {
+  projectDir: string;
+  format: "shell" | "batch";
+} {
+  let targetDir: string | undefined;
+  let format: "shell" | "batch" = "shell";
+
+  for (const arg of rest) {
+    if (arg === "--shell=batch" || arg === "--shell=bat" ||
+      arg === "--shell=cmd") {
+      format = "batch";
+      continue;
+    }
+    if (arg === "--shell=sh" || arg === "--shell=shell") {
+      format = "shell";
+      continue;
+    }
+    if (arg.startsWith("--shell=")) {
+      throw new Error(`Unsupported shellenv format: ${arg.slice(8)}`);
+    }
+    if (targetDir) {
+      throw new Error(`shellenv does not accept multiple target dirs: ${arg}`);
+    }
+    targetDir = arg;
+  }
+
+  return {
+    projectDir: targetDir ? resolve(Deno.cwd(), targetDir) : Deno.cwd(),
+    format,
+  };
+}
+
 export async function runCli(argv: string[]): Promise<number> {
   try {
     if (argv.length === 0) {
@@ -350,26 +387,15 @@ export async function runCli(argv: string[]): Promise<number> {
     const [command, ...rest] = argv;
 
     switch (command) {
+      case "setup":
       case "init": {
         if (isHelpToken(rest[0])) {
-          console.log("Usage:\n  alteran init [dir]");
+          console.log("Usage:\n  alteran setup [dir]");
           return 0;
         }
         const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
-        await initProject(targetDir);
-        console.error(`Initialized Alteran project at ${targetDir}`);
-        return 0;
-      }
-      case "ensure-env": {
-        if (isHelpToken(rest[0])) {
-          console.log("Usage:\n  alteran ensure-env [dir]");
-          return 0;
-        }
-        const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
-        const result = await ensureProjectEnv(targetDir);
-        if (result.initialized) {
-          console.error(`Initialized Alteran project at ${targetDir}`);
-        }
+        await setupProject(targetDir);
+        console.error(`Set up Alteran project at ${targetDir}`);
         return 0;
       }
       case "refresh": {
@@ -383,12 +409,14 @@ export async function runCli(argv: string[]): Promise<number> {
         return 0;
       }
       case "shellenv": {
-        if (isHelpToken(rest[0])) {
-          console.log("Usage:\n  alteran shellenv [dir]");
+        if (rest.some(isHelpToken)) {
+          console.log("Usage:\n  alteran shellenv [dir] [--shell=sh|batch]");
           return 0;
         }
-        const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
-        const output = await generateShellEnv(targetDir);
+        const { projectDir, format } = parseShellenvArgs(rest);
+        const output = format === "batch"
+          ? await generateBatchEnv(projectDir)
+          : await generateShellEnv(projectDir);
         await Deno.stdout.write(new TextEncoder().encode(output));
         return 0;
       }
