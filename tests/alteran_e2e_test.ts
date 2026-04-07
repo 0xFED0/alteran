@@ -1,7 +1,10 @@
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { getVersionedJsrDistDir } from "../tools/prepare_jsr/mod.ts";
+import {
+  getVersionedJsrDistDir,
+  prepareJsrPackageAt,
+} from "../tools/prepare_jsr/mod.ts";
 import {
   getReleaseZipPath,
   getVersionedZipDistDir,
@@ -1619,6 +1622,26 @@ Deno.test("release helpers use versioned dist directories", () => {
   }
 });
 
+Deno.test("prepared JSR package passes deno publish --dry-run", async () => {
+  const stagingRoot = await Deno.makeTempDir({ prefix: "alteran-jsr-dry-run-" });
+  const distDir = join(stagingRoot, ALTERAN_VERSION);
+
+  await prepareJsrPackageAt(ALTERAN_REPO_DIR, distDir);
+
+  const output = await new Deno.Command(Deno.execPath(), {
+    args: ["publish", "--dry-run", "--allow-dirty", "--config", "jsr.json"],
+    cwd: distDir,
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+
+  if (!output.success) {
+    throw new Error(
+      `Expected prepared JSR package to pass deno publish --dry-run.\nstdout:\n${decode(output.stdout)}\nstderr:\n${decode(output.stderr)}`,
+    );
+  }
+});
+
 Deno.test("Alteran source lists prefer run sources and support legacy alias", () => {
   const previousRun = Deno.env.get("ALTERAN_RUN_SOURCES");
   const previousArchive = Deno.env.get("ALTERAN_ARCHIVE_SOURCES");
@@ -1628,7 +1651,7 @@ Deno.test("Alteran source lists prefer run sources and support legacy alias", ()
   Deno.env.delete("ALTERAN_ARCHIVE_SOURCES");
   Deno.env.set(
     "ALTERAN_SOURCES",
-    "jsr:@alteran https://example.com/alteran.ts",
+    "jsr:@alteran/alteran https://example.com/alteran.ts",
   );
 
   try {
@@ -1636,7 +1659,7 @@ Deno.test("Alteran source lists prefer run sources and support legacy alias", ()
     const archiveSources = getConfiguredAlteranArchiveSources();
 
     if (
-      runSources.join("|") !== "jsr:@alteran|https://example.com/alteran.ts"
+      runSources.join("|") !== "jsr:@alteran/alteran|https://example.com/alteran.ts"
     ) {
       throw new Error(
         `Expected legacy ALTERAN_SOURCES alias to populate run sources, got ${

@@ -14,11 +14,35 @@ import {
 } from "../../src/alteran/templates/bootstrap.ts";
 import { ALTERAN_VERSION } from "../../src/alteran/version.ts";
 
+export const ALTERAN_JSR_PACKAGE_NAME = "@alteran/alteran";
+
 export function getVersionedJsrDistDir(
   repoRoot: string,
   version = ALTERAN_VERSION,
 ): string {
   return join(repoRoot, "dist", "jsr", version);
+}
+
+export function renderJsrPackageConfig(version = ALTERAN_VERSION): string {
+  return `${
+    JSON.stringify(
+      {
+        name: ALTERAN_JSR_PACKAGE_NAME,
+        version,
+        license: "Apache-2.0",
+        exports: {
+          ".": "./alteran.ts",
+          "./lib": "./src/alteran/mod.ts",
+        },
+      },
+      null,
+      2,
+    )
+  }\n`;
+}
+
+export function renderJsrPublishWorkspaceConfig(): string {
+  return `${JSON.stringify({ workspace: ["."] }, null, 2)}\n`;
 }
 
 function isVersionDirectoryName(name: string): boolean {
@@ -38,13 +62,11 @@ async function removeLegacyTopLevelJsrEntries(distRoot: string): Promise<void> {
   }
 }
 
-export async function main(_args: string[]): Promise<void> {
-  const repoRoot = resolve(fileURLToPath(new URL("../../", import.meta.url)));
-  const distRoot = join(repoRoot, "dist", "jsr");
-  const distDir = getVersionedJsrDistDir(repoRoot);
-
-  await ensureDir(distRoot);
-  await removeLegacyTopLevelJsrEntries(distRoot);
+export async function prepareJsrPackageAt(
+  repoRoot: string,
+  distDir: string,
+  version = ALTERAN_VERSION,
+): Promise<void> {
   await removeIfExists(distDir);
   await ensureDir(distDir);
 
@@ -64,25 +86,27 @@ export async function main(_args: string[]): Promise<void> {
     await Deno.chmod(join(distDir, "setup"), 0o755);
   }
   await Deno.copyFile(join(repoRoot, "README.md"), join(distDir, "README.md"));
+  await copyDirectory(join(repoRoot, "docs"), join(distDir, "docs"));
   await copyDirectory(join(repoRoot, "src"), join(distDir, "src"));
 
   await writeTextFileIfChanged(
     join(distDir, "jsr.json"),
-    `${
-      JSON.stringify(
-        {
-          name: "@alteran",
-          version: ALTERAN_VERSION,
-          exports: {
-            ".": "./alteran.ts",
-            "./lib": "./src/alteran/mod.ts",
-          },
-        },
-        null,
-        2,
-      )
-    }\n`,
+    renderJsrPackageConfig(version),
   );
+  await writeTextFileIfChanged(
+    join(distDir, "deno.json"),
+    renderJsrPublishWorkspaceConfig(),
+  );
+}
+
+export async function main(_args: string[]): Promise<void> {
+  const repoRoot = resolve(fileURLToPath(new URL("../../", import.meta.url)));
+  const distRoot = join(repoRoot, "dist", "jsr");
+  const distDir = getVersionedJsrDistDir(repoRoot);
+
+  await ensureDir(distRoot);
+  await removeLegacyTopLevelJsrEntries(distRoot);
+  await prepareJsrPackageAt(repoRoot, distDir);
 
   console.log(`Prepared ${distDir}`);
 }

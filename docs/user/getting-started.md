@@ -29,7 +29,7 @@ That usually means the beginner path is:
 If the machine already has Deno, the public package path is convenient:
 
 ```sh
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 ```
 
 If it does not, the checked-in `setup` script is the fallback that keeps the bootstrap story working.

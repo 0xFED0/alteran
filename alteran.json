@@ -26,6 +26,12 @@
       "path": "./tools/prepare_zip.ts",
       "discovered": true,
       "shell_aliases": ["tool-prepare_zip"]
+    },
+    "publish_jsr": {
+      "name": "publish_jsr",
+      "path": "./tools/publish_jsr.ts",
+      "discovered": true,
+      "shell_aliases": ["tool-publish_jsr"]
     }
   },
   "auto_reimport": {

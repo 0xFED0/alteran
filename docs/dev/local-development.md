@@ -23,6 +23,7 @@ alteran test -A tests/alteran_unit_test.ts
 alteran test -A tests/alteran_e2e_test.ts
 alteran tool run prepare_jsr
 alteran tool run prepare_zip
+alteran tool run publish_jsr
 ```
 
 `deno task ...` remains available, but for high-leverage product flows prefer running through Alteran so managed execution, logging, and project context stay honest.

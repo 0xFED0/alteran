@@ -28,7 +28,7 @@ cd hello-alteran
 Initialize it from the intended public package entrypoint:
 
 ```sh
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 source ./activate
 ```
 
@@ -120,7 +120,7 @@ That same `./setup` pattern is not special to the Alteran repository itself. The
 source ./some-project/activate
 ```
 
-That is the path to use when you want to bootstrap a project on a machine where `deno run -A jsr:@alteran setup` is not available because Deno is not yet installed globally.
+That is the path to use when you want to bootstrap a project on a machine where `deno run -A jsr:@alteran/alteran setup` is not available because Deno is not yet installed globally.
 
 In this repository, Alteran authored source lives under `src/alteran/`, `src/tools/`, and `src/libs/`. The local `.runtime/` tree is materialized runtime state.
 

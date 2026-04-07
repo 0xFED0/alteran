@@ -25,7 +25,7 @@ If a project was moved, partially cleaned, or entered on a fresh machine, `setup
 The intended public package form is:
 
 ```sh
-deno run -A jsr:@alteran setup
+deno run -A jsr:@alteran/alteran setup
 ```
 
 Inside the Alteran source repository itself, the equivalent bootstrap surface is the checked-in `./setup` script.
