@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 import {
   addApp,
@@ -29,6 +29,8 @@ import {
   upgradeTargets,
   useDenoVersion,
 } from "./runtime.ts";
+import { exists } from "./fs.ts";
+import type { AppConfig } from "./types.ts";
 
 export {
   addApp,
@@ -55,6 +57,7 @@ function printHelp(): void {
 
 Commands:
   alteran setup [dir]
+  alteran external <path-to-json> <command> [args...]
   alteran refresh
   alteran shellenv [dir] [--shell=sh|batch]
   alteran app add|rm|purge|ls|run|setup <name>
@@ -324,6 +327,30 @@ Usage:
   alteran use --deno=<version>`);
 }
 
+function printExternalHelp(): void {
+  console.log(`alteran external
+
+Run an Alteran command in an explicitly targeted foreign project context.
+
+Usage:
+  alteran external <path-to-json> <command> [args...]
+  ALTERAN_EXTERNAL_CTX=<path-to-json> alteran external <command> [args...]
+
+Supported anchors:
+  alteran.json   Target the owning Alteran project directly.
+  app.json       Target the owning Alteran project through a specific managed app.
+
+Rules:
+  - a positional <path-to-json> takes precedence over ALTERAN_EXTERNAL_CTX
+  - deno.json is not a valid external context anchor
+  - external mode isolates itself from the caller's active Alteran context
+
+Examples:
+  alteran external ../other/alteran.json tool run seed
+  alteran external ../other/apps/hello/app.json app
+  ALTERAN_EXTERNAL_CTX=../other/alteran.json alteran external task build`);
+}
+
 function isHelpToken(value?: string): boolean {
   return value === "help" || value === "--help" || value === "-h";
 }
@@ -377,7 +404,169 @@ function parseShellenvArgs(rest: string[]): {
   };
 }
 
-export async function runCli(argv: string[]): Promise<number> {
+interface ExternalContext {
+  anchorPath: string;
+  anchorType: "alteran" | "app";
+  projectDir: string;
+  appName?: string;
+}
+
+const ALTERAN_CONTEXT_ENV_KEYS = [
+  "ALTERAN_HOME",
+  "ALTERAN_RUN_ID",
+  "ALTERAN_ROOT_RUN_ID",
+  "ALTERAN_PARENT_RUN_ID",
+  "ALTERAN_ROOT_LOG_DIR",
+  "ALTERAN_LOG_MODE",
+  "ALTERAN_LOG_CONTEXT_JSON",
+  "ALTERAN_LOGTAPE_ENABLED",
+] as const;
+
+async function findOwningAlteranProject(
+  startDir: string,
+): Promise<string | null> {
+  let currentDir = resolve(startDir);
+  while (true) {
+    if (await exists(join(currentDir, "alteran.json"))) {
+      return currentDir;
+    }
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+    currentDir = parentDir;
+  }
+}
+
+async function resolveExternalContext(anchorInput: string): Promise<ExternalContext> {
+  const anchorPath = resolve(Deno.cwd(), anchorInput);
+  if (!(await exists(anchorPath))) {
+    throw new Error(`external context anchor does not exist: ${anchorInput}`);
+  }
+
+  switch (basename(anchorPath)) {
+    case "alteran.json":
+      return {
+        anchorPath,
+        anchorType: "alteran",
+        projectDir: dirname(anchorPath),
+      };
+    case "app.json": {
+      const appDir = dirname(anchorPath);
+      const projectDir = await findOwningAlteranProject(appDir);
+      if (projectDir === null) {
+        throw new Error(
+          "app.json external anchors are only supported for apps owned by an Alteran project",
+        );
+      }
+      const appConfig = JSON.parse(await Deno.readTextFile(anchorPath)) as Partial<
+        AppConfig
+      >;
+      const appName = typeof appConfig.name === "string" && appConfig.name.trim()
+        ? appConfig.name.trim()
+        : typeof appConfig.id === "string" && appConfig.id.trim()
+        ? appConfig.id.trim()
+        : basename(appDir);
+      return {
+        anchorPath,
+        anchorType: "app",
+        projectDir,
+        appName,
+      };
+    }
+    case "deno.json":
+    case "deno.jsonc":
+      throw new Error(
+        "deno.json is not a valid external context anchor; use alteran.json or app.json",
+      );
+    default:
+      throw new Error(
+        "external requires an explicit alteran.json or app.json anchor",
+      );
+  }
+}
+
+async function withIsolatedAlteranContext<T>(
+  fn: () => Promise<T>,
+): Promise<T> {
+  const previous = new Map<string, string | undefined>();
+  for (const key of ALTERAN_CONTEXT_ENV_KEYS) {
+    previous.set(key, Deno.env.get(key));
+    Deno.env.delete(key);
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const key of ALTERAN_CONTEXT_ENV_KEYS) {
+      const value = previous.get(key);
+      if (value === undefined) {
+        Deno.env.delete(key);
+      } else {
+        Deno.env.set(key, value);
+      }
+    }
+  }
+}
+
+function parseExternalArgs(rest: string[]): {
+  anchorInput: string;
+  commandArgs: string[];
+} {
+  const envAnchor = Deno.env.get("ALTERAN_EXTERNAL_CTX")?.trim();
+  if (rest.length === 0) {
+    if (envAnchor) {
+      return { anchorInput: envAnchor, commandArgs: [] };
+    }
+    throw new Error(
+      "external requires <path-to-json> or ALTERAN_EXTERNAL_CTX to be set",
+    );
+  }
+
+  const [first, ...remaining] = rest;
+  if (first.endsWith(".json")) {
+    return { anchorInput: first, commandArgs: remaining };
+  }
+  if (envAnchor) {
+    return { anchorInput: envAnchor, commandArgs: rest };
+  }
+  throw new Error(
+    "external requires <path-to-json> or ALTERAN_EXTERNAL_CTX to be set",
+  );
+}
+
+async function runCliInternal(
+  argv: string[],
+  options: { forcedProjectDir?: string; externalContext?: ExternalContext } = {},
+): Promise<number> {
+  const resolveProjectDir = async (): Promise<string> =>
+    options.forcedProjectDir ?? await resolveActiveProjectDir();
+
+  const parseForcedShellenvArgs = (rest: string[]): {
+    projectDir: string;
+    format: "shell" | "batch";
+  } => {
+    let format: "shell" | "batch" = "shell";
+    for (const arg of rest) {
+      if (arg === "--shell=batch" || arg === "--shell=bat" ||
+        arg === "--shell=cmd") {
+        format = "batch";
+        continue;
+      }
+      if (arg === "--shell=sh" || arg === "--shell=shell") {
+        format = "shell";
+        continue;
+      }
+      if (arg.startsWith("--shell=")) {
+        throw new Error(`Unsupported shellenv format: ${arg.slice(8)}`);
+      }
+      throw new Error("external shellenv does not accept a second target dir");
+    }
+    return {
+      projectDir: options.forcedProjectDir!,
+      format,
+    };
+  };
+
   try {
     if (argv.length === 0) {
       printHelp();
@@ -387,13 +576,40 @@ export async function runCli(argv: string[]): Promise<number> {
     const [command, ...rest] = argv;
 
     switch (command) {
+      case "external": {
+        if (rest.length === 0 || isHelpToken(rest[0])) {
+          printExternalHelp();
+          return 0;
+        }
+        const { anchorInput, commandArgs } = parseExternalArgs(rest);
+        if (commandArgs.length === 0 || isHelpToken(commandArgs[0])) {
+          printExternalHelp();
+          return 0;
+        }
+        const externalContext = await resolveExternalContext(anchorInput);
+        return await withIsolatedAlteranContext(async () =>
+          await runCliInternal(commandArgs, {
+            forcedProjectDir: externalContext.projectDir,
+            externalContext,
+          })
+        );
+      }
       case "setup":
       case "init": {
         if (isHelpToken(rest[0])) {
           console.log("Usage:\n  alteran setup [dir]");
           return 0;
         }
-        const targetDir = rest[0] ? resolve(Deno.cwd(), rest[0]) : Deno.cwd();
+        const targetDir = options.forcedProjectDir
+          ? (() => {
+            if (rest[0]) {
+              throw new Error("external setup does not accept a second target dir");
+            }
+            return options.forcedProjectDir!;
+          })()
+          : rest[0]
+          ? resolve(Deno.cwd(), rest[0])
+          : Deno.cwd();
         await setupProject(targetDir);
         console.error(`Set up Alteran project at ${targetDir}`);
         return 0;
@@ -403,7 +619,7 @@ export async function runCli(argv: string[]): Promise<number> {
           console.log("Usage:\n  alteran refresh");
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         await refreshProject(projectDir);
         console.error(`Refreshed ${projectDir}`);
         return 0;
@@ -413,7 +629,9 @@ export async function runCli(argv: string[]): Promise<number> {
           console.log("Usage:\n  alteran shellenv [dir] [--shell=sh|batch]");
           return 0;
         }
-        const { projectDir, format } = parseShellenvArgs(rest);
+        const { projectDir, format } = options.forcedProjectDir
+          ? parseForcedShellenvArgs(rest)
+          : parseShellenvArgs(rest);
         const output = format === "batch"
           ? await generateBatchEnv(projectDir)
           : await generateShellEnv(projectDir);
@@ -421,12 +639,45 @@ export async function runCli(argv: string[]): Promise<number> {
         return 0;
       }
       case "app": {
+        const knownAppActions = new Set([
+          "add",
+          "rm",
+          "purge",
+          "ls",
+          "run",
+          "setup",
+          "init",
+        ]);
         const [action, name, ...actionArgs] = rest;
+        if (
+          options.externalContext?.anchorType === "app" &&
+          action &&
+          !knownAppActions.has(action) &&
+          !isHelpToken(action)
+        ) {
+          const projectDir = await resolveProjectDir();
+          return await runApp(
+            projectDir,
+            options.externalContext.appName ?? basename(dirname(options.externalContext.anchorPath)),
+            rest,
+          );
+        }
+        if (
+          options.externalContext?.anchorType === "app" &&
+          !action
+        ) {
+          const projectDir = await resolveProjectDir();
+          return await runApp(
+            projectDir,
+            options.externalContext.appName ?? basename(dirname(options.externalContext.anchorPath)),
+            [],
+          );
+        }
         if (!action || isHelpToken(action) || isHelpToken(name)) {
           printAppHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         switch (action) {
           case "add":
             await addApp(projectDir, name);
@@ -464,7 +715,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printToolHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         switch (action) {
           case "add":
             await addTool(projectDir, name);
@@ -495,7 +746,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printReimportHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         if (type !== "apps" && type !== "tools") {
           throw new Error(`Unsupported reimport type: ${type ?? "<missing>"}`);
         }
@@ -508,7 +759,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printCleanHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         await cleanProjectScopes(projectDir, rest);
         console.error(`Cleaned ${rest.join(", ")}`);
         return 0;
@@ -518,7 +769,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printCompactHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         const hasYes = rest.some(isYesFlag);
         const hasNo = rest.some(isNoFlag);
         const unsupportedArgs = rest.filter((arg) =>
@@ -558,7 +809,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printRunHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await runScript(projectDir, script, scriptArgs);
       }
       case "task": {
@@ -567,7 +818,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printTaskHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await runTask(projectDir, taskName, taskArgs);
       }
       case "test": {
@@ -575,7 +826,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printTestHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await passthroughDeno(projectDir, ["test", ...rest]);
       }
       case "deno": {
@@ -583,7 +834,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printDenoHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await passthroughDeno(projectDir, rest);
       }
       case "x": {
@@ -592,7 +843,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printXHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await runDenoX(projectDir, moduleSpecifier, moduleArgs);
       }
       case "update": {
@@ -600,7 +851,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printUpdateHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         return await passthroughDeno(projectDir, [
           "outdated",
           "--update",
@@ -613,7 +864,7 @@ export async function runCli(argv: string[]): Promise<number> {
           printUpgradeHelp();
           return 0;
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         let alteran: string | true | undefined;
         let deno: string | true | undefined;
         for (const flag of rest) {
@@ -634,7 +885,7 @@ export async function runCli(argv: string[]): Promise<number> {
         if (!denoFlag) {
           throw new Error("use requires --deno=<version>");
         }
-        const projectDir = await resolveActiveProjectDir();
+        const projectDir = await resolveProjectDir();
         await useDenoVersion(projectDir, denoFlag.slice("--deno=".length));
         return 0;
       }
@@ -651,6 +902,10 @@ export async function runCli(argv: string[]): Promise<number> {
     console.error(`Alteran error: ${message}`);
     return 1;
   }
+}
+
+export async function runCli(argv: string[]): Promise<number> {
+  return await runCliInternal(argv);
 }
 
 if (import.meta.main) {
