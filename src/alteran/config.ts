@@ -165,13 +165,34 @@ export async function updateAlteranConfig(
 }
 
 function isExcluded(path: string, excludePatterns: string[]): boolean {
-  return excludePatterns.some((pattern) => {
-    const normalized = toPortablePath(pattern);
-    if (normalized.endsWith("/*")) {
-      return path.startsWith(normalized.slice(0, -2));
-    }
-    return path === normalized;
-  });
+  return excludePatterns.some((pattern) => matchesDiscoveryPattern(path, pattern));
+}
+
+function isIncluded(path: string, includePatterns: string[]): boolean {
+  if (includePatterns.length === 0) {
+    return false;
+  }
+  return includePatterns.some((pattern) => matchesDiscoveryPattern(path, pattern));
+}
+
+function matchesDiscoveryPattern(path: string, pattern: string): boolean {
+  const normalizedPath = toPortablePath(path);
+  const normalizedPattern = toPortablePath(pattern);
+  const escapedPattern = normalizedPattern.replaceAll(
+    /[|\\{}()[\]^$+?.]/g,
+    "\\$&",
+  );
+  const regex = new RegExp(`^${escapedPattern.replaceAll("*", ".*")}$`);
+  return regex.test(normalizedPath);
+}
+
+function shouldDiscover(
+  path: string,
+  includePatterns: string[],
+  excludePatterns: string[],
+): boolean {
+  return isIncluded(path, includePatterns) &&
+    !isExcluded(path, excludePatterns);
 }
 
 function registryEntry(
@@ -209,7 +230,13 @@ export async function discoverApps(
   for (const name of await listDirectSubdirectories(appsRoot)) {
     const appDir = join(appsRoot, name);
     const relativePath = toProjectRelativePath(projectDir, appDir);
-    if (isExcluded(relativePath, config.auto_reimport.apps.exclude)) {
+    if (
+      !shouldDiscover(
+        relativePath,
+        config.auto_reimport.apps.include,
+        config.auto_reimport.apps.exclude,
+      )
+    ) {
       continue;
     }
     result[name] = registryEntry("app", name, appDir, projectDir, result[name]);
@@ -242,7 +269,13 @@ export async function discoverTools(
     const name = fileName.slice(0, -3);
     const toolPath = join(toolsRoot, fileName);
     const relativePath = toProjectRelativePath(projectDir, toolPath);
-    if (isExcluded(relativePath, config.auto_reimport.tools.exclude)) {
+    if (
+      !shouldDiscover(
+        relativePath,
+        config.auto_reimport.tools.include,
+        config.auto_reimport.tools.exclude,
+      )
+    ) {
       continue;
     }
     result[name] = registryEntry("tool", name, toolPath, projectDir, result[name]);
@@ -255,7 +288,13 @@ export async function discoverTools(
       continue;
     }
     const relativePath = toProjectRelativePath(projectDir, fallbackPath);
-    if (isExcluded(relativePath, config.auto_reimport.tools.exclude)) {
+    if (
+      !shouldDiscover(
+        relativePath,
+        config.auto_reimport.tools.include,
+        config.auto_reimport.tools.exclude,
+      )
+    ) {
       continue;
     }
     result[name] = registryEntry("tool", name, fallbackPath, projectDir, result[name]);

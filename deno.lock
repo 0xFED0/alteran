@@ -1,9 +1,13 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@logtape/logtape@*": "2.0.5",
     "npm:jsonc-parser@3.3.1": "3.3.1"
   },
   "npm": {
+    "@logtape/logtape@2.0.5": {
+      "integrity": "sha512-UizDkh20ZPJVOddRxG1F77WhHdlNl/sbQgoO8T534R7XvUBMAJ9En9f35u+meW2tRsNLvjz6R87Zanwf53tspQ=="
+    },
     "jsonc-parser@3.3.1": {
       "integrity": "sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ=="
     }

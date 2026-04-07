@@ -78,9 +78,13 @@ Current default shape:
 }
 ```
 
-In practice, the most important part today is the `exclude` list. It lets a
-project keep a matching path on disk without having Alteran automatically
-re-register it during discovery.
+`include` and `exclude` are both active discovery controls:
+
+- matching paths must satisfy `include`
+- matching paths are still blocked by `exclude`
+
+This lets a project keep matching paths on disk while narrowing or broadening
+what Alteran auto-discovers during refresh.
 
 ## Logging Fields
 
@@ -91,6 +95,10 @@ re-register it during discovery.
 - `logging.logtape`
 
 `logging.logtape` is the opt-in switch for Alteran's LogTape integration path.
+
+- `false` or absent: disabled
+- `true`: enable Alteran's builtin events-oriented LogTape configuration
+- object: deep-merge user LogTape config over Alteran defaults
 
 ## Related References
 

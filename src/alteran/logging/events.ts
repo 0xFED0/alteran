@@ -1,4 +1,4 @@
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import { detectPlatform } from "../platform.ts";
 import type { AlteranConfig, LogContext } from "../types.ts";
@@ -12,6 +12,11 @@ export interface LogSession {
   stderrPath: string;
   eventsPath: string;
   metadataPath: string;
+  customRootDir?: string;
+  customStdoutPath?: string;
+  customStderrPath?: string;
+  customEventsPath?: string;
+  customMetadataPath?: string;
   config: AlteranConfig;
   isRootSession: boolean;
 }
@@ -39,13 +44,60 @@ function createRunId(name: string): string {
   return `${iso}_${slugify(name)}`;
 }
 
+function uniquePaths(paths: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const path of paths) {
+    if (!path) {
+      continue;
+    }
+    const normalized = resolve(path);
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(path);
+  }
+
+  return result;
+}
+
+async function writeMirroredText(
+  paths: Array<string | undefined>,
+  text: string,
+  options?: Deno.WriteFileOptions,
+): Promise<void> {
+  for (const path of uniquePaths(paths)) {
+    await ensureDir(dirname(path));
+    await Deno.writeTextFile(path, text, options);
+  }
+}
+
 async function appendJsonLine(
-  path: string,
+  paths: Array<string | undefined>,
   value: Record<string, unknown>,
 ): Promise<void> {
-  await Deno.writeTextFile(path, `${JSON.stringify(value)}\n`, {
+  await writeMirroredText(paths, `${JSON.stringify(value)}\n`, {
     append: true,
   });
+}
+
+function resolveCustomRootDir(
+  projectLogsRoot: string,
+  canonicalRootDir: string,
+): string | undefined {
+  const configured = Deno.env.get("ALTERAN_CUSTOM_LOG_DIR")?.trim();
+  if (!configured) {
+    return undefined;
+  }
+
+  const relativeRoot = relative(projectLogsRoot, canonicalRootDir);
+  if (relativeRoot.startsWith("..") || isAbsolute(relativeRoot)) {
+    return undefined;
+  }
+
+  return join(resolve(configured), relativeRoot);
 }
 
 export async function startLogSession(
@@ -95,13 +147,26 @@ export async function startLogSession(
     stderrPath: join(rootDir, "stderr.log"),
     eventsPath: join(rootDir, "events.jsonl"),
     metadataPath: join(rootDir, "metadata.json"),
+    customRootDir: resolveCustomRootDir(projectLogsRoot, rootDir),
+    customStdoutPath: undefined,
+    customStderrPath: undefined,
+    customEventsPath: undefined,
+    customMetadataPath: undefined,
     config,
     isRootSession,
   };
 
+  if (session.customRootDir) {
+    await ensureDir(session.customRootDir);
+    session.customStdoutPath = join(session.customRootDir, "stdout.log");
+    session.customStderrPath = join(session.customRootDir, "stderr.log");
+    session.customEventsPath = join(session.customRootDir, "events.jsonl");
+    session.customMetadataPath = join(session.customRootDir, "metadata.json");
+  }
+
   if (isRootSession) {
-    await Deno.writeTextFile(
-      session.metadataPath,
+    await writeMirroredText(
+      [session.metadataPath, session.customMetadataPath],
       JSON.stringify(
         {
           type,
@@ -124,7 +189,7 @@ export async function startLogSession(
     );
   }
 
-  await appendJsonLine(session.eventsPath, {
+  await appendJsonLine([session.eventsPath, session.customEventsPath], {
     ts: new Date().toISOString(),
     level: "info",
     msg: `${type} started`,
@@ -144,7 +209,7 @@ export async function appendEvent(
   session: LogSession,
   event: Record<string, unknown>,
 ): Promise<void> {
-  await appendJsonLine(session.eventsPath, {
+  await appendJsonLine([session.eventsPath, session.customEventsPath], {
     ts: new Date().toISOString(),
     run_id: session.context.run_id,
     root_run_id: session.context.root_run_id,
@@ -170,8 +235,8 @@ export async function finishLogSession(
     const metadata = JSON.parse(await Deno.readTextFile(session.metadataPath));
     metadata.finished_at = new Date().toISOString();
     metadata.exit_code = exitCode;
-    await Deno.writeTextFile(
-      session.metadataPath,
+    await writeMirroredText(
+      [session.metadataPath, session.customMetadataPath],
       `${JSON.stringify(metadata, null, 2)}\n`,
     );
   }
@@ -209,14 +274,18 @@ export function createManagedEnv(
 
 export async function captureStream(
   stream: ReadableStream<Uint8Array>,
-  targetPath: string,
+  targetPaths: Array<string | undefined>,
   mirror: "stdout" | "stderr" | "none",
 ): Promise<void> {
-  const file = await Deno.open(targetPath, {
-    create: true,
-    append: true,
-    write: true,
-  });
+  const files = await Promise.all(
+    uniquePaths(targetPaths).map((path) =>
+      Deno.open(path, {
+        create: true,
+        append: true,
+        write: true,
+      })
+    ),
+  );
   const target = mirror === "stdout"
     ? Deno.stdout
     : mirror === "stderr"
@@ -230,12 +299,16 @@ export async function captureStream(
       if (done) {
         break;
       }
-      await file.write(value);
+      for (const file of files) {
+        await file.write(value);
+      }
       if (target) {
         await target.write(value);
       }
     }
   } finally {
-    file.close();
+    for (const file of files) {
+      file.close();
+    }
   }
 }

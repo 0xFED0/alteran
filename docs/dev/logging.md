@@ -42,6 +42,10 @@ as:
 That inherited context is only valid inside the same project boundary. Foreign
 project runs should not silently adopt another project's root log tree.
 
+`ALTERAN_LOG_CONTEXT_JSON` should remain a lightweight internal context payload.
+User LogTape configuration belongs in the current project's `alteran.json`
+rather than in heavy serialized environment variables.
+
 ## LogTape Boundary
 
 LogTape integration is optional. Alteran can proxy the bare

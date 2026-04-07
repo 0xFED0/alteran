@@ -1,4 +1,4 @@
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { getVersionedJsrDistDir } from "../tools/prepare_jsr/mod.ts";
@@ -8,7 +8,12 @@ import {
 } from "../tools/prepare_zip/mod.ts";
 import { runCli } from "../src/alteran/mod.ts";
 import { readAlteranConfig, updateAlteranConfig } from "../src/alteran/config.ts";
-import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
+import {
+  copyDirectory,
+  ensureDir,
+  exists,
+  removeIfExists,
+} from "../src/alteran/fs.ts";
 import {
   addApp,
   addTool,
@@ -16,7 +21,7 @@ import {
   generateShellEnv,
   getConfiguredAlteranArchiveSources,
   getConfiguredAlteranRunSources,
-  initProject,
+  setupProject,
   listRegistry,
   refreshProject,
   reimportCategory,
@@ -39,7 +44,14 @@ async function latestProjectLogDir(
   projectDir: string,
   category: "apps" | "tools" | "runs" | "tasks" | "tests",
 ): Promise<string> {
-  const root = join(projectDir, ".runtime", "logs", category);
+  return await latestLogDirUnder(join(projectDir, ".runtime", "logs"), category);
+}
+
+async function latestLogDirUnder(
+  rootDir: string,
+  category: "apps" | "tools" | "runs" | "tasks" | "tests",
+): Promise<string> {
+  const root = join(rootDir, category);
   const entries = await Array.fromAsync(Deno.readDir(root));
   const directories = entries.filter((entry) => entry.isDirectory)
     .map((entry) => entry.name)
@@ -214,8 +226,8 @@ const IS_WINDOWS = Deno.build.os === "windows";
 const NODE_AVAILABLE = !IS_WINDOWS && await isNodeAvailable();
 
 Deno.test("setupProject creates core Alteran layout", async () => {
-  const projectDir = await Deno.makeTempDir({ prefix: "alteran-init-" });
-  await initProject(projectDir);
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-setup-" });
+  await setupProject(projectDir);
 
   for (
     const path of [
@@ -269,7 +281,7 @@ Deno.test("setupProject creates core Alteran layout", async () => {
 
 Deno.test("addApp and addTool update registries and env aliases", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-registry-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
   await addApp(projectDir, "hello");
   await addTool(projectDir, "seed");
   await updateAlteranConfig(projectDir, (current) => ({
@@ -339,7 +351,7 @@ Deno.test("addApp and addTool update registries and env aliases", async () => {
 Deno.test("reimport preserves explicit alias state for existing registry entries", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-reimport-alias-state-" });
   await seedManagedDeno(projectDir);
-  await initProject(projectDir);
+  await setupProject(projectDir);
   await addTool(projectDir, "seed");
 
   await updateAlteranConfig(projectDir, (current) => ({
@@ -372,7 +384,7 @@ Deno.test("reimport preserves explicit alias state for existing registry entries
 Deno.test("managed app setup and launcher scripts are generated and refresh can restore them", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-app-scripts-" });
   await seedManagedDeno(projectDir);
-  await initProject(projectDir);
+  await setupProject(projectDir);
   await addApp(projectDir, "hello");
 
   const managedGitignore = await Deno.readTextFile(join(projectDir, ".gitignore"));
@@ -417,7 +429,7 @@ Deno.test({
   async fn() {
     const projectDir = await Deno.makeTempDir({ prefix: "alteran-managed-app-" });
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addApp(projectDir, "hello");
 
     const output = await runZsh(
@@ -459,7 +471,7 @@ Deno.test({
       return;
     }
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addApp(projectDir, "hello");
     await removeIfExists(join(projectDir, ".runtime"));
 
@@ -502,7 +514,7 @@ Deno.test({
       prefix: "alteran-managed-app-id-mismatch-",
     });
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addApp(projectDir, "hello");
 
     await Deno.writeTextFile(
@@ -557,7 +569,7 @@ Deno.test("reimported app outside ./apps can be run through alteran app run", as
 
   try {
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     const importedAppDir = join(projectDir, "incoming-apps", "admin-console");
     await ensureDir(join(importedAppDir, "core"));
     await Deno.writeTextFile(
@@ -633,7 +645,7 @@ Deno.test("external alteran.json tool run isolates the target project context", 
 
   try {
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addTool(projectDir, "probe");
     Deno.env.set("ALTERAN_HOME", join(ALTERAN_REPO_DIR, ".runtime"));
     Deno.env.set("ALTERAN_RUN_ID", "foreign-run");
@@ -684,7 +696,7 @@ Deno.test("ALTERAN_EXTERNAL_CTX can target a foreign project without a positiona
 
   try {
     await seedManagedDeno(projectDir);
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addTool(projectDir, "seed");
     Deno.chdir(ALTERAN_REPO_DIR);
     Deno.env.set("ALTERAN_EXTERNAL_CTX", join(projectDir, "alteran.json"));
@@ -717,7 +729,7 @@ Deno.test("external rejects deno.json as a context anchor", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-external-deno-json-" });
 
   await seedManagedDeno(projectDir);
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const exitCode = await runCli([
     "external",
@@ -738,7 +750,7 @@ Deno.test("external app.json app runs the anchored managed app", async () => {
   }
 
   try {
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await addApp(projectDir, "hello");
     await Deno.writeTextFile(
       join(projectDir, "apps", "hello", "core", "mod.ts"),
@@ -868,7 +880,7 @@ Deno.test({
   ignore: IS_WINDOWS,
   async fn() {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-activate-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const command = new Deno.Command("zsh", {
     args: [
@@ -905,7 +917,7 @@ Deno.test({
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-activate-quiet-",
   });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const command = new Deno.Command("zsh", {
     args: [
@@ -941,25 +953,40 @@ Deno.test({
 
 Deno.test("runCli provides help for subcommands instead of treating help as data", async () => {
   const consoleLog = console.log;
+  const consoleError = console.error;
   const messages: string[] = [];
+  const errors: string[] = [];
   console.log = (...args: unknown[]) => {
     messages.push(args.map(String).join(" "));
   };
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(" "));
+  };
 
   try {
+    const legacySetupAlias = ["in", "it"].join("");
     const appHelpExitCode = await runCli(["app", "--help"]);
     const cleanHelpExitCode = await runCli(["clean", "--help"]);
     const cleanNoScopeExitCode = await runCli(["clean"]);
     const externalHelpExitCode = await runCli(["external", "--help"]);
+    const legacyAppSetupAliasExitCode = await runCli([
+      "app",
+      legacySetupAlias,
+      "./portable-clock",
+    ]);
 
     if (
       appHelpExitCode !== 0 || cleanHelpExitCode !== 0 ||
-      cleanNoScopeExitCode !== 0 || externalHelpExitCode !== 0
+      cleanNoScopeExitCode !== 0 || externalHelpExitCode !== 0 ||
+      legacyAppSetupAliasExitCode === 0
     ) {
-      throw new Error("Expected help invocations to exit with code 0");
+      throw new Error(
+        "Expected help invocations to exit with code 0 and legacy app setup alias to fail",
+      );
     }
 
     const joined = messages.join("\n");
+    const joinedErrors = errors.join("\n");
     if (!joined.includes("alteran app")) {
       throw new Error("Expected app help output");
     }
@@ -975,14 +1002,25 @@ Deno.test("runCli provides help for subcommands instead of treating help as data
     if (!joined.includes("alteran clean <scope> [<scope> ...]")) {
       throw new Error("Expected multi-scope clean usage in help output");
     }
+    if (joined.includes(`app ${legacySetupAlias}`)) {
+      throw new Error(
+        "Expected app help output not to advertise the removed legacy app setup alias",
+      );
+    }
+    if (!joinedErrors.includes(`Unsupported app command: ${legacySetupAlias}`)) {
+      throw new Error(
+        "Expected the removed legacy app setup alias to be rejected explicitly",
+      );
+    }
   } finally {
     console.log = consoleLog;
+    console.error = consoleError;
   }
 });
 
 Deno.test("alteran test delegates to managed deno test", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-cli-test-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
   await Deno.writeTextFile(
     join(projectDir, "tests", "sample_test.ts"),
     'Deno.test("sample", () => {});\n',
@@ -1009,7 +1047,7 @@ Deno.test("alteran test delegates to managed deno test", async () => {
 
 Deno.test("alteran test stores logs under tests top-level log category", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-test-logs-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
   await Deno.writeTextFile(
     join(projectDir, "tests", "sample_test.ts"),
     'Deno.test("sample", () => {});\n',
@@ -1062,7 +1100,7 @@ Deno.test("alteran task runs deno-based tasks with managed preinit context", asy
   const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
 
   try {
-    await initProject(projectDir);
+    await setupProject(projectDir);
     await Deno.writeTextFile(
       join(projectDir, "deno.json"),
       JSON.stringify({
@@ -1089,9 +1127,306 @@ Deno.test("alteran task runs deno-based tasks with managed preinit context", asy
   }
 });
 
+Deno.test("alteran refresh respects auto_reimport include rules for app discovery", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-refresh-include-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await setupProject(projectDir);
+    await updateAlteranConfig(projectDir, (current) => ({
+      ...current,
+      auto_reimport: {
+        ...current.auto_reimport,
+        apps: {
+          ...current.auto_reimport.apps,
+          include: ["./apps/allowed*"],
+        },
+      },
+    }));
+
+    await Deno.mkdir(join(projectDir, "apps", "allowed-demo"), {
+      recursive: true,
+    });
+    await Deno.mkdir(join(projectDir, "apps", "manual"), {
+      recursive: true,
+    });
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["refresh"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected alteran refresh to succeed, got exit code ${exitCode}`);
+    }
+
+    const config = await readAlteranConfig(projectDir);
+    if (!config.apps["allowed-demo"]) {
+      throw new Error("Expected include-matching app to be auto-reimported");
+    }
+    if (config.apps.manual) {
+      throw new Error("Expected non-matching app to stay out of auto-reimport");
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("managed logging can mirror canonical logs into ALTERAN_CUSTOM_LOG_DIR", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-custom-log-dir-" });
+  const customLogDir = await Deno.makeTempDir({ prefix: "alteran-custom-log-mirror-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  const previousCustomLogDir = Deno.env.get("ALTERAN_CUSTOM_LOG_DIR");
+
+  try {
+    await setupProject(projectDir);
+    await addTool(projectDir, "mirror");
+    await Deno.writeTextFile(
+      join(projectDir, "tools", "mirror", "mod.ts"),
+      `export async function main(): Promise<void> {
+  console.log("mirror-stdout");
+  console.error("mirror-stderr");
+}
+
+if (import.meta.main) {
+  await main();
+}
+`,
+    );
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    Deno.env.set("ALTERAN_CUSTOM_LOG_DIR", customLogDir);
+    const exitCode = await runCli(["tool", "run", "mirror"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected mirrored tool run to succeed, got exit code ${exitCode}`);
+    }
+
+    const canonicalDir = await latestProjectLogDir(projectDir, "tools");
+    const mirrorDir = join(
+      customLogDir,
+      relative(join(projectDir, ".runtime", "logs"), canonicalDir),
+    );
+
+    for (const relativePath of [
+      "metadata.json",
+      "events.jsonl",
+      "stdout.log",
+      "stderr.log",
+    ]) {
+      const canonicalPath = join(canonicalDir, relativePath);
+      const mirroredPath = join(mirrorDir, relativePath);
+      if (!(await exists(canonicalPath))) {
+        throw new Error(`Expected canonical log file ${canonicalPath} to exist`);
+      }
+      if (!(await exists(mirroredPath))) {
+        throw new Error(`Expected mirrored log file ${mirroredPath} to exist`);
+      }
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+    if (previousCustomLogDir === undefined) {
+      Deno.env.delete("ALTERAN_CUSTOM_LOG_DIR");
+    } else {
+      Deno.env.set("ALTERAN_CUSTOM_LOG_DIR", previousCustomLogDir);
+    }
+  }
+});
+
+Deno.test("managed logging respects stdout/stderr capture flags", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-log-capture-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await setupProject(projectDir);
+    await addTool(projectDir, "quiet");
+    await updateAlteranConfig(projectDir, (current) => ({
+      ...current,
+      logging: {
+        ...current.logging,
+        stdout: { mirror: false, capture: false },
+        stderr: { mirror: false, capture: false },
+      },
+    }));
+    await Deno.writeTextFile(
+      join(projectDir, "tools", "quiet", "mod.ts"),
+      `export async function main(): Promise<void> {
+  console.log("quiet-stdout");
+  console.error("quiet-stderr");
+}
+
+if (import.meta.main) {
+  await main();
+}
+`,
+    );
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["tool", "run", "quiet"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected quiet tool run to succeed, got exit code ${exitCode}`);
+    }
+
+    const logDir = await latestProjectLogDir(projectDir, "tools");
+    for (const logPath of [join(logDir, "stdout.log"), join(logDir, "stderr.log")]) {
+      try {
+        await Deno.stat(logPath);
+        throw new Error(`Expected ${logPath} not to exist when capture is disabled`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
+    if (!(await exists(join(logDir, "events.jsonl")))) {
+      throw new Error("Expected structured events to remain even when stream capture is disabled");
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("logging.logtape true applies the builtin LogTape events configuration", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-logtape-default-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await setupProject(projectDir);
+    await addTool(projectDir, "audit");
+    await updateAlteranConfig(projectDir, (current) => ({
+      ...current,
+      logging: {
+        ...current.logging,
+        logtape: true,
+      },
+    }));
+    await Deno.writeTextFile(
+      join(projectDir, "tools", "audit", "mod.ts"),
+      `import { getConfig, getLogger } from "@logtape/logtape";
+
+export async function main(): Promise<void> {
+  const config = getConfig() as { loggers?: unknown[] };
+  console.log(\`loggers=\${Array.isArray(config?.loggers) ? config.loggers.length : 0}\`);
+  const logger = getLogger(["example", "audit"]).with({
+    job: "nightly-sync",
+    stage: "run",
+  });
+  await logger.info("audit log event");
+}
+
+if (import.meta.main) {
+  await main();
+}
+`,
+    );
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["tool", "run", "audit"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected default logtape tool run to succeed, got exit code ${exitCode}`);
+    }
+
+    const logDir = await latestProjectLogDir(projectDir, "tools");
+    const stdout = await Deno.readTextFile(join(logDir, "stdout.log"));
+    const events = await Deno.readTextFile(join(logDir, "events.jsonl"));
+
+    if (!stdout.includes("loggers=1")) {
+      throw new Error("Expected builtin LogTape config to expose exactly one default logger");
+    }
+    for (const expected of [
+      '"source":"logtape"',
+      '"category":["example","audit"]',
+      '"job":"nightly-sync"',
+      '"stage":"run"',
+      '"msg":"audit log event"',
+    ]) {
+      if (!events.includes(expected)) {
+        throw new Error(`Expected default LogTape events to include ${expected}`);
+      }
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("logging.logtape object merges user config over builtin defaults", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-logtape-merge-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await setupProject(projectDir);
+    await addTool(projectDir, "audit");
+    await updateAlteranConfig(projectDir, (current) => ({
+      ...current,
+      logging: {
+        ...current.logging,
+        logtape: {
+          loggers: [
+            {
+              category: ["custom"],
+              lowestLevel: "fatal",
+              sinks: ["alteran_events"],
+            },
+          ],
+        },
+      },
+    }));
+    await Deno.writeTextFile(
+      join(projectDir, "tools", "audit", "mod.ts"),
+      `import { getConfig, getLogger } from "@logtape/logtape";
+
+export async function main(): Promise<void> {
+  const config = getConfig() as { loggers?: unknown[] };
+  console.log(\`loggers=\${Array.isArray(config?.loggers) ? config.loggers.length : 0}\`);
+  await getLogger(["example", "audit"]).with({ job: "merged" }).info("merged event");
+}
+
+if (import.meta.main) {
+  await main();
+}
+`,
+    );
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["tool", "run", "audit"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected merged logtape tool run to succeed, got exit code ${exitCode}`);
+    }
+
+    const logDir = await latestProjectLogDir(projectDir, "tools");
+    const stdout = await Deno.readTextFile(join(logDir, "stdout.log"));
+    const events = await Deno.readTextFile(join(logDir, "events.jsonl"));
+
+    if (!stdout.includes("loggers=2")) {
+      throw new Error("Expected merged LogTape config to append user loggers over defaults");
+    }
+    if (!events.includes('"msg":"merged event"') || !events.includes('"job":"merged"')) {
+      throw new Error("Expected merged LogTape config to preserve builtin events sink behavior");
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
 Deno.test("alteran clean accepts multiple scopes", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-clean-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const logsDir = join(projectDir, ".runtime", "logs");
   await Deno.writeTextFile(join(logsDir, "custom.log"), "logs");
@@ -1135,7 +1470,7 @@ Deno.test("alteran clean accepts multiple scopes", async () => {
 
 Deno.test("alteran clean all matches the safe-cleanup specification", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-clean-all-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   await Deno.mkdir(join(projectDir, "apps", "demo", ".runtime"), {
     recursive: true,
@@ -1191,10 +1526,18 @@ Deno.test("alteran clean all matches the safe-cleanup specification", async () =
         join(projectDir, "tests"),
         join(projectDir, ".runtime", "logs"),
         join(projectDir, ".runtime", "deno"),
-        join(projectDir, "dist", "jsr"),
       ]
     ) {
       await Deno.stat(preservedPath);
+    }
+
+    try {
+      await Deno.stat(join(projectDir, "dist"));
+      throw new Error("Expected clean all to remove dist entirely");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
     }
 
     for (const removedPath of [
@@ -1208,6 +1551,38 @@ Deno.test("alteran clean all matches the safe-cleanup specification", async () =
         if (!(error instanceof Deno.errors.NotFound)) {
           throw error;
         }
+      }
+    }
+  } finally {
+    if (previousAlteranHome === undefined) {
+      Deno.env.delete("ALTERAN_HOME");
+    } else {
+      Deno.env.set("ALTERAN_HOME", previousAlteranHome);
+    }
+  }
+});
+
+Deno.test("alteran clean builds removes dist without recreating publication directories", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-clean-builds-" });
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+
+  try {
+    await setupProject(projectDir);
+    await Deno.mkdir(join(projectDir, "dist", "jsr"), { recursive: true });
+    await Deno.writeTextFile(join(projectDir, "dist", "jsr", "artifact.txt"), "artifact");
+
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    const exitCode = await runCli(["clean", "builds"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected alteran clean builds to succeed, got exit code ${exitCode}`);
+    }
+
+    try {
+      await Deno.stat(join(projectDir, "dist"));
+      throw new Error("Expected clean builds not to recreate dist or dist/jsr");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
       }
     }
   } finally {
@@ -1296,7 +1671,7 @@ Deno.test("alteran clean runtime removes unexpected legacy entries under .runtim
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-runtime-clean-",
   });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const legacyPlatformDir = join(projectDir, ".runtime", "macos-arm64");
   const strayFile = join(projectDir, ".runtime", "unexpected.txt");
@@ -1359,7 +1734,7 @@ Deno.test("alteran clean runtime removes unexpected legacy entries under .runtim
 
 Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-deno-clean-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const platform = detectPlatform();
   const platformDir = join(projectDir, ".runtime", "deno", platform.id);
@@ -1408,7 +1783,7 @@ Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () 
 
 Deno.test("alteran compact removes generated runtime artifacts but keeps bootstrap files", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-compact-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   await Deno.mkdir(join(projectDir, "apps", "demo", ".runtime"), {
     recursive: true,
@@ -1505,7 +1880,7 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
 
 Deno.test("alteran compact -n cancels without changing the project", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-compact-no-" });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
   Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
@@ -1533,7 +1908,7 @@ Deno.test("alteran compact prompts and cancels by default when the answer is no"
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-compact-prompt-no-",
   });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
   const previousPrompt = globalThis.prompt;
@@ -1575,7 +1950,7 @@ Deno.test("alteran compact requires explicit confirmation in non-interactive mod
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-compact-noninteractive-",
   });
-  await initProject(projectDir);
+  await setupProject(projectDir);
 
   const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
   const stdinDescriptor = Object.getOwnPropertyDescriptor(
@@ -1645,7 +2020,7 @@ Deno.test({
   name: "node compatibility bridge can set up a project through Deno",
   ignore: !NODE_AVAILABLE,
   async fn() {
-  const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-init-" });
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-setup-" });
   const command = new Deno.Command("node", {
     args: [ALTERAN_ENTRY_PATH, "setup", projectDir],
     cwd: ALTERAN_REPO_DIR,
@@ -1937,7 +2312,7 @@ Deno.test({
 
 Deno.test("direct deno run alteran.ts setup bootstraps a target without prior activation", async () => {
   const projectDir = await Deno.makeTempDir({
-    prefix: "alteran-direct-init-",
+    prefix: "alteran-direct-setup-",
   });
 
   const output = await new Deno.Command(Deno.execPath(), {

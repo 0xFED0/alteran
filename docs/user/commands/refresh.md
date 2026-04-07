@@ -53,5 +53,5 @@ just need generated state rebuilt.
 
 ## Navigation
 - Home: [Docs Index](../../README.md)
-- Previous: [Project Setup And Initialization](./init.md)
+- Previous: [Project Setup](./setup.md)
 - Next: [App Commands](./app.md)

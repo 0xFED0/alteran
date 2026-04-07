@@ -1185,27 +1185,11 @@ export async function refreshProject(
   return config;
 }
 
-export async function ensureProjectEnv(projectDir: string): Promise<{
-  initialized: boolean;
-  config: AlteranConfig;
-}> {
-  const configPath = join(projectDir, "alteran.json");
-  const initialized = !await exists(configPath);
-  return {
-    initialized,
-    config: await setupProject(projectDir),
-  };
-}
-
 export async function setupProject(projectDir: string): Promise<AlteranConfig> {
   return await refreshProject(projectDir);
 }
 
-export async function initProject(projectDir: string): Promise<AlteranConfig> {
-  return await setupProject(projectDir);
-}
-
-export async function initStandaloneApp(path: string): Promise<void> {
+export async function setupStandaloneApp(path: string): Promise<void> {
   await createStandaloneAppScaffold(path);
 }
 
@@ -1429,7 +1413,6 @@ export async function cleanProject(
       break;
     case "builds":
       await removeIfExists(join(projectDir, "dist"));
-      await ensureDir(join(projectDir, "dist", "jsr"));
       break;
     case "all":
       await cleanProject(projectDir, "runtime");
@@ -1581,12 +1564,16 @@ export async function runManagedDeno(
 
   const stdoutPromise = captureStream(
     child.stdout,
-    session.stdoutPath,
+    config.logging.stdout.capture === false
+      ? []
+      : [session.stdoutPath, session.customStdoutPath],
     config.logging.stdout.mirror === false ? "none" : "stdout",
   );
   const stderrPromise = captureStream(
     child.stderr,
-    session.stderrPath,
+    config.logging.stderr.capture === false
+      ? []
+      : [session.stderrPath, session.customStderrPath],
     config.logging.stderr.mirror === false ? "none" : "stderr",
   );
 
@@ -1698,12 +1685,16 @@ export async function runTask(
 
   const stdoutPromise = captureStream(
     child.stdout,
-    session.stdoutPath,
+    config.logging.stdout.capture === false
+      ? []
+      : [session.stdoutPath, session.customStdoutPath],
     config.logging.stdout.mirror === false ? "none" : "stdout",
   );
   const stderrPromise = captureStream(
     child.stderr,
-    session.stderrPath,
+    config.logging.stderr.capture === false
+      ? []
+      : [session.stderrPath, session.customStderrPath],
     config.logging.stderr.mirror === false ? "none" : "stderr",
   );
 

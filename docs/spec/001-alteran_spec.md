@@ -1637,7 +1637,7 @@ Supported commands:
 - `alteran app purge <name>`
 - `alteran app ls`
 - `alteran app run <name>`
-- `alteran app init <path>`
+- `alteran app setup <path>`
 
 ### 19.1 `app add`
 
@@ -1677,7 +1677,7 @@ The effect should correspond to the main app launcher behavior used by
 generated standalone `app` / `app.bat` scripts, even if the exact bootstrap
 steps differ between in-project dev mode and standalone app-local mode.
 
-### 19.6 `app init <path>`
+### 19.6 `app setup <path>`
 
 Initialize app scaffold in an arbitrary location outside normal dev context.
 
@@ -2118,16 +2118,17 @@ It must not remove source files or project configuration.
 
 #### `alteran clean builds`
 
-Reserved for future build/output cleanup.
+Removes reproducible build and publication output such as:
 
-This scope should remove generated build outputs such as:
-
-- transpiled web assets
-- bundled output
-- generated distribution artifacts
-- other reproducible build products
+- `dist/`
+- staged release payloads
+- other reproducible build artifacts
 
 It must not remove source files.
+
+It must not recreate publication-specific subdirectories such as `dist/jsr/`
+as part of cleanup. The corresponding build or publication tooling is
+responsible for recreating its own output directories when needed.
 
 ### 26.3 Safety rules
 
@@ -3095,6 +3096,11 @@ This is preferred over comma-separated strings because it is less ambiguous,
 easier to extend, avoids delimiter issues, and is future-proof for richer
 metadata.
 
+`ALTERAN_LOG_CONTEXT_JSON` is an internal Alteran-managed propagation payload
+for lightweight parent/child logging context. It must not be treated as a
+general user-facing configuration mechanism, and heavy LogTape configuration
+should not be serialized through environment variables.
+
 Recommended `ALTERAN_LOG_MODE` values are:
 
 - `root`
@@ -3215,6 +3221,8 @@ If `logging.logtape` is `true`:
 
 - Alteran enables LogTape with default configuration
 - Alteran-managed `run` and `task` execution bootstrap LogTape automatically
+- the bootstrap reads the effective `logging.logtape` setting from the current
+  project's `alteran.json`
 - structured LogTape records are written into the root invocation's
   `events.jsonl`
 - any configured text-oriented sinks may also emit to stdout/stderr depending on
@@ -3225,6 +3233,8 @@ If `logging.logtape` is an object:
 - Alteran default LogTape config is deep-merged with it
 - user overrides take precedence
 - user may explicitly reset config using native LogTape reset behavior if needed
+- the object is read from the current project's `alteran.json`, not propagated
+  as a heavyweight environment variable
 
 ### 37.3 Bootstrap and extension files
 

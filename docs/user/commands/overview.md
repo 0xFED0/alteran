@@ -4,7 +4,7 @@ Alteran uses an explicit command surface instead of positional shortcuts.
 
 ## Main Command Families
 
-- [Project setup / initialization](./init.md): `setup`, `shellenv`
+- [Project setup / initialization](./setup.md): `setup`, `shellenv`
 - explicit external-project execution: `external`
 - [Refresh and reimport](./refresh.md): `refresh`, `reimport`
 - [Apps](./app.md): `app add|rm|purge|ls|run|setup`
@@ -62,4 +62,4 @@ Related reference pages:
 ## Navigation
 - Home: [Docs Index](../../README.md)
 - Previous: [Activation](../activation.md)
-- Next: [Project Setup And Initialization](./init.md)
+- Next: [Project Setup](./setup.md)

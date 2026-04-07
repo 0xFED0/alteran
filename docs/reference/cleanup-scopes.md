@@ -9,7 +9,7 @@
 | `env` | Remove generated `activate` and `activate.bat` |
 | `app-runtimes` | Remove nested `apps/*/.runtime/` |
 | `logs` | Remove `.runtime/logs/` and recreate the log root |
-| `builds` | Remove `dist/` and recreate `dist/jsr/` |
+| `builds` | Remove `dist/` without recreating publication-specific subdirectories |
 | `all` | Run the safe cleanup set for regenerable runtime state |
 
 ## `alteran compact`

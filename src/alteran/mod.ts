@@ -6,11 +6,8 @@ import {
   cleanProject,
   cleanProjectScopes,
   compactProject,
-  ensureProjectEnv,
   generateBatchEnv,
   generateShellEnv,
-  initProject,
-  initStandaloneApp,
   listRegistry,
   passthroughDeno,
   purgeApp,
@@ -22,6 +19,7 @@ import {
   resolveActiveProjectDir,
   runApp,
   setupProject,
+  setupStandaloneApp,
   runDenoX,
   runScript,
   runTask,
@@ -37,10 +35,8 @@ export {
   addTool,
   cleanProject,
   compactProject,
-  ensureProjectEnv,
   generateBatchEnv,
   generateShellEnv,
-  initProject,
   passthroughDeno,
   refreshProject,
   resolveActiveProjectDir,
@@ -594,8 +590,7 @@ async function runCliInternal(
           })
         );
       }
-      case "setup":
-      case "init": {
+      case "setup": {
         if (isHelpToken(rest[0])) {
           console.log("Usage:\n  alteran setup [dir]");
           return 0;
@@ -646,7 +641,6 @@ async function runCliInternal(
           "ls",
           "run",
           "setup",
-          "init",
         ]);
         const [action, name, ...actionArgs] = rest;
         if (
@@ -697,11 +691,10 @@ async function runCliInternal(
           case "run":
             return await runApp(projectDir, name, actionArgs);
           case "setup":
-          case "init":
             if (!name) {
               throw new Error("app setup requires a target path");
             }
-            await initStandaloneApp(name);
+            await setupStandaloneApp(name);
             return 0;
           default:
             throw new Error(
