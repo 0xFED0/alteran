@@ -6,9 +6,8 @@ projects.
 ## Quick start
 
 ```sh
-./activate
-alteran setup .
-alteran refresh
+./setup
+source ./activate
 alteran app add hello
 alteran tool add seed
 ```

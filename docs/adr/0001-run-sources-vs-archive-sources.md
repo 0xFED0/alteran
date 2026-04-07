@@ -41,7 +41,7 @@ Alteran should treat bootstrap source classes as having different roles:
 More specifically:
 
 1. If Alteran is already running and has local authored source material
-   available, `init`/`ensure-env`/normal bootstrap should materialize from that
+   available, `setup`/normal bootstrap should materialize from that
    local source first.
 2. If a local materialized runtime already exists, it may be reused.
 3. If Alteran needs a canonical source to reconstruct `.runtime/alteran`, it
@@ -50,7 +50,7 @@ More specifically:
    process when nothing local exists yet, but they should not be treated as the
    canonical source for materialization.
 5. Remote update semantics belong to `upgrade`, not to ordinary bootstrap or
-   `init`.
+   `setup`.
 
 ## Consequences
 
