@@ -84,7 +84,19 @@ export function getProjectPaths(projectDir: string): ProjectPaths {
 }
 
 export function getBundleRoot(): string {
-  return resolve(fileURLToPath(new URL("../../", import.meta.url)));
+  const bundleUrl = new URL("../../", import.meta.url);
+  if (bundleUrl.protocol !== "file:") {
+    throw new Error("Alteran bundle root is only available for file: modules");
+  }
+  return resolve(fileURLToPath(bundleUrl));
+}
+
+export function tryGetBundleRoot(): string | null {
+  try {
+    return getBundleRoot();
+  } catch {
+    return null;
+  }
 }
 
 async function loadDotEnvFile(dotEnvPath: string): Promise<void> {
@@ -121,9 +133,10 @@ async function loadDotEnvFile(dotEnvPath: string): Promise<void> {
 }
 
 export async function loadProjectDotEnv(projectDir: string): Promise<void> {
+  const bundleRoot = tryGetBundleRoot();
   const dotEnvPaths = [
     join(projectDir, ".env"),
-    join(getBundleRoot(), ".env"),
+    ...(bundleRoot ? [join(bundleRoot, ".env")] : []),
   ];
 
   for (const dotEnvPath of dotEnvPaths) {
@@ -159,10 +172,11 @@ export async function resolveAlteranSourceRoot(
 ): Promise<string | null> {
   await loadProjectDotEnv(projectDir);
   const configured = Deno.env.get("ALTERAN_SRC")?.trim();
+  const bundleRoot = tryGetBundleRoot();
   const candidates = [
     configured ? resolve(configured) : null,
     join(projectDir, "src"),
-    join(getBundleRoot(), "src"),
+    ...(bundleRoot ? [join(bundleRoot, "src")] : []),
   ].filter((candidate): candidate is string => candidate !== null);
 
   for (const candidate of candidates) {
@@ -291,21 +305,6 @@ function versionSatisfiesRequirement(
     default:
       return false;
   }
-}
-
-function normalizeAlteranSpecifier(
-  source: string,
-  version?: string | true,
-): string {
-  if (!version || version === true) {
-    return source;
-  }
-  if (
-    source.startsWith("jsr:@") && !source.slice("jsr:@".length).includes("@")
-  ) {
-    return `${source}@${version}`;
-  }
-  return source;
 }
 
 async function readInstalledDenoVersion(
@@ -471,66 +470,6 @@ async function downloadDenoFromSources(
   );
 }
 
-async function downloadAlteranRuntimeFromRunSources(
-  projectDir: string,
-  version?: string | true,
-): Promise<void> {
-  const sources = getConfiguredAlteranRunSources();
-  if (sources.length === 0) {
-    throw new Error(
-      "Cannot download Alteran because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running Alteran.",
-    );
-  }
-
-  const targetDir = join(projectDir, ".runtime", "alteran");
-  const errors: string[] = [];
-
-  for (const source of sources) {
-    const specifier = normalizeAlteranSpecifier(source, version);
-    const tempProjectDir = await Deno.makeTempDir({
-      prefix: "alteran-bootstrap-",
-    });
-    try {
-      const output = await new Deno.Command(Deno.execPath(), {
-        args: ["run", "-A", specifier, "init", tempProjectDir],
-        env: Deno.env.toObject(),
-        stdout: "piped",
-        stderr: "piped",
-      }).output();
-
-      if (!output.success) {
-        throw new Error(
-          new TextDecoder().decode(output.stderr).trim() ||
-            new TextDecoder().decode(output.stdout).trim() ||
-            `exit code ${output.code}`,
-        );
-      }
-
-      const downloadedRuntimeDir = join(tempProjectDir, ".runtime", "alteran");
-      if (!(await exists(join(downloadedRuntimeDir, "mod.ts")))) {
-        throw new Error(
-          "downloaded project did not contain .runtime/alteran/mod.ts",
-        );
-      }
-
-      await removeIfExists(targetDir);
-      await copyDirectory(downloadedRuntimeDir, targetDir);
-      await removeIfExists(tempProjectDir);
-      return;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push(`${specifier}: ${message}`);
-      await removeIfExists(tempProjectDir);
-    }
-  }
-
-  throw new Error(
-    `Failed to download Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES. Attempts: ${
-      errors.join(" | ")
-    }`,
-  );
-}
-
 async function* walkDirectory(rootDir: string): AsyncGenerator<string> {
   for await (const entry of Deno.readDir(rootDir)) {
     const entryPath = join(rootDir, entry.name);
@@ -562,6 +501,29 @@ async function resolveArchiveAlteranEntry(
   return null;
 }
 
+async function copyMaterializedRuntimeFromProject(
+  sourceProjectDir: string,
+  targetProjectDir: string,
+): Promise<void> {
+  const sourcePaths = getProjectPaths(sourceProjectDir);
+  const targetPaths = getProjectPaths(targetProjectDir);
+
+  await removeIfExists(targetPaths.alteranDir);
+  await copyDirectory(sourcePaths.alteranDir, targetPaths.alteranDir);
+
+  await removeIfExists(targetPaths.toolsDir);
+  await ensureDir(targetPaths.toolsDir);
+  if (await exists(sourcePaths.toolsDir)) {
+    await copyDirectory(sourcePaths.toolsDir, targetPaths.toolsDir);
+  }
+
+  await removeIfExists(targetPaths.libsDir);
+  await ensureDir(targetPaths.libsDir);
+  if (await exists(sourcePaths.libsDir)) {
+    await copyDirectory(sourcePaths.libsDir, targetPaths.libsDir);
+  }
+}
+
 async function downloadAlteranRuntimeFromArchiveSources(
   projectDir: string,
 ): Promise<void> {
@@ -572,7 +534,6 @@ async function downloadAlteranRuntimeFromArchiveSources(
     );
   }
 
-  const targetDir = join(projectDir, ".runtime", "alteran");
   const errors: string[] = [];
 
   for (const source of sources) {
@@ -618,15 +579,13 @@ async function downloadAlteranRuntimeFromArchiveSources(
         );
       }
 
-      const downloadedRuntimeDir = join(tempProjectDir, ".runtime", "alteran");
-      if (!(await exists(join(downloadedRuntimeDir, "mod.ts")))) {
+      if (!(await exists(join(tempProjectDir, ".runtime", "alteran", "mod.ts")))) {
         throw new Error(
           "downloaded archive project did not contain .runtime/alteran/mod.ts",
         );
       }
 
-      await removeIfExists(targetDir);
-      await copyDirectory(downloadedRuntimeDir, targetDir);
+      await copyMaterializedRuntimeFromProject(tempProjectDir, projectDir);
       await removeIfExists(tempRoot);
       return;
     } catch (error) {
@@ -645,37 +604,24 @@ async function downloadAlteranRuntimeFromArchiveSources(
 
 async function downloadAlteranRuntimeFromConfiguredSources(
   projectDir: string,
-  version?: string | true,
 ): Promise<void> {
-  const runnableSources = getConfiguredAlteranRunSources();
   const archiveSources = getConfiguredAlteranArchiveSources();
-  const errors: string[] = [];
-
-  if (runnableSources.length > 0) {
-    try {
-      await downloadAlteranRuntimeFromRunSources(projectDir, version);
-      return;
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
 
   if (archiveSources.length > 0) {
-    try {
-      await downloadAlteranRuntimeFromArchiveSources(projectDir);
-      return;
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
+    await downloadAlteranRuntimeFromArchiveSources(projectDir);
+    return;
   }
 
-  if (runnableSources.length === 0 && archiveSources.length === 0) {
+  const runnableSources = getConfiguredAlteranRunSources();
+  if (runnableSources.length > 0) {
     throw new Error(
-      "Cannot download Alteran because ALTERAN_RUN_SOURCES and ALTERAN_ARCHIVE_SOURCES are empty. Set at least one source list before running Alteran.",
+      "Cannot materialize Alteran runtime because ALTERAN_ARCHIVE_SOURCES is empty and no local Alteran source is available. ALTERAN_RUN_SOURCES can launch Alteran, but archive sources are required to install/materialize the project-local runtime.",
     );
   }
 
-  throw new Error(errors.join(" | "));
+  throw new Error(
+    "Cannot materialize Alteran runtime because ALTERAN_RUN_SOURCES and ALTERAN_ARCHIVE_SOURCES are empty and no local Alteran source is available. Set ALTERAN_ARCHIVE_SOURCES to an installable archive bundle before running Alteran bootstrap.",
+  );
 }
 
 async function ensureAlteranRuntimeMaterial(
@@ -693,13 +639,9 @@ async function ensureAlteranRuntimeMaterial(
     resolve(localSourceDir) !== resolve(targetDir);
 
   if (options.preferRemote) {
-    const remoteRunSources = getConfiguredAlteranRunSources();
     const remoteArchiveSources = getConfiguredAlteranArchiveSources();
-    if (remoteRunSources.length > 0 || remoteArchiveSources.length > 0) {
-      await downloadAlteranRuntimeFromConfiguredSources(
-        projectDir,
-        options.version,
-      );
+    if (remoteArchiveSources.length > 0) {
+      await downloadAlteranRuntimeFromConfiguredSources(projectDir);
       return;
     }
     if (localSourceAvailable) {
@@ -710,7 +652,7 @@ async function ensureAlteranRuntimeMaterial(
       return;
     }
     throw new Error(
-      "Cannot obtain Alteran runtime because ALTERAN_RUN_SOURCES and ALTERAN_ARCHIVE_SOURCES are empty and no local bundled runtime is available.",
+      "Cannot obtain Alteran runtime because no local Alteran source or installed runtime is available and ALTERAN_ARCHIVE_SOURCES is empty.",
     );
   }
 
@@ -1229,6 +1171,8 @@ export async function cleanProject(
       break;
     case "all":
       await cleanProject(projectDir, "runtime");
+      await cleanProject(projectDir, "app-runtimes");
+      await cleanProject(projectDir, "builds");
       break;
     default:
       throw new Error(`Unknown clean scope: ${scope}`);
