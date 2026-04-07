@@ -14,6 +14,9 @@ Current design intent and implementation align around this order:
 Runnable bootstrap sources can launch Alteran, but they are not the canonical
 materialization source.
 
+This separation is intentional: execution bootstrap and installation source are
+different responsibilities.
+
 ## What Gets Materialized
 
 ```text
@@ -46,6 +49,10 @@ under the platform-specific branch:
 
 This split avoids recursive or incomplete runtime reconstruction from runnable
 URLs alone.
+
+If a design starts solving missing local material by recursively re-entering a
+runnable remote bootstrap path, treat that as a smell and redesign the
+boundary.
 
 ## Navigation
 - Home: [Docs Index](../README.md)

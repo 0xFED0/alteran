@@ -20,6 +20,7 @@ bootstrapping rules, generated files, and publication flow.
 - [Testing](./testing.md)
 - [Publication](./publication.md)
 - [Design rules](./design-rules.md)
+- [Best practices](./best-practices/README.md)
 - [ADR index](./adr/index.md)
 
 ## Core Contributor Mental Model
