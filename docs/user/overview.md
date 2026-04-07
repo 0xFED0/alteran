@@ -27,6 +27,7 @@ it is not the center of the current product story.
 - [Project Layout](./project-layout.md)
 - [Activation](./activation.md)
 - [Command overview](./commands/overview.md)
+- [Portable AI user bundle](../ai-user/README.md)
 - [Examples](../../examples/README.md)
 
 ## Navigation

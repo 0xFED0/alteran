@@ -14,6 +14,7 @@ Canonical ADR record files currently live in `docs/adr/`.
 - [ADR 0015: managed execution uses preinit while plain Deno stays plain](../../adr/0015-managed-execution-uses-preinit-while-plain-deno-stays-plain.md)
 - [ADR 0022: public `setup` vs generated local `activate`](../../adr/0022-separate-setup-from-activate-and-generate-activation-locally.md)
 - [ADR 0023: project-scoped execution context and canonical log root](../../adr/0023-project-scoped-execution-context-and-canonical-log-root.md)
+- [ADR 0027: portable `ai-user` bundle vs repository-scoped `ai-dev`](../../adr/0027-separate-portable-ai-user-bundle-from-repository-ai-dev.md)
 
 Use the full [ADR README](../../adr/README.md) for the complete list.
 

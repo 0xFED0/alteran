@@ -150,8 +150,11 @@ runtime state.
 ## Docs
 
 - [Documentation index](./docs/README.md)
+- [AI instructions](./AGENTS.md)
 - [User docs](./docs/user/overview.md)
 - [Developer docs](./docs/dev/overview.md)
+- [Portable AI user bundle](./docs/ai-user/README.md)
+- [AI dev docs](./docs/ai-dev/README.md)
 - [Reference docs](./docs/reference/cli.md)
 - [Examples](./examples/README.md)
 - [Architecture decisions](./docs/dev/adr/index.md)
