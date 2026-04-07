@@ -21,6 +21,10 @@ The JSR package is the primary public distribution surface. Archive artifacts
 may be derived from the same staged publication payload for GitHub Releases or
 similar channels.
 
+When preparing archive/release artifacts, public bootstrap files such as
+`setup` / `setup.bat` are part of the releasable payload. Generated local
+activation artifacts such as `activate` / `activate.bat` are not.
+
 ## Consequences
 
 Positive:

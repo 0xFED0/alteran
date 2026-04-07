@@ -106,8 +106,7 @@ through real commands and generated files.
 
 They should cover:
 
-- `init`
-- `ensure-env`
+- `setup`
 - `alteran test`
 - `clean`
 - activation in realistic shell contexts
@@ -150,8 +149,7 @@ They exist to validate:
 
 - copied bootstrap scripts in empty targets
 - repository activation from a mounted source tree
-- direct `deno run alteran.ts init`
-- direct `deno run alteran.ts ensure-env`
+- direct `deno run alteran.ts setup`
 - behavior with and without globally available `deno`
 
 Current file:
@@ -177,17 +175,16 @@ The user runs repository `activate` and supplies a target directory.
 This covers a common bootstrap flow from a checked-out Alteran source
 repository.
 
-### 5.3 Repository environment activation plus `alteran init`
+### 5.3 Repository environment activation plus `alteran setup`
 
-The user enters an Alteran-capable repository environment and initializes some
-other target directory through `alteran init`.
+The user enters an Alteran-capable repository environment and sets up some
+other target directory through `alteran setup`.
 
 ### 5.4 Direct `deno run alteran.ts ...`
 
 The user bypasses shell activation and directly runs:
 
-- `deno run alteran.ts init <target>`
-- `deno run alteran.ts ensure-env <target>`
+- `deno run alteran.ts setup <target>`
 
 This must remain covered because it is a useful fallback and automation path.
 
