@@ -1,4 +1,5 @@
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { getVersionedJsrDistDir } from "../tools/prepare_jsr/mod.ts";
 import {
@@ -19,6 +20,25 @@ import {
 } from "../src/alteran/runtime.ts";
 import { detectPlatform } from "../src/alteran/platform.ts";
 import { ALTERAN_VERSION } from "../src/alteran/version.ts";
+
+const ALTERAN_REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const ALTERAN_ENTRY_PATH = join(ALTERAN_REPO_DIR, "alteran.ts");
+
+async function isNodeAvailable(): Promise<boolean> {
+  try {
+    const output = await new Deno.Command("node", {
+      args: ["--version"],
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    return output.success;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return false;
+    }
+    throw error;
+  }
+}
 
 Deno.test("initProject creates core Alteran layout", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-init-" });
@@ -530,7 +550,7 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
         ],
         env: {
           ...Deno.env.toObject(),
-          ALTERAN_RUN_SOURCES: resolve(Deno.cwd(), "alteran.ts"),
+          ALTERAN_RUN_SOURCES: ALTERAN_ENTRY_PATH,
           PATH: `${join(dirname(Deno.execPath()))}:${
             Deno.env.get("PATH") ?? ""
           }`,
@@ -660,5 +680,75 @@ Deno.test("alteran compact requires explicit confirmation in non-interactive mod
     } else {
       Deno.env.set("ALTERAN_HOME", previousAlteranHome);
     }
+  }
+});
+
+Deno.test("node compatibility bridge can show CLI help", async () => {
+  if (Deno.build.os === "windows" || !(await isNodeAvailable())) {
+    return;
+  }
+
+  const command = new Deno.Command("node", {
+    args: [ALTERAN_ENTRY_PATH, "--help"],
+    cwd: ALTERAN_REPO_DIR,
+    env: {
+      ...Deno.env.toObject(),
+      PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
+    },
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const output = await command.output();
+  const stdout = new TextDecoder().decode(output.stdout);
+  const stderr = new TextDecoder().decode(output.stderr);
+
+  if (!output.success) {
+    throw new Error(
+      `Expected node bridge help to succeed. stdout=${stdout} stderr=${stderr}`,
+    );
+  }
+  if (!stdout.includes("Alteran") || !stdout.includes("alteran init [dir]")) {
+    throw new Error(
+      `Expected Alteran help output from node bridge, got: ${stdout}`,
+    );
+  }
+});
+
+Deno.test("node compatibility bridge can initialize a project through Deno", async () => {
+  if (Deno.build.os === "windows" || !(await isNodeAvailable())) {
+    return;
+  }
+
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-init-" });
+  const command = new Deno.Command("node", {
+    args: [ALTERAN_ENTRY_PATH, "init", projectDir],
+    cwd: ALTERAN_REPO_DIR,
+    env: {
+      ...Deno.env.toObject(),
+      PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
+    },
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const output = await command.output();
+  const stdout = new TextDecoder().decode(output.stdout);
+  const stderr = new TextDecoder().decode(output.stderr);
+
+  if (!output.success) {
+    throw new Error(
+      `Expected node bridge init to succeed. stdout=${stdout} stderr=${stderr}`,
+    );
+  }
+
+  for (
+    const expectedPath of [
+      join(projectDir, "activate"),
+      join(projectDir, "activate.bat"),
+      join(projectDir, "alteran.json"),
+      join(projectDir, "deno.json"),
+      join(projectDir, ".runtime", "alteran", "mod.ts"),
+    ]
+  ) {
+    await Deno.stat(expectedPath);
   }
 });
