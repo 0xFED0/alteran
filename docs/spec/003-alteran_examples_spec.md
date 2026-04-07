@@ -426,7 +426,11 @@ Show how an app behaves or can be reasoned about outside the normal in-project d
 
 - the distinction between normal dev-project behavior and standalone-oriented behavior;
 - what assumptions still hold and which ones change;
-- how app runtime rules affect packaging or execution expectations.
+- how app runtime rules affect packaging or execution expectations;
+- that generated `app` / `app.bat` are launchers, not sourced activation files;
+- that first launch may auto-run app-local setup/bootstrap if runtime material is missing;
+- that later launches reuse the app-local runtime;
+- that launcher behavior is centered on "run the app now" rather than "activate a shell first".
 
 ### Why it is advanced
 
@@ -436,6 +440,8 @@ It is conceptually downstream from understanding the standard project model.
 
 - which part is standard and which part is standalone-specific;
 - that this is a supported usage story, but not the default onboarding case.
+- that end users are expected to launch `app` / `app.bat` directly;
+- that app-local setup may happen implicitly on first run.
 
 ---
 

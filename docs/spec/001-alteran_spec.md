@@ -405,7 +405,17 @@ such as:
 
 - `.runtime/`
 - nested app-local `.runtime/`
+- generated app launchers such as `apps/*/app` and `apps/*/app.bat`
 - reproducible build output such as `dist/`
+
+It should not ignore public bootstrap entrypoints such as root `setup` /
+`setup.bat`.
+
+If a standalone app scaffold is created outside the main dev project, that
+standalone app should follow the same policy:
+
+- public app-local `setup` / `setup.bat` stay tracked
+- generated app-local `app` / `app.bat` stay ignored
 
 The intent is:
 
@@ -1268,9 +1278,32 @@ Standalone app launch scripts.
 
 They should:
 
-- detect whether parent runtime exists through `ALTERAN_HOME`
-- use parent runtime when available
-- otherwise create/use app-local `.runtime` for standalone mode
+- be generated artifacts, not hand-maintained tracked source files
+- be directly executable launch entrypoints for end users
+- support the user expectation that clicking or launching `app` / `app.bat`
+  starts the application
+- not require `source app` or any sourced-shell activation model
+- resolve their own directory early and change into it before launching the app
+- fail clearly if they cannot determine their own location or cannot confirm
+  they are running from the expected app directory
+- validate nearby app markers such as `deno.json` and/or `app.json` before
+  proceeding
+- validate that `app.json` contains the launcher's expected app identity
+  marker, at minimum the expected `id`, so a launcher does not silently accept
+  a different app directory that merely happens to contain plausible marker
+  files
+- prefer a ready local launcher/runtime path when available
+- otherwise fall back to:
+  - local app/runtime bootstrap state if already materialized
+  - global Deno if sufficient to run app bootstrap
+  - app-local `setup` / `setup.bat` when runtime material is missing
+- auto-run app-local `setup` / `setup.bat` when needed so the app can
+  self-materialize before first launch
+- launch the main app task, equivalent in intent to `alteran app run <name>`
+
+For app launchers, all runtime-sensitive paths should be local to the app
+directory and should be treated as relative-to-app at launcher design time,
+not dependent on the caller's current working directory.
 
 ### 14.4 `core/`
 
@@ -1346,6 +1379,21 @@ That app-local runtime should contain only what is needed, primarily:
 - local Deno if no global Deno
 - local cache if needed
 - Alteran runtime material needed to launch the app
+
+Standalone app packages should also include canonical app-local `setup` /
+`setup.bat` bootstrap entrypoints.
+
+Generated `app` / `app.bat` launchers may invoke that app-local setup
+automatically when the app runtime has not yet been materialized.
+
+This means a standalone app should be expected to support:
+
+- first launch with no pre-existing app-local runtime
+- automatic local runtime materialization on first run
+- later launches using the already materialized local app runtime
+
+The intended UX is "launch the app" rather than "manually activate the app
+environment first".
 
 ### 16.3 Export and packaging rules for libraries
 
@@ -1474,6 +1522,10 @@ List registered/discovered apps.
 ### 19.5 `app run`
 
 Run a registered app.
+
+The effect should correspond to the main app launcher behavior used by
+generated standalone `app` / `app.bat` scripts, even if the exact bootstrap
+steps differ between in-project dev mode and standalone app-local mode.
 
 ### 19.6 `app init <path>`
 

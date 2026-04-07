@@ -114,6 +114,14 @@ Scenario tests should answer the question:
 
 **Does the full intended user scenario still behave as promised?**
 
+For standalone-app-oriented examples, scenario validation should include the
+launcher contract itself, for example:
+
+- launching `app` / `app.bat` directly rather than through sourced shell setup;
+- first launch with missing app-local runtime material;
+- automatic app-local setup/bootstrap triggered by the launcher;
+- successful later launch with the already materialized app-local runtime.
+
 ## 5.3. Contract tests
 
 Examples may also be validated through contract-style assertions when they are intended to demonstrate a specific invariant or supported contract.
