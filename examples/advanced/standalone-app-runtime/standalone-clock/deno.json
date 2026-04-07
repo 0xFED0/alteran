@@ -1,0 +1,7 @@
+{
+  "tasks": {
+    "core": "deno run -A ./core/mod.ts",
+    "view": "deno eval \"console.log('Alteran view placeholder')\"",
+    "app": "deno task core"
+  }
+}

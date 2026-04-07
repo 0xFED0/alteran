@@ -1,0 +1,15 @@
+{
+  "name": "standalone-clock",
+  "id": "standalone-clock",
+  "version": "0.1.0",
+  "title": "standalone-clock",
+  "standalone": true,
+  "view": {
+    "enabled": false
+  },
+  "entry": {
+    "core": "./core/mod.ts",
+    "view": "./view",
+    "app": "app"
+  }
+}

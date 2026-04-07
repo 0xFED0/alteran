@@ -1,0 +1,19 @@
+{
+  "tasks": {
+    "alteran": "deno run -A ./alteran.ts",
+    "refresh": "deno run -A ./alteran.ts refresh",
+    "test": "deno test -A",
+    "app:portable-cli": "deno run -A ./alteran.ts app run portable-cli",
+    "tool:project-status": "deno run -A ./alteran.ts tool run project-status"
+  },
+  "imports": {
+    "@alteran": "./.runtime/alteran/mod.ts",
+    "@alteran/": "./.runtime/alteran/",
+    "@alteran/logging/logtape_ext": "./.runtime/alteran/logging/logtape_ext.ts",
+    "@logtape/logtape": "./.runtime/alteran/logging/logtape_cfg_mock.ts",
+    "@libs/persistence": "./libs/persistence/mod.ts"
+  },
+  "workspace": [
+    "./apps/portable-cli"
+  ]
+}

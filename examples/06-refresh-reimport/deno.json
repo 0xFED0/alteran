@@ -1,0 +1,18 @@
+{
+  "tasks": {
+    "alteran": "deno run -A ./alteran.ts",
+    "refresh": "deno run -A ./alteran.ts refresh",
+    "test": "deno test -A",
+    "app:catalog": "deno run -A ./alteran.ts app run catalog"
+  },
+  "imports": {
+    "@alteran": "./.runtime/alteran/mod.ts",
+    "@alteran/": "./.runtime/alteran/",
+    "@alteran/logging/logtape_ext": "./.runtime/alteran/logging/logtape_ext.ts",
+    "@logtape/logtape": "./.runtime/alteran/logging/logtape_cfg_mock.ts",
+    "@libs/labels": "./libs/labels/mod.ts"
+  },
+  "workspace": [
+    "./apps/catalog"
+  ]
+}

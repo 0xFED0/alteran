@@ -1,0 +1,15 @@
+{
+  "name": "admin-console",
+  "id": "admin-console",
+  "version": "0.1.0",
+  "title": "admin-console",
+  "standalone": false,
+  "view": {
+    "enabled": false
+  },
+  "entry": {
+    "core": "./core/mod.ts",
+    "view": "./view",
+    "app": "app"
+  }
+}

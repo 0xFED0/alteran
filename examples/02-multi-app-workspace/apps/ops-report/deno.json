@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "core": "deno run -A ./core/mod.ts",
+    "view": "deno eval \"console.log('Alteran view placeholder')\"",
+    "app": "deno task core"
+  },
+  "imports": {
+    "@libs/greeting": "../../libs/greeting/mod.ts",
+    "@libs/workspace_info": "../../libs/workspace_info/mod.ts"
+  }
+}

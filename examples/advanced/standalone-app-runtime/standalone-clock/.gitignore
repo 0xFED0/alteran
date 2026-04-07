@@ -1,0 +1,8 @@
+# --- alteran standalone app: begin ---
+.DS_Store
+Thumbs.db
+.runtime/
+app
+app.bat
+dist/
+# --- alteran standalone app: end ---
