@@ -35,6 +35,10 @@ into the same root invocation directory, and their lifecycle shows up in
 - `stderr.log`: captured standard error for the root invocation tree
 - `events.jsonl`: structured lifecycle and process events
 
+If you use `ALTERAN_CUSTOM_LOG_DIR`, treat it as an additional mirror/copy
+location. The canonical run identity still lives under the project's own
+`.runtime/logs/`.
+
 ## Related Example
 
 See [05-logging-run-tree](../../../examples/05-logging-run-tree/README.md).

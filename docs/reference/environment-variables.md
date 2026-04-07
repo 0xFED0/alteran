@@ -37,9 +37,18 @@ Alteran entrypoint such as a generated launcher.
 | `ALTERAN_ROOT_RUN_ID` | Root run id for the invocation tree |
 | `ALTERAN_PARENT_RUN_ID` | Parent run id for child runs |
 | `ALTERAN_ROOT_LOG_DIR` | Canonical root log directory |
+| `ALTERAN_CUSTOM_LOG_DIR` | Optional additional mirror/copy destination for the current root log tree |
 | `ALTERAN_LOG_MODE` | Root or child logging mode |
 | `ALTERAN_LOGTAPE_ENABLED` | Whether LogTape integration is enabled |
-| `ALTERAN_LOG_CONTEXT_JSON` | Structured logging context payload |
+| `ALTERAN_LOG_CONTEXT_JSON` | Internal structured logging context payload used by managed child processes |
+
+`ALTERAN_ROOT_LOG_DIR` always points at the canonical project-local log tree.
+`ALTERAN_CUSTOM_LOG_DIR`, when set, is an additional mirror/copy target rather
+than a replacement root.
+
+`ALTERAN_LOG_CONTEXT_JSON` is an Alteran-managed internal propagation variable,
+not a user-facing configuration surface. LogTape configuration should come from
+the current project's `alteran.json`, not from a serialized env payload.
 
 ## Path Semantics
 

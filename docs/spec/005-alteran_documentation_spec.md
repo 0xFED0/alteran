@@ -138,7 +138,7 @@ docs/
     activation.md
     commands/
       overview.md
-      init.md
+      setup.md
       refresh.md
       app.md
       tool.md

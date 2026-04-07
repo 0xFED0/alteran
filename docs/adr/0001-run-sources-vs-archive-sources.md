@@ -15,14 +15,14 @@ Historically, runnable sources were used both:
 
 - to start Alteran when no local runtime was available
 - and to materialize `.runtime/alteran` by recursively invoking
-  `deno run -A <source> init <target>`
+  a nested remote bootstrap command against the same source
 
 This caused architectural and operational problems:
 
 - runnable HTTP/raw sources are good execution entrypoints, but they are not a
   reliable installation/materialization format
-- recursive `init` via runnable sources can re-enter source resolution and lead
-  to bootstrap loops
+- recursive nested bootstrap via runnable sources can re-enter source
+  resolution and lead to bootstrap loops
 - materializing from a runnable source encourages hacks such as maintaining an
   explicit file manifest for remote self-copy
 - a raw GitHub source may be executable by Deno, but that does not mean it is a

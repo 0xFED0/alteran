@@ -1,4 +1,4 @@
-# Project Setup And Initialization
+# Project Setup
 
 The command most users should think about here is `setup`.
 

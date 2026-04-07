@@ -54,8 +54,7 @@ By default, public `setup` / `setup.bat` files are intended to remain tracked
 in source control because they are part of the project's bootstrap contract
 (`git clone -> setup`).
 
-The corresponding top-level Alteran command should also be named `setup`, not
-`init`.
+The corresponding top-level Alteran command should be named `setup`.
 
 `ensure-env` should not remain as a separate public command. Its intended
 behavior collapses into `setup`.
@@ -127,7 +126,7 @@ Tradeoffs:
 
 - Alteran now owns two bootstrap-stage script types instead of one
 - existing `activate`-first workflows need migration toward `setup`
-- existing `alteran init` workflows need migration toward `alteran setup`
+- existing old bootstrap workflows need migration toward `alteran setup`
 - generated `activate` must stay in sync with `alteran shellenv`
 
 ## Rejected Alternatives

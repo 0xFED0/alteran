@@ -2,6 +2,7 @@ import { join } from "node:path";
 
 import {
   createDefaultAlteranConfig,
+  discoverApps,
   discoverTools,
   readAlteranConfig,
   syncAppDenoConfig,
@@ -10,6 +11,10 @@ import {
 } from "../src/alteran/config.ts";
 import { ensureDir } from "../src/alteran/fs.ts";
 import { updateJsoncFile } from "../src/alteran/jsonc.ts";
+import {
+  buildAlteranLogtapeConfig,
+  buildAlteranDefaultLogtapeConfig,
+} from "../src/alteran/logging/logtape_config.ts";
 import {
   finishLogSession,
   startLogSession,
@@ -360,6 +365,103 @@ Deno.test("discoverTools supports both tool.ts and tool/mod.ts runtime-tool layo
   expect(
     discovered.nested?.path === "./tools/nested/mod.ts",
     "Expected tool/mod.ts fallback entry to be discovered",
+  );
+});
+
+Deno.test("discoverApps respects auto_reimport include patterns for new app discovery", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-discover-apps-include-" });
+  const config = createDefaultAlteranConfig(projectDir);
+  config.auto_reimport.apps.include = ["./apps/allowed*"];
+
+  await ensureDir(join(projectDir, "apps", "allowed-demo"));
+  await ensureDir(join(projectDir, "apps", "manual"));
+
+  const discovered = await discoverApps(projectDir, config);
+
+  expect(
+    discovered["allowed-demo"]?.path === "./apps/allowed-demo",
+    "Expected include patterns to allow matching app discovery",
+  );
+  expect(
+    discovered.manual === undefined,
+    "Expected include patterns to block non-matching app discovery",
+  );
+});
+
+Deno.test("discoverTools respects auto_reimport include patterns for new tool discovery", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-discover-tools-include-" });
+  const config = createDefaultAlteranConfig(projectDir);
+  config.auto_reimport.tools.include = ["./tools/allowed*"];
+
+  await ensureDir(join(projectDir, "tools", "allowed-nested"));
+  await Deno.writeTextFile(join(projectDir, "tools", "manual.ts"), "export {};\n");
+  await Deno.writeTextFile(join(projectDir, "tools", "allowed.ts"), "export {};\n");
+  await Deno.writeTextFile(join(projectDir, "tools", "allowed-nested", "mod.ts"), "export {};\n");
+
+  const discovered = await discoverTools(projectDir, config);
+
+  expect(
+    discovered.allowed?.path === "./tools/allowed.ts",
+    "Expected include patterns to allow matching standalone tools",
+  );
+  expect(
+    discovered["allowed-nested"]?.path === "./tools/allowed-nested/mod.ts",
+    "Expected include patterns to allow matching nested tool discovery",
+  );
+  expect(
+    discovered.manual === undefined,
+    "Expected include patterns to block non-matching tool discovery",
+  );
+});
+
+Deno.test("buildAlteranDefaultLogtapeConfig creates the builtin events sink and root logger", () => {
+  const config = buildAlteranDefaultLogtapeConfig() as {
+    sinks?: Record<string, unknown>;
+    loggers?: Array<Record<string, unknown>>;
+  };
+
+  expect(
+    typeof config.sinks?.alteran_events === "function",
+    "Expected builtin LogTape config to provide the alteran_events sink",
+  );
+  expect(
+    Array.isArray(config.loggers) && config.loggers.length === 1,
+    "Expected builtin LogTape config to provide one default root logger",
+  );
+  expect(
+    JSON.stringify(config.loggers?.[0]?.category) === JSON.stringify([]),
+    "Expected builtin LogTape root logger to target the global category tree",
+  );
+});
+
+Deno.test("buildAlteranLogtapeConfig deep-merges user config over defaults", () => {
+  const config = buildAlteranLogtapeConfig({
+    loggers: [
+      {
+        category: ["example"],
+        lowestLevel: "fatal",
+        sinks: ["alteran_events"],
+      },
+    ],
+    sinks: {
+      custom: "custom-sink-marker",
+    },
+  }) as {
+    sinks?: Record<string, unknown>;
+    loggers?: Array<Record<string, unknown>>;
+  };
+
+  expect(
+    typeof config.sinks?.alteran_events === "function",
+    "Expected merged LogTape config to preserve the builtin events sink",
+  );
+  expect(
+    config.sinks?.custom === "custom-sink-marker",
+    "Expected merged LogTape config to include user sink configuration",
+  );
+  expect(
+    Array.isArray(config.loggers) && config.loggers.length === 2,
+    "Expected merged LogTape config to append user loggers over defaults",
   );
 });
 
