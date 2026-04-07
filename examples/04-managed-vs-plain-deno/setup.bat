@@ -17,12 +17,11 @@ for %%F in ("%TARGET_DIR%\.env" "%SCRIPT_DIR%\.env") do (
       if not defined %%A set "%%A=%%B"
     )
     if not defined ALTERAN_SRC_DOTENV (
-      findstr /b /c:"ALTERAN_SRC=" /c:"ALTERUN_SRC=" "%%~fF" >nul 2>nul && set "ALTERAN_SRC_DOTENV=%%~fF"
+      findstr /b /c:"ALTERAN_SRC=" "%%~fF" >nul 2>nul && set "ALTERAN_SRC_DOTENV=%%~fF"
     )
   )
 )
 
-if not defined ALTERAN_SRC if defined ALTERUN_SRC set "ALTERAN_SRC=%ALTERUN_SRC%"
 if defined ALTERAN_SRC if defined ALTERAN_SRC_DOTENV (
   for /f "usebackq delims=" %%I in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$value=$env:ALTERAN_SRC; $baseDir=Split-Path '%ALTERAN_SRC_DOTENV%' -Parent; if ($value -eq '~') { $value=$HOME } elseif ($value.StartsWith('~/') -or $value.StartsWith('~\')) { $value=Join-Path $HOME $value.Substring(2) } elseif (-not [System.IO.Path]::IsPathRooted($value)) { $value=Join-Path $baseDir $value }; [System.IO.Path]::GetFullPath($value)"`) do (
     set "ALTERAN_SRC=%%I"
@@ -37,6 +36,9 @@ if not defined ALTERAN_RUN_SOURCES (
   )
 )
 if not defined ALTERAN_ARCHIVE_SOURCES set "ALTERAN_ARCHIVE_SOURCES="
+set "DENO_SOURCES_LIST=%DENO_SOURCES:;= %"
+set "ALTERAN_RUN_SOURCES_LIST=%ALTERAN_RUN_SOURCES:;= %"
+set "ALTERAN_ARCHIVE_SOURCES_LIST=%ALTERAN_ARCHIVE_SOURCES:;= %"
 
 set "ALTERAN_OS=windows"
 set "ALTERAN_ARCH=x64"
@@ -64,7 +66,7 @@ if exist "%SCRIPT_DENO%" (
     echo Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running setup. 1>&2
     exit /b 1
   )
-  for %%S in (%DENO_SOURCES%) do (
+  for %%S in (%DENO_SOURCES_LIST%) do (
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
       "$ErrorActionPreference='Stop';" ^
       "$source='%%~S'.TrimEnd('/');" ^
@@ -112,8 +114,8 @@ if defined ALTERAN_SRC if exist "%ALTERAN_SRC%\alteran\mod.ts" (
   goto :have_alteran
 )
 
-if not "%ALTERAN_RUN_SOURCES: =%"=="" (
-  for %%S in (%ALTERAN_RUN_SOURCES%) do (
+if not "%ALTERAN_RUN_SOURCES_LIST: =%"=="" (
+  for %%S in (%ALTERAN_RUN_SOURCES_LIST%) do (
     "%BOOTSTRAP_DENO%" run -A "%%~S" help >nul 2>nul
     if not errorlevel 1 (
       set "ALTERAN_ENTRY=%%~S"
@@ -122,8 +124,8 @@ if not "%ALTERAN_RUN_SOURCES: =%"=="" (
   )
 )
 
-if not "%ALTERAN_ARCHIVE_SOURCES: =%"=="" (
-  for %%S in (%ALTERAN_ARCHIVE_SOURCES%) do (
+if not "%ALTERAN_ARCHIVE_SOURCES_LIST: =%"=="" (
+  for %%S in (%ALTERAN_ARCHIVE_SOURCES_LIST%) do (
     set "ARCHIVE_ENTRY="
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
       "$ErrorActionPreference='Stop';" ^

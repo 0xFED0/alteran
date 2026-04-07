@@ -79,7 +79,7 @@ function buildDockerScript(baseImage: string, withGlobalDeno: boolean): string {
     withGlobalDeno
       ? buildGlobalDenoCommand(baseImage)
       : "",
-    "unset ALTERAN_SRC ALTERUN_SRC ALTERAN_HOME || true",
+    "unset ALTERAN_SRC ALTERAN_HOME || true",
     "cat >/tmp/bootstrap_server.py <<'PY'\n"
       + "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler\n"
       + "import functools\n"

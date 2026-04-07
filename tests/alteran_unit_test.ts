@@ -3,13 +3,21 @@ import { join } from "node:path";
 import {
   createDefaultAlteranConfig,
   discoverTools,
+  syncAppDenoConfig,
   syncRootDenoConfig,
 } from "../src/alteran/config.ts";
 import { ensureDir } from "../src/alteran/fs.ts";
+import { updateJsoncFile } from "../src/alteran/jsonc.ts";
 import {
+  finishLogSession,
+  startLogSession,
+} from "../src/alteran/logging/events.ts";
+import {
+  ensureLocalDeno,
   getConfiguredAlteranArchiveSources,
   getConfiguredAlteranRunSources,
   getConfiguredDenoSources,
+  getProjectPaths,
   loadProjectDotEnv,
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
@@ -91,11 +99,9 @@ Deno.test("project .env can point ALTERAN_SRC to a relative authored source root
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-dotenv-" });
   const sourceRoot = join(projectDir, "custom-src");
   const previousAlteranSrc = Deno.env.get("ALTERAN_SRC");
-  const previousAlterunSrc = Deno.env.get("ALTERUN_SRC");
 
   try {
     Deno.env.delete("ALTERAN_SRC");
-    Deno.env.delete("ALTERUN_SRC");
 
     await ensureDir(join(sourceRoot, "alteran"));
     await Deno.writeTextFile(join(sourceRoot, "alteran", "mod.ts"), "export {};\n");
@@ -114,7 +120,6 @@ Deno.test("project .env can point ALTERAN_SRC to a relative authored source root
     );
   } finally {
     restoreEnv("ALTERAN_SRC", previousAlteranSrc);
-    restoreEnv("ALTERUN_SRC", previousAlterunSrc);
   }
 });
 
@@ -183,6 +188,156 @@ Deno.test("syncRootDenoConfig preserves user entries and generates managed tasks
     persisted.tasks.build === "deno task bundle" &&
       persisted.tasks["app:hello"] === "deno run -A ./alteran.ts app run hello",
     "Expected generated root deno.json to persist managed and user tasks",
+  );
+});
+
+Deno.test("syncRootDenoConfig includes reimported apps outside ./apps in workspace", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-root-config-external-app-",
+  });
+  await ensureDir(join(projectDir, "incoming-apps", "admin-console"));
+
+  const config = createDefaultAlteranConfig(projectDir);
+  config.apps["admin-console"] = {
+    name: "admin-console",
+    path: "./incoming-apps/admin-console",
+    discovered: true,
+  };
+
+  const nextConfig = await syncRootDenoConfig(projectDir, config);
+
+  expect(
+    JSON.stringify(nextConfig.workspace) ===
+      JSON.stringify(["./incoming-apps/admin-console"]),
+    "Expected workspace to include reimported apps outside ./apps",
+  );
+});
+
+Deno.test("syncAppDenoConfig removes stale managed @libs aliases before rewriting imports", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-app-config-alias-cleanup-",
+  });
+  const appDir = join(projectDir, "apps", "demo");
+  await ensureDir(join(projectDir, "libs"));
+  await ensureDir(appDir);
+  await Deno.writeTextFile(
+    join(appDir, "deno.json"),
+    JSON.stringify({
+      imports: {
+        "@libs/helper": "./libs/helper.ts",
+        "@/custom": "./custom.ts",
+      },
+    }, null, 2),
+  );
+
+  await syncAppDenoConfig(projectDir, "demo", appDir);
+  const nextConfig = JSON.parse(await Deno.readTextFile(join(appDir, "deno.json")));
+
+  expect(
+    nextConfig.imports?.["@/custom"] === "./custom.ts",
+    "Expected user imports to be preserved while rewriting managed app imports",
+  );
+  expect(
+    nextConfig.imports?.["@libs/helper"] === undefined,
+    "Expected stale managed @libs aliases to be removed from app-local deno.json",
+  );
+});
+
+Deno.test("updateJsoncFile fails fast on invalid JSONC instead of silently mutating fallback state", async () => {
+  const configPath = join(
+    await Deno.makeTempDir({ prefix: "alteran-jsonc-invalid-" }),
+    "alteran.json",
+  );
+  await Deno.writeTextFile(
+    configPath,
+    `{
+  // broken
+  "name": "demo",
+`,
+  );
+
+  let threw = false;
+  try {
+    await updateJsoncFile(configPath, { name: "fallback" }, (current) => ({
+      ...current,
+      name: "updated",
+    }));
+  } catch (error) {
+    threw = error instanceof Error &&
+      error.message.includes("Invalid JSONC");
+  }
+
+  expect(
+    threw,
+    "Expected updateJsoncFile to fail explicitly when the input JSONC is invalid",
+  );
+});
+
+Deno.test("startLogSession reuses the existing root invocation directory for child sessions", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-log-session-" });
+  const config = createDefaultAlteranConfig(projectDir);
+  const previousRunId = Deno.env.get("ALTERAN_RUN_ID");
+  const previousRootRunId = Deno.env.get("ALTERAN_ROOT_RUN_ID");
+  const previousRootLogDir = Deno.env.get("ALTERAN_ROOT_LOG_DIR");
+
+  try {
+    Deno.env.delete("ALTERAN_RUN_ID");
+    Deno.env.delete("ALTERAN_ROOT_RUN_ID");
+    Deno.env.delete("ALTERAN_ROOT_LOG_DIR");
+
+    const rootSession = await startLogSession(
+      projectDir,
+      config,
+      "tool",
+      "seed",
+      ["tool", "seed"],
+    );
+    Deno.env.set("ALTERAN_RUN_ID", rootSession.context.run_id);
+    Deno.env.set("ALTERAN_ROOT_RUN_ID", rootSession.context.root_run_id);
+    Deno.env.set("ALTERAN_ROOT_LOG_DIR", rootSession.rootDir);
+
+    const childSession = await startLogSession(
+      projectDir,
+      config,
+      "run",
+      "child-script",
+      ["run", "child-script.ts"],
+    );
+
+    expect(
+      childSession.rootDir === rootSession.rootDir,
+      "Expected child managed sessions to reuse the root invocation log directory",
+    );
+    expect(
+      childSession.context.root_run_id === rootSession.context.root_run_id,
+      "Expected child managed sessions to preserve the root run id",
+    );
+    expect(
+      childSession.context.parent_run_id === rootSession.context.run_id,
+      "Expected child managed sessions to point at the direct parent run id",
+    );
+
+    await finishLogSession(childSession, 0);
+    await finishLogSession(rootSession, 0);
+  } finally {
+    restoreEnv("ALTERAN_RUN_ID", previousRunId);
+    restoreEnv("ALTERAN_ROOT_RUN_ID", previousRootRunId);
+    restoreEnv("ALTERAN_ROOT_LOG_DIR", previousRootLogDir);
+  }
+});
+
+Deno.test("ensureLocalDeno can seed a new project runtime from the currently running Deno without downloading", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-local-deno-seed-" });
+  const localDeno = await ensureLocalDeno(projectDir, Deno.version.deno);
+  const paths = getProjectPaths(projectDir);
+
+  expect(
+    localDeno === paths.denoPath,
+    "Expected ensureLocalDeno to materialize the managed runtime path",
+  );
+  expect(
+    (await Deno.stat(localDeno)).isFile,
+    "Expected ensureLocalDeno to seed a local managed Deno binary without downloading",
   );
 });
 

@@ -37,6 +37,9 @@ cd ./standalone-clock
 ./app
 ```
 
+If a usable `deno` is already available on your machine, `./setup` reuses it to
+seed the app-local runtime instead of downloading a fresh copy immediately.
+
 After the first setup, the generated launcher is the normal entrypoint:
 
 ```sh

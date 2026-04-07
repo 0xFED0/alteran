@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { detectPlatform } from "../platform.ts";
 import type { AlteranConfig, LogContext } from "../types.ts";
@@ -13,6 +13,7 @@ export interface LogSession {
   eventsPath: string;
   metadataPath: string;
   config: AlteranConfig;
+  isRootSession: boolean;
 }
 
 function topLevelLogDir(type: string): string {
@@ -55,19 +56,34 @@ export async function startLogSession(
   argv: string[],
 ): Promise<LogSession> {
   const runId = createRunId(name);
-  const rootDir = join(
-    projectDir,
-    ".runtime",
-    "logs",
-    topLevelLogDir(type),
-    runId,
-  );
+  const inheritedRootRunId = Deno.env.get("ALTERAN_ROOT_RUN_ID") ?? null;
+  const inheritedRootLogDir = Deno.env.get("ALTERAN_ROOT_LOG_DIR") ?? null;
+  const parentRunId = Deno.env.get("ALTERAN_RUN_ID") ?? null;
+  const projectLogsRoot = resolve(join(projectDir, ".runtime", "logs"));
+  const inheritedRootIsForCurrentProject = inheritedRootLogDir !== null &&
+    (() => {
+      const relativeRoot = relative(projectLogsRoot, resolve(inheritedRootLogDir));
+      return relativeRoot === "" ||
+        (!relativeRoot.startsWith("..") && !isAbsolute(relativeRoot));
+    })();
+  const isRootSession = inheritedRootRunId === null ||
+    inheritedRootLogDir === null ||
+    !inheritedRootIsForCurrentProject;
+  const rootDir = isRootSession
+    ? join(
+      projectDir,
+      ".runtime",
+      "logs",
+      topLevelLogDir(type),
+      runId,
+    )
+    : inheritedRootLogDir;
   await ensureDir(rootDir);
 
   const context: LogContext = {
     run_id: runId,
-    root_run_id: runId,
-    parent_run_id: Deno.env.get("ALTERAN_RUN_ID") ?? null,
+    root_run_id: isRootSession ? runId : (inheritedRootRunId ?? runId),
+    parent_run_id: parentRunId,
     name,
     type,
   };
@@ -80,30 +96,33 @@ export async function startLogSession(
     eventsPath: join(rootDir, "events.jsonl"),
     metadataPath: join(rootDir, "metadata.json"),
     config,
+    isRootSession,
   };
 
-  await Deno.writeTextFile(
-    session.metadataPath,
-    JSON.stringify(
-      {
-        type,
-        name,
-        run_id: context.run_id,
-        root_run_id: context.root_run_id,
-        parent_run_id: context.parent_run_id,
-        cwd: projectDir,
-        argv,
-        started_at: new Date().toISOString(),
-        exit_code: null,
-        pid: Deno.pid,
-        alteran_version: ALTERAN_VERSION,
-        deno_version: Deno.version.deno,
-        platform: detectPlatform().id,
-      },
-      null,
-      2,
-    ) + "\n",
-  );
+  if (isRootSession) {
+    await Deno.writeTextFile(
+      session.metadataPath,
+      JSON.stringify(
+        {
+          type,
+          name,
+          run_id: context.run_id,
+          root_run_id: context.root_run_id,
+          parent_run_id: context.parent_run_id,
+          cwd: projectDir,
+          argv,
+          started_at: new Date().toISOString(),
+          exit_code: null,
+          pid: Deno.pid,
+          alteran_version: ALTERAN_VERSION,
+          deno_version: Deno.version.deno,
+          platform: detectPlatform().id,
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+  }
 
   await appendJsonLine(session.eventsPath, {
     ts: new Date().toISOString(),
@@ -147,13 +166,15 @@ export async function finishLogSession(
     exit_code: exitCode,
   });
 
-  const metadata = JSON.parse(await Deno.readTextFile(session.metadataPath));
-  metadata.finished_at = new Date().toISOString();
-  metadata.exit_code = exitCode;
-  await Deno.writeTextFile(
-    session.metadataPath,
-    `${JSON.stringify(metadata, null, 2)}\n`,
-  );
+  if (session.isRootSession) {
+    const metadata = JSON.parse(await Deno.readTextFile(session.metadataPath));
+    metadata.finished_at = new Date().toISOString();
+    metadata.exit_code = exitCode;
+    await Deno.writeTextFile(
+      session.metadataPath,
+      `${JSON.stringify(metadata, null, 2)}\n`,
+    );
+  }
 }
 
 export function createManagedEnv(
@@ -172,7 +193,8 @@ export function createManagedEnv(
     ALTERAN_ROOT_RUN_ID: session.context.root_run_id,
     ALTERAN_PARENT_RUN_ID: session.context.parent_run_id ?? "",
     ALTERAN_ROOT_LOG_DIR: session.rootDir,
-    ALTERAN_LOG_MODE: "root",
+    ALTERAN_LOG_MODE: session.isRootSession ? "root" : "child",
+    ALTERAN_LOGTAPE_ENABLED: String(session.config.logging.logtape !== false),
     ALTERAN_LOG_CONTEXT_JSON: JSON.stringify({
       context: session.context,
       category: ["alteran", session.context.type, session.context.name],

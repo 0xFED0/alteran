@@ -1,4 +1,4 @@
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -47,6 +47,7 @@ import {
 } from "./templates/bootstrap.ts";
 import { renderBatchEnv, renderShellEnv } from "./templates/env.ts";
 import type { AlteranConfig, RegistryEntry } from "./types.ts";
+import { parseJsonc } from "./jsonc.ts";
 
 export interface ProjectPaths {
   projectDir: string;
@@ -144,20 +145,11 @@ export async function loadProjectDotEnv(projectDir: string): Promise<void> {
     await loadDotEnvFile(dotEnvPath);
   }
 
-  if (
-    Deno.env.get("ALTERAN_SRC") === undefined &&
-    Deno.env.get("ALTERUN_SRC") !== undefined
-  ) {
-    Deno.env.set("ALTERAN_SRC", Deno.env.get("ALTERUN_SRC") ?? "");
-  }
-
   const configuredSource = Deno.env.get("ALTERAN_SRC");
-  if (configuredSource && !configuredSource.startsWith("/")) {
+  if (configuredSource && !isAbsolute(configuredSource)) {
     for (const dotEnvPath of dotEnvPaths) {
       const content = await readTextIfExists(dotEnvPath);
-      if (
-        content?.includes("ALTERAN_SRC") || content?.includes("ALTERUN_SRC")
-      ) {
+      if (content?.includes("ALTERAN_SRC")) {
         Deno.env.set(
           "ALTERAN_SRC",
           resolve(dirname(dotEnvPath), configuredSource),
@@ -327,6 +319,59 @@ async function readInstalledDenoVersion(
     return new TextDecoder().decode(output.stdout).trim() || null;
   } catch {
     return null;
+  }
+}
+
+async function currentDenoSatisfiesRequirement(
+  desiredVersion?: string,
+): Promise<boolean> {
+  const normalizedDesiredVersion = desiredVersion?.trim();
+  if (!normalizedDesiredVersion) {
+    return true;
+  }
+
+  const installedVersion = await readInstalledDenoVersion(Deno.execPath());
+  return installedVersion !== null &&
+    versionSatisfiesRequirement(installedVersion, normalizedDesiredVersion);
+}
+
+async function seedLocalDenoFromExecutable(
+  projectDir: string,
+  sourceExecutable: string,
+): Promise<string> {
+  const paths = getProjectPaths(projectDir);
+  await ensureDir(paths.denoBinDir);
+  await ensureDir(paths.cacheDir);
+  await Deno.copyFile(sourceExecutable, paths.denoPath);
+  if (Deno.build.os !== "windows") {
+    await Deno.chmod(paths.denoPath, 0o755);
+  }
+  return paths.denoPath;
+}
+
+async function warmAlteranRuntimeCache(
+  projectDir: string,
+  denoExecutable: string,
+): Promise<void> {
+  const paths = getProjectPaths(projectDir);
+  const output = await new Deno.Command(denoExecutable, {
+    args: ["cache", join(paths.alteranDir, "mod.ts")],
+    cwd: projectDir,
+    env: {
+      ...Deno.env.toObject(),
+      DENO_DIR: paths.cacheDir,
+      DENO_INSTALL_ROOT: paths.platformDir,
+      ALTERAN_HOME: paths.runtimeDir,
+    },
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!output.success) {
+    const stderr = new TextDecoder().decode(output.stderr).trim();
+    const stdout = new TextDecoder().decode(output.stdout).trim();
+    throw new Error(
+      stderr || stdout || `Failed to warm Alteran runtime cache (exit ${output.code}).`,
+    );
   }
 }
 
@@ -802,10 +847,10 @@ export async function ensureLocalDeno(
 ): Promise<string> {
   const paths = getProjectPaths(projectDir);
   const normalizedDesiredVersion = desiredVersion?.trim();
+  const currentExecutable = resolve(Deno.execPath());
+  const managedExecutable = resolve(paths.denoPath);
 
   if (await exists(paths.denoPath)) {
-    const currentExecutable = resolve(Deno.execPath());
-    const managedExecutable = resolve(paths.denoPath);
     if (
       currentExecutable === managedExecutable &&
       (!normalizedDesiredVersion ||
@@ -824,11 +869,95 @@ export async function ensureLocalDeno(
     }
   }
 
+  if (
+    currentExecutable !== managedExecutable &&
+    await currentDenoSatisfiesRequirement(normalizedDesiredVersion)
+  ) {
+    return await seedLocalDenoFromExecutable(projectDir, currentExecutable);
+  }
+
   return await downloadDenoFromSources(projectDir, normalizedDesiredVersion);
 }
 
 function relativeExecutable(target: string): string {
   return target.replaceAll("\\", "/");
+}
+
+async function ensureTaskDenoWrapper(
+  projectDir: string,
+  denoExecutable: string,
+): Promise<string> {
+  const paths = getProjectPaths(projectDir);
+  const wrapperDir = join(paths.runtimeDir, "task-bin");
+  const preinitPath = join(paths.alteranDir, "preinit.ts");
+  const unixWrapper = join(wrapperDir, "deno");
+  const windowsWrapper = join(wrapperDir, "deno.bat");
+
+  await ensureDir(wrapperDir);
+  await writeTextFileIfChanged(
+    unixWrapper,
+    `#!/usr/bin/env sh
+set -eu
+REAL_DENO="${denoExecutable.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"
+PREINIT="${preinitPath.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"
+SUBCOMMAND=\${1:-}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+case "$SUBCOMMAND" in
+  run|eval|test|bench|serve)
+    exec "$REAL_DENO" "$SUBCOMMAND" --preload "$PREINIT" "$@"
+    ;;
+  *)
+    exec "$REAL_DENO" "$SUBCOMMAND" "$@"
+    ;;
+esac
+`,
+  );
+  if (Deno.build.os !== "windows") {
+    await Deno.chmod(unixWrapper, 0o755);
+  }
+  await writeTextFileIfChanged(
+    windowsWrapper,
+    `@echo off
+set "REAL_DENO=${denoExecutable.replaceAll("/", "\\").replaceAll('"', '""')}"
+set "PREINIT=${preinitPath.replaceAll("/", "\\").replaceAll('"', '""')}"
+set "SUBCOMMAND=%~1"
+if not "%~1"=="" shift
+if /I "%SUBCOMMAND%"=="run" goto :with_preload
+if /I "%SUBCOMMAND%"=="eval" goto :with_preload
+if /I "%SUBCOMMAND%"=="test" goto :with_preload
+if /I "%SUBCOMMAND%"=="bench" goto :with_preload
+if /I "%SUBCOMMAND%"=="serve" goto :with_preload
+"%REAL_DENO%" "%SUBCOMMAND%" %*
+exit /b %ERRORLEVEL%
+
+:with_preload
+"%REAL_DENO%" "%SUBCOMMAND%" --preload "%PREINIT%" %*
+exit /b %ERRORLEVEL%
+`,
+  );
+
+  return wrapperDir;
+}
+
+async function readRootTaskCommand(
+  projectDir: string,
+  taskName: string,
+): Promise<string | null> {
+  for (const configName of ["deno.json", "deno.jsonc"]) {
+    const configPath = join(projectDir, configName);
+    const source = await readTextIfExists(configPath);
+    if (source === null) {
+      continue;
+    }
+    const config = parseJsonc<{ tasks?: Record<string, unknown> }>(source, {});
+    const taskValue = config.tasks?.[taskName];
+    if (typeof taskValue === "string") {
+      return taskValue;
+    }
+  }
+  return null;
 }
 
 function toEnvAliasName(prefix: string, name: string): string {
@@ -921,7 +1050,7 @@ export async function refreshProject(
     tools: current.tools ?? {},
   }));
 
-  await ensureLocalDeno(projectDir, config.deno_version);
+  const denoExecutable = await ensureLocalDeno(projectDir, config.deno_version);
 
   const apps = await discoverApps(projectDir, config);
   const tools = await discoverTools(projectDir, config);
@@ -934,11 +1063,17 @@ export async function refreshProject(
 
   await syncRootDenoConfig(projectDir, config);
   for (const appName of Object.keys(config.apps).sort()) {
-    await ensureAppConfig(projectDir, appName);
-    await syncAppDenoConfig(projectDir, appName);
-    await ensureManagedAppScripts(projectDir, appName);
+    const appDir = await resolveRegisteredPath(
+      projectDir,
+      config.apps[appName],
+      `./apps/${appName}`,
+    );
+    await ensureAppConfig(projectDir, appName, appDir);
+    await syncAppDenoConfig(projectDir, appName, appDir);
+    await ensureManagedAppScripts(projectDir, appName, appDir);
   }
   await ensureActivationFiles(projectDir);
+  await warmAlteranRuntimeCache(projectDir, denoExecutable);
 
   return config;
 }
@@ -956,11 +1091,6 @@ export async function ensureProjectEnv(projectDir: string): Promise<{
 }
 
 export async function setupProject(projectDir: string): Promise<AlteranConfig> {
-  await loadProjectDotEnv(projectDir);
-  await ensureProjectStructure(projectDir);
-  await copyBundledRuntime(projectDir);
-  await ensureBootstrapFiles(projectDir);
-  await ensureProjectGitignore(projectDir);
   return await refreshProject(projectDir);
 }
 
@@ -1210,8 +1340,12 @@ export async function cleanDenoRuntime(
   const paths = getProjectPaths(projectDir);
   const currentDenoPath = resolve(activeDenoPath);
   const currentPlatformRoot = resolve(paths.platformDir);
+  const currentPlatformRelative = relative(currentPlatformRoot, currentDenoPath);
+  const isCurrentManagedDeno = currentPlatformRelative !== "" &&
+    !currentPlatformRelative.startsWith("..") &&
+    !isAbsolute(currentPlatformRelative);
 
-  if (!currentDenoPath.startsWith(`${currentPlatformRoot}/`)) {
+  if (!isCurrentManagedDeno) {
     await removeIfExists(paths.denoRootDir);
     return;
   }
@@ -1359,7 +1493,13 @@ export async function runApp(
   args: string[],
 ): Promise<number> {
   await maybeAutoRefresh(projectDir);
-  const appDir = join(projectDir, "apps", name);
+  const config = await readAlteranConfig(projectDir);
+  const appEntry = config.apps[name];
+  const appDir = await resolveRegisteredPath(
+    projectDir,
+    appEntry,
+    `./apps/${name}`,
+  );
   return await runManagedDeno(projectDir, "app", name, [
     "task",
     "--config",
@@ -1398,11 +1538,70 @@ export async function runTask(
   args: string[],
 ): Promise<number> {
   await maybeAutoRefresh(projectDir);
-  return await runManagedDeno(projectDir, "task", name, [
+  await loadProjectDotEnv(projectDir);
+  const config = await readAlteranConfig(projectDir);
+  const session = await startLogSession(projectDir, config, "task", name, [
     "task",
     name,
     ...args,
   ]);
+  const denoExecutable = await resolveDenoExecutable(projectDir, config);
+  const wrapperDir = await ensureTaskDenoWrapper(projectDir, denoExecutable);
+  const baseEnv = createManagedEnv(projectDir, session);
+  const env = {
+    ...baseEnv,
+    PATH: `${wrapperDir}${detectPlatform().pathSeparator}${baseEnv.PATH}`,
+  };
+  const taskCommand = await readRootTaskCommand(projectDir, name);
+  const command = taskCommand === null
+    ? new Deno.Command(denoExecutable, {
+      args: ["task", name, ...args],
+      cwd: projectDir,
+      env,
+      stdout: "piped",
+      stderr: "piped",
+    })
+    : Deno.build.os === "windows"
+    ? new Deno.Command("cmd", {
+      args: ["/d", "/c", taskCommand, ...args],
+      cwd: projectDir,
+      env,
+      stdout: "piped",
+      stderr: "piped",
+    })
+    : new Deno.Command("sh", {
+      args: ["-c", `${taskCommand} "$@"`, "alteran-task", ...args],
+      cwd: projectDir,
+      env,
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+  const child = command.spawn();
+  await appendEvent(session, {
+    level: "info",
+    msg: "process spawned",
+    category: ["alteran", "task", name],
+    source: "alteran",
+    event_type: "process_started",
+    argv: ["task", name, ...args],
+  });
+
+  const stdoutPromise = captureStream(
+    child.stdout,
+    session.stdoutPath,
+    config.logging.stdout.mirror === false ? "none" : "stdout",
+  );
+  const stderrPromise = captureStream(
+    child.stderr,
+    session.stderrPath,
+    config.logging.stderr.mirror === false ? "none" : "stderr",
+  );
+
+  const status = await child.status;
+  await Promise.all([stdoutPromise, stderrPromise]);
+  await finishLogSession(session, status.code);
+  return status.code;
 }
 
 export async function runScript(

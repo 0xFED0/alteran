@@ -2,6 +2,7 @@ import {
   applyEdits,
   modify,
   parse,
+  printParseErrorCode,
   type ParseError,
 } from "npm:jsonc-parser@3.3.1";
 
@@ -57,7 +58,13 @@ export function parseJsonc<T>(text: string, fallback: T): T {
     allowTrailingComma: true,
     disallowComments: false,
   });
-  if (errors.length > 0 || parsed === undefined) {
+  if (errors.length > 0) {
+    const [firstError] = errors;
+    throw new Error(
+      `Invalid JSONC: ${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`,
+    );
+  }
+  if (parsed === undefined) {
     return fallback;
   }
   return parsed as T;
