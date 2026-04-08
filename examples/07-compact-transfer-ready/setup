@@ -200,7 +200,11 @@ bootstrap_alteran_from_run_sources() {
 
 find_archive_alteran_entry() {
   extract_dir=$1
-  mod_path=$(find "$extract_dir" -type f -path '*/src/alteran/mod.ts' 2>/dev/null | head -n 1 || true)
+  if [ -f "$extract_dir/alteran.ts" ] && [ -f "$extract_dir/src/alteran/mod.ts" ]; then
+    printf '%s' "$extract_dir/alteran.ts"
+    return 0
+  fi
+  mod_path=$(find "$extract_dir" -type f -path '*/src/alteran/mod.ts' ! -path '*/dist/*' 2>/dev/null | head -n 1 || true)
   [ -n "$mod_path" ] || return 1
   archive_root=$(dirname "$(dirname "$(dirname "$mod_path")")")
   entry_path="$archive_root/alteran.ts"
