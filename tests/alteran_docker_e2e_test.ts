@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ensureDir } from "../src/alteran/fs.ts";
 import { prepareBootstrapFixture } from "./bootstrap_fixture.ts";
 
 function decode(bytes: Uint8Array): string {
@@ -8,6 +9,7 @@ function decode(bytes: Uint8Array): string {
 }
 
 const ALTERAN_REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const DOCKER_TMP_ROOT = resolve(ALTERAN_REPO_DIR, ".runtime", "docker-test-fixtures");
 
 async function dockerAvailable(): Promise<boolean> {
   try {
@@ -130,7 +132,10 @@ async function runDockerMatrix(
   baseImage: string,
   withGlobalDeno: boolean,
 ): Promise<void> {
-  const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
+  await ensureDir(DOCKER_TMP_ROOT);
+  const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR, {
+    tempDir: DOCKER_TMP_ROOT,
+  });
   try {
     const output = await new Deno.Command("docker", {
       args: [
