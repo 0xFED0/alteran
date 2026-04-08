@@ -34,8 +34,12 @@ If discovery rewrites user intent too aggressively, the product becomes hostile.
 - If a user wants to operate on another project, it should be obvious:
   - `setup <dir>`
   - `alteran external ...`
+  - `alteran from ...`
 - `alteran.json` and `app.json` are explicit external anchors.
 - `deno.json` is too ambiguous to be an external Alteran context anchor.
+- Preserve the semantic split:
+  - `external` operates on the target from the caller's current context
+  - `from` becomes the target context and may initialize it first
 
 ## Keep Managed Execution Explicit
 

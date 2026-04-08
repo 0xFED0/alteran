@@ -1,5 +1,6 @@
 import { basename, dirname, join, resolve } from "node:path";
 
+import { readAlteranConfig, resolveRegisteredPath } from "./config.ts";
 import {
   addApp,
   addTool,
@@ -56,6 +57,8 @@ function printHelp(): void {
 Commands:
   alteran setup [dir]
   alteran external <path-to-json> <command> [args...]
+  alteran from app <name> <command> [args...]
+  alteran from dir <project-dir> <command> [args...]
   alteran refresh
   alteran shellenv [dir] [--shell=sh|batch]
   alteran app add|rm|purge|ls|run|setup <name>
@@ -436,12 +439,35 @@ Supported anchors:
 Rules:
   - a positional <path-to-json> takes precedence over ALTERAN_EXTERNAL_CTX
   - deno.json is not a valid external context anchor
-  - external mode isolates itself from the caller's active Alteran context
+  - use "alteran from ..." when you want to become the target context first
 
 Examples:
   alteran external ../other/alteran.json tool run seed
   alteran external ../other/apps/hello/app.json app
   ALTERAN_EXTERNAL_CTX=../other/alteran.json alteran external task build`);
+}
+
+function printFromHelp(): void {
+  console.log(`alteran from
+
+Run an Alteran command as if execution had first been rebased into another target context.
+
+Usage:
+  alteran from app <name> <command> [args...]
+  alteran from dir <project-dir> <command> [args...]
+
+Targets:
+  app   Resolve a registered app from the current active Alteran project.
+  dir   Resolve an explicit Alteran project directory.
+
+Rules:
+  - from becomes the target context before interpreting the remaining command
+  - from may auto-run target-local setup first if the target is not initialized yet
+  - from does not use deno.json as an Alteran context anchor
+
+Examples:
+  alteran from dir ../examples/02-multi-app-workspace tool run seed
+  alteran from app hello app red blue`);
 }
 
 function isHelpToken(value?: string): boolean {
@@ -502,6 +528,12 @@ interface ExternalContext {
   anchorType: "alteran" | "app";
   projectDir: string;
   appName?: string;
+}
+
+interface FromContext {
+  targetType: "app" | "dir";
+  target: string;
+  commandArgs: string[];
 }
 
 const ALTERAN_CONTEXT_ENV_KEYS = [
@@ -627,9 +659,26 @@ function parseExternalArgs(rest: string[]): {
   );
 }
 
+function parseFromArgs(rest: string[]): FromContext {
+  const [targetType, target, ...commandArgs] = rest;
+  if (!targetType || isHelpToken(targetType)) {
+    throw new Error("alteran from requires app|dir and a target");
+  }
+  if (targetType !== "app" && targetType !== "dir") {
+    throw new Error(`Unsupported from target type: ${targetType}`);
+  }
+  if (!target || isHelpToken(target)) {
+    throw new Error(`alteran from ${targetType} requires a target`);
+  }
+  if (commandArgs.length === 0) {
+    throw new Error("alteran from requires a command to run in the target context");
+  }
+  return { targetType, target, commandArgs };
+}
+
 async function runCliInternal(
   argv: string[],
-  options: { forcedProjectDir?: string; externalContext?: ExternalContext } = {},
+  options: { forcedProjectDir?: string; anchoredAppName?: string } = {},
 ): Promise<number> {
   const resolveProjectDir = async (): Promise<string> =>
     options.forcedProjectDir ?? await resolveActiveProjectDir();
@@ -683,7 +732,51 @@ async function runCliInternal(
         return await withIsolatedAlteranContext(async () =>
           await runCliInternal(commandArgs, {
             forcedProjectDir: externalContext.projectDir,
-            externalContext,
+            anchoredAppName: externalContext.anchorType === "app"
+              ? externalContext.appName
+              : undefined,
+          })
+        );
+      }
+      case "from": {
+        if (rest.length === 0 || isHelpToken(rest[0])) {
+          printFromHelp();
+          return 0;
+        }
+        const parsed = parseFromArgs(rest);
+        if (isHelpToken(parsed.commandArgs[0])) {
+          printFromHelp();
+          return 0;
+        }
+        if (parsed.targetType === "dir") {
+          const targetDir = resolve(Deno.cwd(), parsed.target);
+          await setupProject(targetDir);
+          return await withIsolatedAlteranContext(async () =>
+            await runCliInternal(parsed.commandArgs, {
+              forcedProjectDir: targetDir,
+            })
+          );
+        }
+
+        const activeProjectDir = await resolveProjectDir();
+        const config = await readAlteranConfig(activeProjectDir);
+        const appEntry = config.apps[parsed.target];
+        if (!appEntry) {
+          throw new Error(`from app requires a registered app: ${parsed.target}`);
+        }
+        const appDir = await resolveRegisteredPath(
+          activeProjectDir,
+          appEntry,
+          `./apps/${parsed.target}`,
+        );
+        if (!(await exists(join(appDir, "app.json")))) {
+          throw new Error(`from app target does not look like an Alteran app: ${parsed.target}`);
+        }
+        await setupProject(activeProjectDir);
+        return await withIsolatedAlteranContext(async () =>
+          await runCliInternal(parsed.commandArgs, {
+            forcedProjectDir: activeProjectDir,
+            anchoredAppName: parsed.target,
           })
         );
       }
@@ -741,7 +834,7 @@ async function runCliInternal(
         ]);
         const [action, name, ...actionArgs] = rest;
         if (
-          options.externalContext?.anchorType === "app" &&
+          options.anchoredAppName &&
           action &&
           !knownAppActions.has(action) &&
           !isHelpToken(action)
@@ -749,18 +842,18 @@ async function runCliInternal(
           const projectDir = await resolveProjectDir();
           return await runApp(
             projectDir,
-            options.externalContext.appName ?? basename(dirname(options.externalContext.anchorPath)),
+            options.anchoredAppName,
             rest,
           );
         }
         if (
-          options.externalContext?.anchorType === "app" &&
+          options.anchoredAppName &&
           !action
         ) {
           const projectDir = await resolveProjectDir();
           return await runApp(
             projectDir,
-            options.externalContext.appName ?? basename(dirname(options.externalContext.anchorPath)),
+            options.anchoredAppName,
             [],
           );
         }

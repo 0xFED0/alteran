@@ -5,7 +5,9 @@
 | Command | Purpose |
 | --- | --- |
 | `alteran setup [dir]` | Bootstrap or repair a project directory |
-| `alteran external <path-to-json> <command> [args...]` | Run a command in an explicit foreign project context |
+| `alteran external <path-to-json> <command> [args...]` | Operate on an explicit foreign Alteran target from the current context |
+| `alteran from app <name> <command> [args...]` | Rebase execution into a registered app context |
+| `alteran from dir <project-dir> <command> [args...]` | Rebase execution into an explicit project directory |
 | `alteran refresh` | Re-synchronize generated project state |
 | `alteran shellenv [dir] [--shell=sh|batch]` | Print shell environment code |
 | `alteran app ...` | Manage apps |
@@ -38,7 +40,17 @@
 - supported anchors: `alteran.json`, `app.json`
 - unsupported anchor: `deno.json`
 - positional anchor takes precedence over `ALTERAN_EXTERNAL_CTX`
-- external mode isolates itself from the caller's active Alteran context
+- external mode does not become the target project's context
+- external mode does not auto-initialize the target as if it had been entered through `setup`
+
+## Rebased Context
+
+`alteran from` is the explicit context-rebased execution mode.
+
+- `from app <name> ...` resolves a registered app from the current active project
+- `from dir <project-dir> ...` resolves an explicit target project directory
+- `from` becomes the target context before interpreting the remaining Alteran command
+- if the target is not initialized yet, `from` may initialize it first
 
 ## Convenience Aliases
 

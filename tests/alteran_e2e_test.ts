@@ -883,6 +883,145 @@ if (import.meta.main) {
   }
 });
 
+Deno.test("from dir auto-initializes an uninitialized target project before running the command", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-from-dir-" });
+  const previousEnv = new Map<string, string | undefined>();
+  for (
+    const key of [
+      "ALTERAN_HOME",
+      "ALTERAN_RUN_ID",
+      "ALTERAN_ROOT_RUN_ID",
+      "ALTERAN_PARENT_RUN_ID",
+      "ALTERAN_ROOT_LOG_DIR",
+      "ALTERAN_LOG_MODE",
+      "ALTERAN_LOG_CONTEXT_JSON",
+      "ALTERAN_LOGTAPE_ENABLED",
+    ]
+  ) {
+    previousEnv.set(key, Deno.env.get(key));
+  }
+
+  try {
+    Deno.env.set("ALTERAN_HOME", join(ALTERAN_REPO_DIR, ".runtime"));
+    Deno.env.set("ALTERAN_RUN_ID", "foreign-run");
+    Deno.env.set("ALTERAN_ROOT_RUN_ID", "foreign-root");
+    Deno.env.set(
+      "ALTERAN_ROOT_LOG_DIR",
+      join(ALTERAN_REPO_DIR, ".runtime", "logs", "tests", "foreign-root"),
+    );
+
+    let exitCode = await runCli([
+      "from",
+      "dir",
+      projectDir,
+      "tool",
+      "add",
+      "probe",
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected from dir tool add to succeed, got ${exitCode}`);
+    }
+
+    exitCode = await runCli([
+      "from",
+      "dir",
+      projectDir,
+      "tool",
+      "run",
+      "probe",
+      "alpha",
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected from dir tool run to succeed, got ${exitCode}`);
+    }
+
+    await Deno.stat(join(projectDir, "alteran.json"));
+    await Deno.stat(join(projectDir, ".runtime", "alteran", "mod.ts"));
+    const logDir = await latestProjectLogDir(projectDir, "tools");
+    const metadata = JSON.parse(await Deno.readTextFile(join(logDir, "metadata.json"))) as {
+      name: string;
+      cwd: string;
+    };
+    if (metadata.name !== "probe") {
+      throw new Error(`Expected from dir tool log metadata to be for probe, got ${metadata.name}`);
+    }
+    if (metadata.cwd !== projectDir) {
+      throw new Error(`Expected from dir tool cwd to be ${projectDir}, got ${metadata.cwd}`);
+    }
+  } finally {
+    for (const [key, value] of previousEnv) {
+      if (value === undefined) {
+        Deno.env.delete(key);
+      } else {
+        Deno.env.set(key, value);
+      }
+    }
+  }
+});
+
+Deno.test("from app runs the anchored managed app from the active project", async () => {
+  const projectDir = await Deno.makeTempDir({ prefix: "alteran-from-app-" });
+  const previousEnv = new Map<string, string | undefined>();
+  for (const key of ["ALTERAN_HOME", "ALTERAN_ROOT_LOG_DIR", "ALTERAN_RUN_ID", "ALTERAN_ROOT_RUN_ID"]) {
+    previousEnv.set(key, Deno.env.get(key));
+  }
+
+  try {
+    await setupProject(projectDir);
+    await addApp(projectDir, "hello");
+    await Deno.writeTextFile(
+      join(projectDir, "apps", "hello", "core", "mod.ts"),
+      `export async function main(args: string[]): Promise<void> {
+  console.log("from-app-ok", { args });
+}
+
+if (import.meta.main) {
+  await main(Deno.args);
+}
+`,
+    );
+    Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+    Deno.env.set(
+      "ALTERAN_ROOT_LOG_DIR",
+      join(ALTERAN_REPO_DIR, ".runtime", "logs", "tests", "foreign-root"),
+    );
+    Deno.env.set("ALTERAN_RUN_ID", "foreign-run");
+    Deno.env.set("ALTERAN_ROOT_RUN_ID", "foreign-root");
+
+    const exitCode = await runCli([
+      "from",
+      "app",
+      "hello",
+      "app",
+      "red",
+      "blue",
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected from app launch to succeed, got ${exitCode}`);
+    }
+
+    const logDir = await latestProjectLogDir(projectDir, "apps");
+    const metadata = JSON.parse(await Deno.readTextFile(join(logDir, "metadata.json"))) as {
+      name: string;
+    };
+    if (metadata.name !== "hello") {
+      throw new Error(`Expected from app log metadata to be for hello, got ${metadata.name}`);
+    }
+    const stdout = await Deno.readTextFile(join(logDir, "stdout.log"));
+    if (!stdout.includes("from-app-ok")) {
+      throw new Error("Expected from app stdout to be captured under the active project logs");
+    }
+  } finally {
+    for (const [key, value] of previousEnv) {
+      if (value === undefined) {
+        Deno.env.delete(key);
+      } else {
+        Deno.env.set(key, value);
+      }
+    }
+  }
+});
+
 Deno.test({
   name: "standalone app launcher auto-runs local setup when runtime is missing",
   ignore: IS_WINDOWS,
@@ -1048,6 +1187,7 @@ Deno.test("runCli provides help for subcommands instead of treating help as data
     const cleanHelpExitCode = await runCli(["clean", "--help"]);
     const cleanNoScopeExitCode = await runCli(["clean"]);
     const externalHelpExitCode = await runCli(["external", "--help"]);
+    const fromHelpExitCode = await runCli(["from", "--help"]);
     const legacyAppSetupAliasExitCode = await runCli([
       "app",
       legacySetupAlias,
@@ -1057,6 +1197,7 @@ Deno.test("runCli provides help for subcommands instead of treating help as data
     if (
       appHelpExitCode !== 0 || cleanHelpExitCode !== 0 ||
       cleanNoScopeExitCode !== 0 || externalHelpExitCode !== 0 ||
+      fromHelpExitCode !== 0 ||
       legacyAppSetupAliasExitCode === 0
     ) {
       throw new Error(
@@ -1074,6 +1215,9 @@ Deno.test("runCli provides help for subcommands instead of treating help as data
     }
     if (!joined.includes("alteran external")) {
       throw new Error("Expected external help output");
+    }
+    if (!joined.includes("alteran from")) {
+      throw new Error("Expected from help output");
     }
     if (!joined.includes("Scopes:")) {
       throw new Error("Expected clean scopes in help output");

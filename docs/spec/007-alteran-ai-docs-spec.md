@@ -141,6 +141,7 @@ In particular, AI guidance must remain aligned with the normative rules about:
 - `setup` as the only live bootstrap command surface
 - project-scoped execution context
 - explicit cross-project execution
+- the semantic distinction between `external` and `from`
 - lightweight internal context propagation vs project-local configuration
 - hermetic tests and honest support scope
 - spec-first synchronization discipline
@@ -489,6 +490,9 @@ For Alteran specifically:
 - avoid reviving hidden or legacy documentation roots or parallel spec trees outside the canonical `docs/spec/` layout
 - do not reintroduce removed bootstrap vocabulary such as `init` when the live product contract uses `setup`
 - do not teach AI overlays to pass heavyweight LogTape config through env when the live contract requires project-local configuration from `alteran.json`
+- do not collapse `external` and `from` into one fuzzy cross-project mode
+- do not teach AI that `external` implicitly becomes the target project context
+- do not omit that `from` may initialize the target first because it intentionally becomes that target context
 
 ---
 

@@ -21,12 +21,16 @@
 
 1. Confirm whether the change is command contract, alias UX, help wording, or documentation terminology.
 2. Keep command surfaces explicit rather than reviving positional magic or hidden second modes.
-3. Keep current live vocabulary: `setup`, `shellenv`, `external`, `shell_aliases`.
+3. Keep current live vocabulary: `setup`, `shellenv`, `external`, `from`, `shell_aliases`.
 4. Do not reintroduce legacy command names such as `init`.
-5. When command behavior changes, update spec, docs, tests, and AI overlays in sync.
+5. Preserve the distinction:
+   - `external` operates on a target from the current context
+   - `from` becomes the target context and may initialize it first
+6. When command behavior changes, update spec, docs, tests, and AI overlays in sync.
 
 ## Done Checklist
 
 - [ ] Help, docs, tests, and examples use the same live command names.
 - [ ] No hidden compatibility wording makes legacy commands look preferred.
 - [ ] Explicit external-project boundaries remain explicit.
+- [ ] `external` and `from` are not described as if they were interchangeable.

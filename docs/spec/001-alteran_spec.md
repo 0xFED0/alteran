@@ -835,6 +835,8 @@ These may operate on a project directory even when that project is not currently
 - `shellenv [dir]`
 - `compact [dir]`
 - `compact-copy <destination> [--source=<project-dir>]`
+- `from app <name> <command> ...`
+- `from dir <project-dir> <command> ...`
 
 #### Active-project commands
 
@@ -871,7 +873,27 @@ Rules for this mode:
 - it is visually distinct from ordinary active-project commands
 - a positional `<path-to-json>` takes precedence over `ALTERAN_EXTERNAL_CTX`
 - supported anchors should be explicit project/app config files such as `alteran.json` or `app.json`
-- this mode must construct an isolated context for the targeted project instead of silently reusing the caller's active project identity
+- this mode operates from the caller's current Alteran context rather than becoming the target project's context
+- this mode must not silently become a context switch
+- this mode must not auto-initialize the target project as if it had been entered through `setup`
+- this mode must not write target-owned runtime or canonical log-root state into the foreign target project
+
+Alteran may also support an explicit context-rebased mode spelled as:
+
+```text
+alteran from app <name> <command> ...
+alteran from dir <project-dir> <command> ...
+```
+
+Rules for this mode:
+
+- it is also visually distinct from ordinary active-project commands;
+- `from app` resolves `<name>` through the current active project's app registry and then reinterprets the remaining arguments as ordinary Alteran command input in that rebased context;
+- `from dir` resolves an explicit Alteran project directory and then reinterprets the remaining arguments as ordinary Alteran command input in that rebased context;
+- `from` must not use `deno.json` as an Alteran context anchor;
+- `from` must construct an isolated target context instead of silently reusing the caller's active project identity;
+- if the target is not yet initialized, `from` should first perform the equivalent of target-local `setup` and only then execute the requested command;
+- `from` is therefore the mode whose semantics are "become that project", unlike `external`, whose semantics remain "operate on that target from here".
 
 ---
 

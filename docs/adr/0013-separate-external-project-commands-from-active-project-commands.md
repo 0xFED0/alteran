@@ -16,6 +16,7 @@ External-project commands may target an explicit project directory, for example:
 
 - `setup [dir]`
 - `shellenv [dir]`
+- `from dir <project-dir> <command> ...`
 - future explicit cross-project mode:
   - `external <path-to-json> <command> ...`
   - `ALTERAN_EXTERNAL_CTX=<path-to-json> alteran external <command> ...`
@@ -28,6 +29,7 @@ Active-project commands operate on the project resolved through `ALTERAN_HOME` o
 - `reimport ...`
 - `clean ...`
 - `compact`
+- `from app <name> <command> ...`
 
 ## Consequences
 
@@ -40,6 +42,9 @@ Tradeoffs:
 
 - users must learn which commands are external-targeting versus active-project commands
 - advanced cross-project execution remains explicit and more verbose by design
+- some explicit rebasing commands may intentionally straddle the boundary:
+  - `from dir ...` is directory-targeted;
+  - `from app ...` is active-project-aware because app-name resolution depends on the current owning project
 
 ## Rejected Alternatives
 

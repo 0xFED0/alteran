@@ -5,7 +5,7 @@ Alteran uses an explicit command surface instead of positional shortcuts.
 ## Main Command Families
 
 - [Project setup / initialization](./setup.md): `setup`, `shellenv`
-- explicit external-project execution: `external`
+- explicit cross-project execution: `external`, `from`
 - [Refresh and reimport](./refresh.md): `refresh`, `reimport`
 - [Apps](./app.md): `app add|rm|purge|ls|run|setup`
 - [Tools](./tool.md): `tool add|rm|purge|ls|run`
@@ -20,8 +20,14 @@ Alteran keeps a clear boundary between:
 
 - external-targeting commands such as `setup [dir]`, `shellenv [dir]`, `compact [dir]`, and `compact-copy <destination> [--source=...]`
 - active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`, and the no-argument form of `compact`
+- explicit context-rebased commands such as `from app <name> <command> ...` and `from dir <project-dir> <command> ...`
 
-Advanced cross-project execution exists through the explicit `external` command rather than by letting every command quietly mutate arbitrary paths.
+Advanced cross-project execution exists through explicit commands such as `external` and `from` rather than by letting every command quietly mutate arbitrary paths.
+
+The distinction matters:
+
+- `external` operates on a target from the current Alteran context
+- `from` becomes the target context and may initialize it first
 
 Supported external anchors are explicit Alteran config files:
 

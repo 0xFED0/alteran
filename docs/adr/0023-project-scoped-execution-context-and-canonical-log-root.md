@@ -30,6 +30,8 @@ Alteran also allows rare advanced scenarios where a caller may intentionally inv
 
 When such an advanced cross-project mode exists, it should be explicit and visually obvious, for example through a dedicated `external` command that requires a target config anchor such as `alteran.json` or `app.json`.
 
+Alteran may also support an explicit rebasing mode such as `from`, where the command intentionally becomes another project's context rather than operating on it from the caller's context.
+
 ## Decision
 
 Alteran execution context is project-scoped, not shell-scoped.
@@ -44,8 +46,11 @@ The following entrypoints define a hard project boundary:
 - `activate`
 - `shellenv`
 - generated `app` / `app.bat`
+- `alteran from ...`
 
 When they target a project, they must treat that project as the authoritative execution context and replace foreign inherited Alteran runtime/logging state.
+
+If a `from` target is not yet initialized, Alteran should first initialize that target and only then execute within its project-local context.
 
 ### Same-project inheritance
 
@@ -117,6 +122,9 @@ Tradeoffs:
 
 - advanced cross-project execution still requires an explicit dedicated mode
 - inherited Alteran env is treated as advisory rather than always reusable
+- documentation must clearly distinguish:
+  - `external`, which operates from the caller's current context;
+  - `from`, which becomes the target project's context
 
 ## Rejected Alternatives
 

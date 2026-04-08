@@ -221,7 +221,7 @@ Crossing into another project through:
 - `activate`
 - `shellenv`
 - generated app launchers
-- `alteran external`
+- `alteran from ...`
 
 must replace or sanitize foreign inherited context rather than implicitly reusing it.
 
@@ -233,8 +233,15 @@ Cross-project operation must remain explicit and noticeable through dedicated su
 
 - `setup <dir>`
 - `alteran external ...`
+- `alteran from app ...`
+- `alteran from dir ...`
 
 `deno.json` must not be treated as a valid external Alteran context anchor.
+
+Contributors must preserve the semantic distinction:
+
+- `external` operates on a target from the caller's current Alteran context;
+- `from` becomes the target context and may therefore initialize that target first if needed.
 
 ### 5.6 Keep managed execution explicit
 
