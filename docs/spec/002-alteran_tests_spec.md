@@ -51,6 +51,8 @@ Tests should prefer local, self-hosted, deterministic inputs over public network
 
 Repository and example test harnesses may rely on a small explicit host-tool baseline when building deterministic local fixtures. On Unix-like hosts this baseline currently includes `curl`, `unzip`, `zip`, and `git`. CI configuration should install these tools explicitly instead of assuming they happen to be present on the runner image. Tests that specifically require tracked-file repository-copy behavior may be skipped when `git` is unavailable on a local host.
 
+Example validation should also prefer temp-copy-based workflows over mutating committed `examples/` trees in place.
+
 ### 2.5 Honest platform scope
 
 Supported behavior, unsupported behavior, and exploratory behavior must be clearly separated.
@@ -277,6 +279,12 @@ This avoids environment-specific mount failures and keeps Docker tests stable on
 ### 7.4 Ignore unsupported host conditions explicitly
 
 If a test requires Windows or Docker availability, it should use `ignore` metadata rather than pass as `ok (0ms)` by returning early.
+
+### 7.5 Repository examples are not scratch workspaces
+
+Tests must not rely on the committed `examples/` directories as their normal scratch workspace.
+
+When a test needs to exercise an example through `setup`, `activate`, `refresh`, `compact`, or launcher flows, it should prefer a hermetic temp directory derived from that example rather than mutating the committed example directory itself.
 
 ## 8. Failure Interpretation Rules
 

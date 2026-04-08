@@ -36,6 +36,10 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0028: Publish JSR from Versioned Staging Workspaces and Default to the Current Version](./0028-publish-jsr-from-versioned-staging-workspaces.md)
 - [ADR 0029: Automate Publication and Test Coverage Through GitHub Actions](./0029-automate-publication-and-ci-through-github-actions.md)
 - [ADR 0030: Keep the JSR Package Lean and Put Full Docs Only in Release Zips](./0030-keep-jsr-package-lean-and-put-full-docs-only-in-release-zips.md)
+- [ADR 0031: Manage Repository Examples Through a Dedicated `examples` Tool](./0031-manage-repository-examples-through-a-dedicated-examples-tool.md)
+- [ADR 0032: Extend `compact` with an Explicit Target Directory](./0032-extend-compact-with-an-explicit-target-directory.md)
+- [ADR 0033: Add `compact-copy` as a Non-Destructive Portability Command](./0033-add-compact-copy-as-a-non-destructive-portability-command.md)
+- [ADR 0034: Normalize Committed Examples Through a Non-Destructive `reset` Script](./0034-normalize-committed-examples-through-a-reset-script.md)
 
 ## Notes
 

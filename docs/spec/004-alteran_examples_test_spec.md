@@ -35,6 +35,8 @@ The intended rule is:
 
 **examples are executable documentation, and executable documentation must be executed in tests.**
 
+Those tests should execute examples in hermetic temp copies rather than by using the committed `examples/` directories as the primary scratch workspace.
+
 ---
 
 ## 3. Scope
@@ -162,6 +164,8 @@ This includes, at minimum, examples such as:
 - logging and run-tree behavior;
 - refresh or reimport flows;
 - compact or transfer-ready flows.
+
+Examples that exist to teach bootstrap-first state, such as `01-bootstrap-empty-folder`, especially must be protected from in-place mutation during test preparation.
 
 If an example exists primarily to prove or teach a central Alteran capability, it must not rely on smoke coverage alone.
 
@@ -317,6 +321,31 @@ A pull request must not be allowed to silently break maintained examples without
 ## 14. Test Design Principles
 
 Example tests should follow these principles.
+
+### 14.1 Hermetic temp-copy execution
+
+Example tests should normally prepare and execute examples in temporary directories.
+
+The preferred lifecycle is:
+
+1. normalize the committed source example tree by deleting known generated artifacts only;
+2. create a compact bootstrap-ready temp copy;
+3. run `setup` in that temp copy;
+4. run the documented validation flow in that temp copy.
+
+This keeps tests aligned with the product story that examples are transfer-ready and re-hydratable from their committed bootstrap surfaces.
+
+The repository-maintainer name for step 1 should be `reset`, not `reinit`.
+
+### 14.2 Normalization must be non-destructive
+
+The normalization step for committed examples must delete only known generated or recoverable artifacts.
+
+It must not attempt to recreate or overwrite authored business logic.
+
+### 14.3 Example ownership is path-based
+
+Repository-level example validation should think in terms of example paths relative to `examples/`, not in terms of whichever test filename happened to cover that example first.
 
 ### 14.1. Validate user-facing flows
 

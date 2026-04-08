@@ -833,6 +833,8 @@ These may operate on a project directory even when that project is not currently
 
 - `setup [dir]`
 - `shellenv [dir]`
+- `compact [dir]`
+- `compact-copy <destination> [--source=<project-dir>]`
 
 #### Active-project commands
 
@@ -843,7 +845,7 @@ These operate on the currently activated project and should resolve the project 
 - `tool ...`
 - `reimport ...`
 
-This keeps project-management commands tied to the active dev environment, while still allowing bootstrap/setup flows to target projects from outside.
+This keeps project-management commands tied to the active dev environment, while still allowing bootstrap/setup and explicit portability flows to target projects from outside.
 
 The intended normal workflow for another project is therefore:
 
@@ -1717,7 +1719,8 @@ Bootstrap/update should fetch both the entry script and its support folder when 
 Alteran should support an explicit cleanup command:
 
 - **`alteran clean <scope> [<scope> ...]`**
-- **`alteran compact`**
+- **`alteran compact [dir]`**
+- **`alteran compact-copy <destination> [--source=<project-dir>]`**
 
 This command removes generated, downloaded, cached, or otherwise recoverable files.
 
@@ -1782,11 +1785,20 @@ It should include cleanup equivalent to:
 - `alteran clean app-runtimes`
 - `alteran clean builds`
 
-#### `alteran compact`
+#### `alteran compact [dir]`
 
 `alteran compact` is a separate high-level command with no scopes.
 
 It is intended to reduce a project to a compact bootstrap-ready transfer state.
+
+It supports two forms:
+
+- `alteran compact`
+- `alteran compact [dir]`
+
+The no-argument form compacts the current active project.
+
+The `[dir]` form compacts an explicit external Alteran project directory, analogous to `setup [dir]`.
 
 Because this is intentionally destructive to local materialized runtime state, it should require an explicit confirmation step by default.
 
@@ -1809,7 +1821,7 @@ It should preserve:
 - user source directories such as `apps/`, `tools/`, `libs/`, `tests/`
 - other user-authored source/config files
 
-After `alteran compact`, the project should behave as though Alteran runtime artifacts had never been materialized locally, while still being re-hydratable from scratch through `setup` / `setup.bat`.
+After `alteran compact`, the target project should behave as though Alteran runtime artifacts had never been materialized locally, while still being re-hydratable from scratch through `setup` / `setup.bat`.
 
 #### Confirmation UX
 
@@ -1831,6 +1843,25 @@ to auto-confirm and proceed without prompting, and:
 to auto-cancel.
 
 In non-interactive contexts, `alteran compact` without `-y` / `-f` / `-n` should fail explicitly rather than silently assuming confirmation.
+
+#### `alteran compact-copy <destination> [--source=<project-dir>]`
+
+`alteran compact-copy` is the non-destructive sibling of `compact`.
+
+It should create a transfer-ready compact copy of an Alteran project in a separate destination directory without mutating the source project in place.
+
+If `--source` is omitted, the source project is the current active Alteran project.
+
+If `--source` is provided, Alteran should resolve that directory explicitly as the source Alteran project.
+
+`compact-copy` should:
+
+- create the destination directory or fail clearly if the destination cannot be created;
+- copy only authored and bootstrap-ready project material;
+- omit runtime, generated activation, build, and other recoverable artifacts that `compact` would remove in place;
+- preserve the same authored source and configuration files that `compact` preserves.
+
+The resulting destination should be re-hydratable through `setup` / `setup.bat` exactly as an in-place compacted project would be.
 
 #### `alteran clean cache`
 

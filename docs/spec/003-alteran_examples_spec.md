@@ -153,6 +153,24 @@ Examples must not imply guarantees, behaviors, or supported flows that Alteran d
 
 Examples should avoid relying on implicit behavior that is not documented nearby. If a behavior matters for understanding the example, it must be stated in the example README.
 
+### 6.8 Committed examples stay source-first and repo-safe
+
+Committed example directories are part of the repository's authored teaching surface.
+
+They must not be treated as disposable scratch workspaces during normal maintenance or validation.
+
+Examples should therefore remain committed in a source-first, bootstrap-ready shape rather than as warmed-up local working directories.
+
+Generated artifacts that are useful only as local working state, such as:
+
+- `.runtime/`
+- generated `activate` / `activate.bat`
+- generated standalone `app` / `app.bat`
+- build outputs under `dist/`
+- other recoverable local artifacts
+
+should not be considered part of the intended committed teaching baseline unless an example explicitly exists to demonstrate that exact generated state.
+
 ---
 
 ## 7. Standard Contents of an Example Directory
@@ -164,6 +182,10 @@ Each example directory should normally contain:
 - optional helper assets only if they directly improve understanding.
 
 Examples should avoid unnecessary binaries, large generated outputs, or decorative assets.
+
+The repository should also keep a small committed maintainer reset helper under `examples/` that can normalize example trees by deleting known generated artifacts without overwriting authored example code.
+
+The canonical maintainer verb for this normalization step is `reset`, not `reinit`, so the repository does not reintroduce the removed `init` vocabulary through example tooling.
 
 ### 7.1 `README.md` contract
 
@@ -194,6 +216,33 @@ The README should direct the reader’s attention to important outcomes, such as
 - logs were emitted and stored in expected places;
 - refresh updated import/workspace state;
 - compact removed regenerable local state.
+
+### 7.4 Example maintainers should have a path-based workflow
+
+The repository should provide a dedicated maintainer workflow for the example gallery based on example paths relative to `examples/`, rather than on ad hoc shell loops or test filenames.
+
+The intended steady-state maintainer entrypoint is a repository tool such as:
+
+```sh
+alteran tool run examples <subcommand> [example-path ...]
+```
+
+The expected subcommands include at least:
+
+- `reset`
+- `setup`
+- `refresh`
+- `clean`
+- `compact`
+- `test`
+
+where example selection is path-oriented, for example:
+
+- `01-bootstrap-empty-folder`
+- `07-compact-transfer-ready`
+- `advanced/logtape-categories`
+
+This workflow is repository-maintainer tooling, not core end-user product CLI.
 
 ---
 
