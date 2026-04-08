@@ -5,6 +5,7 @@ import {
   assert,
   assertSuccess,
   prepareRepoCopy,
+  REQUIRES_GIT_REPO_COPY,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runShell,
   withLocalDenoSources,
@@ -12,7 +13,7 @@ import {
 
 Deno.test({
   name: "README quick start stays runnable from a clean repository copy",
-  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE || !REQUIRES_GIT_REPO_COPY,
   async fn() {
     const repoDir = await prepareRepoCopy();
     const appLogPath = await Deno.makeTempFile({

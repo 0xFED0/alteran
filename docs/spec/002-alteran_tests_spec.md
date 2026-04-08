@@ -49,6 +49,8 @@ The suite should prioritize the user-facing bootstrap and activation flows of Al
 
 Tests should prefer local, self-hosted, deterministic inputs over public network dependencies.
 
+Repository and example test harnesses may rely on a small explicit host-tool baseline when building deterministic local fixtures. On Unix-like hosts this baseline currently includes `curl`, `unzip`, `zip`, and `git`. CI configuration should install these tools explicitly instead of assuming they happen to be present on the runner image. Tests that specifically require tracked-file repository-copy behavior may be skipped when `git` is unavailable on a local host.
+
 ### 2.5 Honest platform scope
 
 Supported behavior, unsupported behavior, and exploratory behavior must be clearly separated.

@@ -13,6 +13,17 @@ That materializes the repository-local runtime and local managed Deno under `.ru
 
 `activate` is sourced-only on Unix. Treat `setup` as the bootstrap/repair surface and `activate` as the local environment-entry surface.
 
+## Local Host Prerequisites
+
+On Unix-like hosts, full Alteran repository development and test flows assume:
+
+- `curl`
+- `unzip`
+- `zip`
+- `git`
+
+`setup` itself needs either a working global `deno` or local `curl` + `unzip` so it can materialize a project-local Deno runtime. The additional `zip` requirement is specific to this repository's development and test harness, because local fixture archives are created on the host during repository and example tests. `git` is also part of the repository-level test baseline because some documentation tests create clean tracked-file copies of the repository rather than copying untracked local state.
+
 ## Common Commands
 
 ```sh

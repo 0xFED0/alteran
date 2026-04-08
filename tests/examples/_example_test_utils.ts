@@ -136,6 +136,7 @@ export const LOCAL_DENO_FIXTURE_SKIP_REASON =
   await detectLocalFixtureSkipReason();
 export const REQUIRES_LOCAL_DENO_FIXTURE = !IS_WINDOWS &&
   LOCAL_DENO_FIXTURE_SKIP_REASON === null;
+export const REQUIRES_GIT_REPO_COPY = await commandExists("git");
 
 async function rewriteExampleDotEnvForTemp(projectDir: string): Promise<void> {
   const dotEnvPath = join(projectDir, ".env");
@@ -270,6 +271,10 @@ export async function latestLogDir(
 }
 
 export async function prepareRepoCopy(): Promise<string> {
+  assert(
+    REQUIRES_GIT_REPO_COPY,
+    "Repository copy fixture requires the host git command.",
+  );
   const tempDir = await Deno.makeTempDir({
     prefix: "alteran-readme-quickstart-",
   });
