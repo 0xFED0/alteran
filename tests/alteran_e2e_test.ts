@@ -808,6 +808,7 @@ Deno.test("tool run examples exposes maintainer help through the registered repo
   const previousCwd = Deno.cwd();
 
   try {
+    await setupProject(ALTERAN_REPO_DIR);
     Deno.chdir(ALTERAN_REPO_DIR);
     const exitCode = await runCli(["tool", "run", "examples", "--help"]);
     if (exitCode !== 0) {

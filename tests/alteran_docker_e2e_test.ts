@@ -1,7 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ensureDir, removeIfExists } from "../src/alteran/fs.ts";
 import { prepareBootstrapFixture } from "./bootstrap_fixture.ts";
 
 function decode(bytes: Uint8Array): string {
@@ -9,7 +8,6 @@ function decode(bytes: Uint8Array): string {
 }
 
 const ALTERAN_REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DOCKER_TMP_ROOT = resolve(ALTERAN_REPO_DIR, ".runtime", "docker-test-fixtures");
 
 async function dockerAvailable(): Promise<boolean> {
   try {
@@ -132,14 +130,7 @@ async function runDockerMatrix(
   baseImage: string,
   withGlobalDeno: boolean,
 ): Promise<void> {
-  await ensureDir(DOCKER_TMP_ROOT);
-  const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR, {
-    tempDir: DOCKER_TMP_ROOT,
-  });
-  const targetRoot = await Deno.makeTempDir({
-    dir: DOCKER_TMP_ROOT,
-    prefix: `alteran-docker-${baseImage.replaceAll(/[^a-z0-9]+/gi, "-")}-`,
-  });
+  const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
   try {
     const output = await new Deno.Command("docker", {
       args: [
@@ -151,8 +142,6 @@ async function runDockerMatrix(
         `${ALTERAN_REPO_DIR}:/source:ro`,
         "-v",
         `${fixture.servedDir}:/served:ro`,
-        "-v",
-        `${targetRoot}:/target`,
         "-e",
         "ALTERAN_RUN_SOURCES=http://127.0.0.1:18080/bundle/alteran.ts",
         "-e",
@@ -176,7 +165,6 @@ async function runDockerMatrix(
     }
   } finally {
     await fixture.cleanup();
-    await removeIfExists(targetRoot);
   }
 }
 
