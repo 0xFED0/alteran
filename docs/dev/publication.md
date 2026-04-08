@@ -70,7 +70,7 @@ The publication-local `deno.json` exists because `deno publish` requires the pre
 
 The staged JSR package intentionally stays lean and does not copy the full `docs/` tree. JSR already renders `README.md`, and links inside that README can point to repository-hosted docs.
 
-`prepare_zip` builds a release bundle from the staged JSR payload and then adds the repository `docs/` tree before archiving. That keeps JSR publication lean while still making release zips useful as richer portable bundles.
+`prepare_zip` builds a release bundle from the staged JSR payload and then adds the repository `docs/` tree before archiving. It also strips publish-only metadata such as the staged `deno.json` workspace file and `jsr.json`, because release zips are meant to act as runtime/bootstrap artifacts rather than as JSR publish workspaces.
 
 ## Automated Publication
 

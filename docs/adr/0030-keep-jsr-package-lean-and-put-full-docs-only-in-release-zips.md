@@ -36,12 +36,15 @@ It does not include the full `docs/` tree.
 
 The release zip under `dist/zips/<version>/` is derived from the staged JSR payload, but it additionally includes the repository `docs/` tree before archiving.
 
+Publish-only metadata such as the publication workspace `deno.json` and `jsr.json` is not carried into the release zip.
+
 ## Consequences
 
 - JSR publication stays lean and focused on the actual package surface.
 - JSR still exposes useful package documentation through `README.md` and JSR-generated API docs.
 - Release zip artifacts remain richer portable bundles suitable for offline or transferred use.
 - `prepare_jsr` and `prepare_zip` intentionally produce different payloads instead of treating the zip as a byte-for-byte archive of the staged JSR directory.
+- archive/bootstrap use of release zips is not polluted by JSR publish-only workspace metadata
 
 ## Rejected Alternative
 

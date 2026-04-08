@@ -2143,6 +2143,10 @@ Archive artifacts such as release zips should include both `README.md` and
 `docs/`, so downloadable release bundles remain understandable outside the JSR
 package page itself.
 
+Release zip artifacts should not include publication-only metadata such as the
+publish workspace `deno.json` or `jsr.json`, because those files exist for JSR
+publication mechanics rather than for runtime bootstrap from downloaded archives.
+
 ### 29.9 Dedicated JSR publish flow
 
 Alteran may provide a dedicated publication helper such as `publish_jsr`.
