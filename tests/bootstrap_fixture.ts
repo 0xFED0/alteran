@@ -75,7 +75,8 @@ export async function prepareBootstrapFixture(
     filter: (absolutePath) => {
       const relativePath = absolutePath.slice(repoDir.length + 1).replaceAll("\\", "/");
       return !relativePath.startsWith(".git/") &&
-        !relativePath.startsWith(".runtime/");
+        !relativePath.startsWith(".runtime/") &&
+        !relativePath.startsWith("dist/");
     },
   });
   await removeIfExists(join(bundleDir, ".runtime"));

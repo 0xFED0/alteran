@@ -545,6 +545,14 @@ Deno.test("prepare_jsr stays lean while release zip staging adds docs", async ()
     await exists(join(zipStageDir, "docs", "user", "quickstart.md")),
     "Expected release zip staging to include the repository docs tree",
   );
+  expect(
+    !(await exists(join(zipStageDir, "deno.json"))),
+    "Expected release zip staging not to include the publish-only deno.json workspace config",
+  );
+  expect(
+    !(await exists(join(zipStageDir, "jsr.json"))),
+    "Expected release zip staging not to include the publish-only jsr.json metadata file",
+  );
 });
 
 Deno.test("publish_jsr argument parsing supports version and token flags", () => {

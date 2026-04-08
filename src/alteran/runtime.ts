@@ -550,8 +550,17 @@ async function* walkDirectory(rootDir: string): AsyncGenerator<string> {
 async function resolveArchiveAlteranEntry(
   extractDir: string,
 ): Promise<string | null> {
+  const directRootEntry = join(extractDir, "alteran.ts");
+  const directRootMod = join(extractDir, "src", "alteran", "mod.ts");
+  if (await exists(directRootEntry) && await exists(directRootMod)) {
+    return directRootEntry;
+  }
+
   for await (const entryPath of walkDirectory(extractDir)) {
     if (!entryPath.replaceAll("\\", "/").endsWith("/src/alteran/mod.ts")) {
+      continue;
+    }
+    if (entryPath.replaceAll("\\", "/").includes("/dist/")) {
       continue;
     }
 

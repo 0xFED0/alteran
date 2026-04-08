@@ -42,6 +42,8 @@ export async function prepareReleaseZipStagingAt(
 
   await removeIfExists(stagingDir);
   await copyDirectory(jsrDir, stagingDir);
+  await removeIfExists(join(stagingDir, "deno.json"));
+  await removeIfExists(join(stagingDir, "jsr.json"));
   await copyDirectory(join(repoRoot, "docs"), join(stagingDir, "docs"));
 }
 
