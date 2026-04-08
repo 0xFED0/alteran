@@ -81,6 +81,8 @@ On Unix-like hosts, the repository test harness assumes these system tools are a
 
 `curl` and `unzip` are required for bootstrap paths that materialize a local Deno runtime. `zip` is required by local archive-fixture flows used by repository e2e and example tests. `git` is required by repository-copy documentation scenarios that intentionally operate on tracked files only. Linux CI should install these explicitly rather than relying on runner defaults. When `git` is unavailable locally, tests that require tracked-file repository copies should be skipped rather than rewritten to depend on an ad hoc filesystem copy.
 
+Git-based repository-copy tests also assume that the checkout is considered safe by the host `git`. Docker bind mounts with mismatched ownership can trigger Git's `dubious ownership` protection; in that case Alteran should skip those repo-copy tests locally rather than mutating the user's global `safe.directory` policy. CI should run them from a normal checkout or copy.
+
 In the current repository layout, GitHub Actions workflow files live under `.github/workflows/` at the Alteran repository root and target `.`.
 
 ## Related Source

@@ -151,11 +151,39 @@ async function detectLocalFixtureSkipReason(): Promise<string | null> {
   }
 }
 
+async function detectGitRepoCopySkipReason(): Promise<string | null> {
+  if (!(await commandExists("git"))) {
+    return "Repository copy fixture requires the host git command.";
+  }
+
+  const output = await new Deno.Command("git", {
+    args: ["ls-files", "-z"],
+    cwd: ALTERAN_REPO_DIR,
+    env: hermeticEnv(),
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+
+  if (output.success) {
+    return null;
+  }
+
+  const stderr = decode(output.stderr);
+  if (stderr.includes("detected dubious ownership in repository")) {
+    return "Repository copy fixture requires a git-safe checkout or copy. Docker bind mounts with dubious ownership are skipped.";
+  }
+
+  throw new Error(
+    `Failed to probe tracked repository files for README quick start copy. stderr=${stderr}`,
+  );
+}
+
 export const LOCAL_DENO_FIXTURE_SKIP_REASON =
   await detectLocalFixtureSkipReason();
 export const REQUIRES_LOCAL_DENO_FIXTURE = !IS_WINDOWS &&
   LOCAL_DENO_FIXTURE_SKIP_REASON === null;
-export const REQUIRES_GIT_REPO_COPY = await commandExists("git");
+export const GIT_REPO_COPY_SKIP_REASON = await detectGitRepoCopySkipReason();
+export const REQUIRES_GIT_REPO_COPY = GIT_REPO_COPY_SKIP_REASON === null;
 
 async function rewriteExampleDotEnvForTemp(projectDir: string): Promise<void> {
   const dotEnvPath = join(projectDir, ".env");
@@ -331,7 +359,8 @@ export async function latestLogDir(
 export async function prepareRepoCopy(): Promise<string> {
   assert(
     REQUIRES_GIT_REPO_COPY,
-    "Repository copy fixture requires the host git command.",
+    GIT_REPO_COPY_SKIP_REASON ??
+      "Repository copy fixture support was not initialized.",
   );
   const tempDir = await Deno.makeTempDir({
     prefix: "alteran-readme-quickstart-",
