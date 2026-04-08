@@ -12,7 +12,8 @@
 | `alteran tool ...` | Manage tools |
 | `alteran reimport apps|tools <dir>` | Import discovered apps or tools from a directory |
 | `alteran clean <scope> [<scope> ...]` | Remove recoverable local state |
-| `alteran compact` | Reduce a project to bootstrap-ready transferable state |
+| `alteran compact [dir]` | Reduce the active or explicit target project to bootstrap-ready transferable state |
+| `alteran compact-copy <destination> [--source=<project-dir>]` | Create a compact transfer-ready copy without mutating the source project |
 | `alteran run <file> [args...]` | Run a script through Alteran-managed Deno |
 | `alteran task <name> [args...]` | Run a root Deno task inside the Alteran environment |
 | `alteran test [filters/flags...]` | Shortcut for managed `deno test` |

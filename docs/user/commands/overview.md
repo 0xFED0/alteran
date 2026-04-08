@@ -11,15 +11,15 @@ Alteran uses an explicit command surface instead of positional shortcuts.
 - [Tools](./tool.md): `tool add|rm|purge|ls|run`
 - [Managed execution](./run-task-deno.md): `run`, `task`, `deno`, `x`
 - [Testing](./test.md): `test`
-- [Cleanup](./clean.md): `clean`, `compact`
+- [Cleanup](./clean.md): `clean`, `compact`, `compact-copy`
 - [Versions and updates](./update-upgrade-use.md): `update`, `upgrade`, `use`
 
 ## Scope Rules
 
 Alteran keeps a clear boundary between:
 
-- external-targeting bootstrap commands such as `setup [dir]`
-- active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`, and `compact`
+- external-targeting commands such as `setup [dir]`, `shellenv [dir]`, `compact [dir]`, and `compact-copy <destination> [--source=...]`
+- active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`, and the no-argument form of `compact`
 
 Advanced cross-project execution exists through the explicit `external` command rather than by letting every command quietly mutate arbitrary paths.
 

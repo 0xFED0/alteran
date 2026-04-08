@@ -6,7 +6,8 @@ Alteran distinguishes between safe cleanup of regenerable state and reducing a p
 
 ```sh
 alteran clean <scope> [<scope> ...]
-alteran compact
+alteran compact [dir]
+alteran compact-copy <destination> [--source=<project-dir>]
 ```
 
 ## Clean Scopes
@@ -21,7 +22,7 @@ alteran compact
 
 ## Compact
 
-`alteran compact` is the stronger portability-oriented workflow. It:
+`alteran compact [dir]` is the stronger portability-oriented workflow. It:
 
 - runs safe cleanup equivalent to `clean all`
 - removes root `.runtime/`
@@ -31,6 +32,22 @@ alteran compact
 - keeps user source, config, and public setup scripts
 
 After compact, the project should be recoverable by running `setup` again.
+
+Without `[dir]`, `compact` targets the current active project.
+
+With `[dir]`, it explicitly compacts another Alteran project directory.
+
+## Compact Copy
+
+`alteran compact-copy` creates a transfer-ready copy without mutating the source project in place.
+
+Use it when you want:
+
+- a portable handoff copy;
+- a hermetic temp copy for validation;
+- staging that should not dirty the source project.
+
+If `--source` is omitted, the current active project is used as the source.
 
 ## Safety
 

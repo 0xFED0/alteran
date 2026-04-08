@@ -18,8 +18,8 @@ Alteran favors an explicit command surface over positional magic.
 
 Commands are split between:
 
-- external-project commands such as `setup [dir]`
-- active-project commands such as `refresh`, `app ...`, `tool ...`, and `compact`
+- external-project commands such as `setup [dir]`, `shellenv [dir]`, `compact [dir]`, and `compact-copy <destination> [--source=...]`
+- active-project commands such as `refresh`, `app ...`, `tool ...`, `clean`, and the no-argument form of `compact`
 
 Cross-project execution is explicit through `alteran external ...`, not a hidden second mode of ordinary commands.
 

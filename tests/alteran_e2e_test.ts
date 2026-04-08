@@ -43,6 +43,14 @@ function decode(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes);
 }
 
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    Deno.env.delete(key);
+    return;
+  }
+  Deno.env.set(key, value);
+}
+
 async function latestProjectLogDir(
   projectDir: string,
   category: "apps" | "tools" | "runs" | "tasks" | "tests",
@@ -2073,6 +2081,190 @@ Deno.test("alteran compact requires explicit confirmation in non-interactive mod
     } else {
       Deno.env.set("ALTERAN_HOME", previousAlteranHome);
     }
+  }
+});
+
+Deno.test("alteran compact can target an explicit project dir without prior activation", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-explicit-dir-",
+  });
+  await setupProject(projectDir);
+
+  await Deno.mkdir(join(projectDir, "apps", "demo", ".runtime"), {
+    recursive: true,
+  });
+  await Deno.writeTextFile(
+    join(projectDir, "apps", "demo", ".runtime", "marker.txt"),
+    "demo",
+  );
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  Deno.env.delete("ALTERAN_HOME");
+
+  try {
+    const exitCode = await runCli(["compact", projectDir, "-y"]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact <dir> -y to pass, got exit code ${exitCode}`,
+      );
+    }
+
+    for (
+      const removedPath of [
+        join(projectDir, ".runtime"),
+        join(projectDir, "apps", "demo", ".runtime"),
+        join(projectDir, "activate"),
+        join(projectDir, "activate.bat"),
+      ]
+    ) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(`Expected ${removedPath} to be removed by compact <dir>`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
+  } finally {
+    restoreEnv("ALTERAN_HOME", previousAlteranHome);
+  }
+});
+
+Deno.test("alteran compact-copy creates a transfer-ready copy without mutating the source project", async () => {
+  const sourceDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-copy-source-",
+  });
+  const destinationDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-copy-destination-parent-",
+  });
+  const copyDir = join(destinationDir, "portable-copy");
+
+  await setupProject(sourceDir);
+  await Deno.mkdir(join(sourceDir, "apps", "demo", ".runtime"), {
+    recursive: true,
+  });
+  await Deno.writeTextFile(
+    join(sourceDir, "apps", "demo", ".runtime", "marker.txt"),
+    "demo",
+  );
+  await Deno.mkdir(join(sourceDir, "dist", "jsr"), { recursive: true });
+  await Deno.writeTextFile(join(sourceDir, "dist", "jsr", "artifact.txt"), "dist");
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  Deno.env.delete("ALTERAN_HOME");
+
+  try {
+    const exitCode = await runCli([
+      "compact-copy",
+      copyDir,
+      `--source=${sourceDir}`,
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact-copy to pass, got exit code ${exitCode}`,
+      );
+    }
+
+    for (
+      const removedPath of [
+        join(copyDir, ".runtime"),
+        join(copyDir, "activate"),
+        join(copyDir, "activate.bat"),
+        join(copyDir, "dist"),
+        join(copyDir, "apps", "demo", ".runtime"),
+      ]
+    ) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(`Expected ${removedPath} to be absent from compact-copy output`);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
+
+    for (
+      const preservedPath of [
+        join(copyDir, "setup"),
+        join(copyDir, "setup.bat"),
+        join(copyDir, "alteran.json"),
+        join(copyDir, "deno.json"),
+        join(copyDir, ".gitignore"),
+        join(copyDir, "apps"),
+        join(copyDir, "tools"),
+        join(copyDir, "libs"),
+        join(copyDir, "tests"),
+      ]
+    ) {
+      await Deno.stat(preservedPath);
+    }
+
+    await Deno.stat(join(sourceDir, ".runtime"));
+    await Deno.stat(join(sourceDir, "activate"));
+    await Deno.stat(join(sourceDir, "dist"));
+    await Deno.stat(join(sourceDir, "apps", "demo", ".runtime"));
+
+    if (Deno.build.os !== "windows") {
+      const output = await runShell(
+        `cd ${
+          JSON.stringify(copyDir)
+        } && ./setup >/dev/null 2>/dev/null && . ./activate >/dev/null 2>/dev/null && test -f .runtime/alteran/mod.ts && test ! -d .runtime/env`,
+        {
+          env: {
+            ALTERAN_RUN_SOURCES: ALTERAN_ENTRY_PATH,
+            PATH: hostDenoPath(),
+          },
+        },
+      );
+      if (!output.success) {
+        throw new Error(
+          `Expected compact-copy output to be rehydratable. stdout=${
+            decode(output.stdout)
+          } stderr=${decode(output.stderr)}`,
+        );
+      }
+    }
+  } finally {
+    restoreEnv("ALTERAN_HOME", previousAlteranHome);
+  }
+});
+
+Deno.test("alteran compact-copy defaults the source project to the active Alteran project", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-copy-active-source-",
+  });
+  const destinationRoot = await Deno.makeTempDir({
+    prefix: "alteran-compact-copy-active-destination-",
+  });
+  const copyDir = join(destinationRoot, "active-copy");
+
+  await setupProject(projectDir);
+
+  const previousAlteranHome = Deno.env.get("ALTERAN_HOME");
+  Deno.env.set("ALTERAN_HOME", join(projectDir, ".runtime"));
+
+  try {
+    const exitCode = await runCli(["compact-copy", copyDir]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `Expected alteran compact-copy to use the active project by default, got exit code ${exitCode}`,
+      );
+    }
+
+    await Deno.stat(join(copyDir, "setup"));
+    await Deno.stat(join(copyDir, "alteran.json"));
+    try {
+      await Deno.stat(join(copyDir, ".runtime"));
+      throw new Error("Expected compact-copy default output not to include .runtime");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+  } finally {
+    restoreEnv("ALTERAN_HOME", previousAlteranHome);
   }
 });
 

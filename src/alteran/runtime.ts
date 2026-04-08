@@ -1,4 +1,12 @@
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -1512,6 +1520,35 @@ export async function cleanProjectScopes(
   }
 }
 
+function shouldOmitFromCompactCopy(
+  projectDir: string,
+  absolutePath: string,
+): boolean {
+  const relativePath = relative(projectDir, absolutePath).replaceAll("\\", "/");
+
+  if (
+    relativePath === ".runtime" ||
+    relativePath.startsWith(".runtime/")
+  ) {
+    return true;
+  }
+
+  if (relativePath === "activate" || relativePath === "activate.bat") {
+    return true;
+  }
+
+  if (relativePath === "dist" || relativePath.startsWith("dist/")) {
+    return true;
+  }
+
+  const nestedAppRuntimeMatch = relativePath.match(/^apps\/[^/]+\/\.runtime(?:\/.*)?$/u);
+  if (nestedAppRuntimeMatch) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function compactProject(projectDir: string): Promise<void> {
   await cleanProjectScopes(projectDir, ["all", "app-runtimes", "builds"]);
 
@@ -1526,6 +1563,40 @@ export async function compactProject(projectDir: string): Promise<void> {
       await removeIfExists(join(appsDir, appName, ".runtime"));
     }
   }
+}
+
+export async function compactCopyProject(
+  sourceProjectDir: string,
+  destinationDir: string,
+): Promise<void> {
+  const resolvedSource = resolve(sourceProjectDir);
+  const resolvedDestination = resolve(destinationDir);
+  const sourceToDestination = relative(resolvedSource, resolvedDestination);
+
+  if (sourceToDestination === "") {
+    throw new Error("compact-copy destination must be different from the source project");
+  }
+
+  if (
+    sourceToDestination !== ".." &&
+    !sourceToDestination.startsWith(`..${sep}`) &&
+    !isAbsolute(sourceToDestination)
+  ) {
+    throw new Error(
+      "compact-copy destination must not be inside the source project directory",
+    );
+  }
+
+  if (await exists(resolvedDestination)) {
+    throw new Error(
+      `compact-copy destination already exists: ${resolvedDestination}`,
+    );
+  }
+
+  await ensureDir(dirname(resolvedDestination));
+  await copyDirectory(resolvedSource, resolvedDestination, {
+    filter: (absolutePath) => !shouldOmitFromCompactCopy(resolvedSource, absolutePath),
+  });
 }
 
 async function resolveDenoExecutable(

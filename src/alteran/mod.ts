@@ -5,6 +5,7 @@ import {
   addTool,
   cleanProject,
   cleanProjectScopes,
+  compactCopyProject,
   compactProject,
   generateBatchEnv,
   generateShellEnv,
@@ -34,6 +35,7 @@ export {
   addApp,
   addTool,
   cleanProject,
+  compactCopyProject,
   compactProject,
   generateBatchEnv,
   generateShellEnv,
@@ -60,7 +62,8 @@ Commands:
   alteran tool add|rm|purge|ls|run <name>
   alteran reimport apps|tools <dir>
   alteran clean <scope> [<scope> ...]
-  alteran compact
+  alteran compact [dir]
+  alteran compact-copy <destination> [--source=<project-dir>]
   alteran run <file> [args...]
   alteran task <name> [args...]
   alteran test [filters/flags...]
@@ -179,8 +182,8 @@ function printCompactHelp(): void {
 Reduce the project to a bootstrap-ready transferable state.
 
 Usage:
-  alteran compact [-y|--yes|-f|--force]
-  alteran compact [-n|--no]
+  alteran compact [dir] [-y|--yes|-f|--force]
+  alteran compact [dir] [-n|--no]
 
 Behavior:
   - runs safe cleanup equivalent to clean all
@@ -195,6 +198,21 @@ Behavior:
 After compact, the project should be re-hydratable from scratch through:
   ./setup
   setup.bat`);
+}
+
+function printCompactCopyHelp(): void {
+  console.log(`alteran compact-copy
+
+Create a compact bootstrap-ready copy without mutating the source project.
+
+Usage:
+  alteran compact-copy <destination> [--source=<project-dir>]
+
+Behavior:
+  - copies the source project into a new destination
+  - omits the same generated runtime, activation, and build artifacts that compact removes
+  - leaves the source project unchanged
+  - defaults the source project to the current active Alteran project when --source is omitted`);
 }
 
 function printCompactWarning(projectDir: string): void {
@@ -226,6 +244,85 @@ function isYesFlag(value: string): boolean {
 
 function isNoFlag(value: string): boolean {
   return value === "-n" || value === "--no";
+}
+
+function parseCompactArgs(
+  rest: string[],
+  options: { forcedProjectDir?: string } = {},
+): {
+  projectDir: string;
+  hasYes: boolean;
+  hasNo: boolean;
+} {
+  let projectDir = options.forcedProjectDir ?? null;
+  let hasYes = false;
+  let hasNo = false;
+
+  for (const arg of rest) {
+    if (isYesFlag(arg)) {
+      hasYes = true;
+      continue;
+    }
+    if (isNoFlag(arg)) {
+      hasNo = true;
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      throw new Error(`Unsupported compact flag: ${arg}`);
+    }
+    if (options.forcedProjectDir) {
+      throw new Error("external compact does not accept a second target dir");
+    }
+    if (projectDir !== null) {
+      throw new Error(`alteran compact does not accept multiple target dirs: ${arg}`);
+    }
+    projectDir = resolve(Deno.cwd(), arg);
+  }
+
+  return {
+    projectDir: projectDir ?? "",
+    hasYes,
+    hasNo,
+  };
+}
+
+function parseCompactCopyArgs(
+  rest: string[],
+  options: { forcedProjectDir?: string } = {},
+): {
+  sourceProjectDir: string;
+  destinationDir: string;
+} {
+  let sourceProjectDir = options.forcedProjectDir ?? null;
+  let destinationDir: string | null = null;
+
+  for (const arg of rest) {
+    if (arg.startsWith("--source=")) {
+      if (options.forcedProjectDir) {
+        throw new Error("external compact-copy does not accept --source");
+      }
+      sourceProjectDir = resolve(Deno.cwd(), arg.slice("--source=".length));
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      throw new Error(`Unsupported compact-copy flag: ${arg}`);
+    }
+    if (destinationDir !== null) {
+      throw new Error(
+        `alteran compact-copy does not accept multiple destinations: ${arg}`,
+      );
+    }
+    destinationDir = resolve(Deno.cwd(), arg);
+  }
+
+  if (destinationDir === null) {
+    throw new Error("alteran compact-copy requires a destination directory");
+  }
+
+  return {
+    sourceProjectDir: sourceProjectDir ?? "",
+    destinationDir,
+  };
 }
 
 async function confirmCompact(projectDir: string): Promise<"yes" | "no"> {
@@ -762,19 +859,10 @@ async function runCliInternal(
           printCompactHelp();
           return 0;
         }
-        const projectDir = await resolveProjectDir();
-        const hasYes = rest.some(isYesFlag);
-        const hasNo = rest.some(isNoFlag);
-        const unsupportedArgs = rest.filter((arg) =>
-          !isYesFlag(arg) && !isNoFlag(arg)
-        );
-        if (unsupportedArgs.length > 0) {
-          throw new Error(
-            `alteran compact does not accept arguments: ${
-              unsupportedArgs.join(", ")
-            }`,
-          );
-        }
+        const parsed = parseCompactArgs(rest, options);
+        const projectDir = parsed.projectDir || await resolveProjectDir();
+        const hasYes = parsed.hasYes;
+        const hasNo = parsed.hasNo;
         if (hasYes && hasNo) {
           throw new Error(
             "alteran compact cannot accept both yes and no flags",
@@ -794,6 +882,17 @@ async function runCliInternal(
         }
         await compactProject(projectDir);
         console.error("Compacted project");
+        return 0;
+      }
+      case "compact-copy": {
+        if (rest.length === 0 || rest.some((arg) => isHelpToken(arg))) {
+          printCompactCopyHelp();
+          return 0;
+        }
+        const parsed = parseCompactCopyArgs(rest, options);
+        const sourceProjectDir = parsed.sourceProjectDir || await resolveProjectDir();
+        await compactCopyProject(sourceProjectDir, parsed.destinationDir);
+        console.error(`Created compact copy at ${parsed.destinationDir}`);
         return 0;
       }
       case "run": {
