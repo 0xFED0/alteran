@@ -1,6 +1,6 @@
 # Alteran
 
-Alteran is a project-local runtime and scaffold manager for Deno automation projects.
+Alteran is a project-local runtime and scaffold manager for portable Deno projects.
 
 It gives a project its own bootstrap entrypoints, managed Deno runtime, structured `apps/`, `tools/`, `libs/`, and `tests/` layout, and a clear split between authored source and recoverable local runtime state.
 
@@ -9,10 +9,10 @@ It gives a project its own bootstrap entrypoints, managed Deno runtime, structur
 - bootstrap a project from an empty or near-empty directory
 - bootstrap an existing project even on a machine that does not already have Deno installed
 - keep Deno local to the project instead of depending on a global install
-- manage apps and tools as first-class project units
-- keep plain Deno available while adding an Alteran-managed execution mode
 - make the whole project folder portable between machines: copy it, send it, rerun `setup`, and keep working
+- manage apps and tools as first-class project units
 - regenerate runtime state, activation files, and config instead of treating them as hand-maintained shell plumbing
+- keep plain Deno available while adding an Alteran-managed execution mode
 
 One of Alteran's biggest practical advantages is that the project owns its runtime story. You can create a project, copy the folder to another machine or send it over the network, run `setup`, and get back to a working local environment without depending on a preinstalled global Deno toolchain.
 
@@ -123,6 +123,15 @@ source ./some-project/activate
 That is the path to use when you want to bootstrap a project on a machine where `deno run -A jsr:@alteran/alteran setup` is not available because Deno is not yet installed globally.
 
 In this repository, Alteran authored source lives under `src/alteran/`, `src/tools/`, and `src/libs/`. The local `.runtime/` tree is materialized runtime state.
+
+On Unix-like hosts, the bootstrap and local test flows assume a small baseline of system tools:
+
+- `curl`
+- `unzip`
+- `zip`
+- `git`
+
+`setup` itself needs either a working global `deno` or local `curl` + `unzip` so it can materialize a project-local Deno. The full local test suite additionally uses `zip` for deterministic local archive fixtures and `git` for clean tracked-file repository copy scenarios such as the README quick start test.
 
 ## Docs
 
