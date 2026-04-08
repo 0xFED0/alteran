@@ -333,6 +333,8 @@ The preferred lifecycle is:
 3. run `setup` in that temp copy;
 4. run the documented validation flow in that temp copy.
 
+For examples whose root is itself an Alteran project, step 2 should preferably use `alteran compact-copy` rather than a raw filesystem copy.
+
 This keeps tests aligned with the product story that examples are transfer-ready and re-hydratable from their committed bootstrap surfaces.
 
 The repository-maintainer name for step 1 should be `reset`, not `reinit`.

@@ -49,6 +49,7 @@ For repository examples, prefer this discipline:
 
 1. normalize committed examples through `deno run -A ./examples/reset.ts` when needed;
 2. prepare hermetic temp copies for execution;
+   project examples should preferably be copied through `alteran compact-copy`, not through an ad hoc raw directory copy;
 3. avoid using committed `examples/` directories as in-place scratch workspaces during normal validation.
 
 ## CI Expectations

@@ -24,6 +24,26 @@ const README_REPO_COPY_EXCLUDES = new Set([
   "activate",
   "activate.bat",
 ]);
+const BOOTSTRAP_EMPTY_FOLDER_EXCLUDES = new Set([
+  ".gitignore",
+  ".runtime",
+  "activate",
+  "activate.bat",
+  "alteran.json",
+  "apps",
+  "deno.json",
+  "deno.lock",
+  "dist",
+  "libs",
+  "tests",
+  "tools",
+]);
+const STANDALONE_RUNTIME_EXCLUDES = new Set([
+  "standalone-clock/.runtime",
+  "standalone-clock/app",
+  "standalone-clock/app.bat",
+  "standalone-clock/dist",
+]);
 
 function hostPath(): string {
   return `${HOST_DENO_BIN_DIR}${PLATFORM.pathSeparator}${
@@ -164,18 +184,57 @@ export async function copyExampleToTemp(
   exampleRelativePath: string,
 ): Promise<string> {
   const sourceDir = join(EXAMPLES_DIR, exampleRelativePath);
-  const tempDir = await Deno.makeTempDir({
+  const tempParentDir = await Deno.makeTempDir({
     prefix: `alteran-example-${exampleRelativePath.replaceAll("/", "-")}-`,
   });
-  await copyDirectory(sourceDir, tempDir, {
-    filter: (absolutePath) => {
-      const relativePath = absolutePath.slice(sourceDir.length + 1).replaceAll(
-        "\\",
-        "/",
-      );
-      return !relativePath.startsWith(".runtime/");
-    },
-  });
+  const tempDir = join(tempParentDir, "example");
+
+  if (await exists(join(sourceDir, "alteran.json"))) {
+    const copy = await runAlteranCli(ALTERAN_REPO_DIR, [
+      "compact-copy",
+      tempDir,
+      `--source=${sourceDir}`,
+    ]);
+    assertSuccess(copy, `compact-copy example ${exampleRelativePath}`);
+  } else {
+    await copyDirectory(sourceDir, tempDir, {
+      filter: (absolutePath) => {
+        const relativePath = absolutePath === sourceDir
+          ? ""
+          : absolutePath.slice(sourceDir.length + 1).replaceAll("\\", "/");
+        if (!relativePath) {
+          return true;
+        }
+        if (relativePath === ".runtime" || relativePath.startsWith(".runtime/")) {
+          return false;
+        }
+        if (
+          exampleRelativePath === "01-bootstrap-empty-folder" &&
+          (
+            BOOTSTRAP_EMPTY_FOLDER_EXCLUDES.has(relativePath) ||
+            [...BOOTSTRAP_EMPTY_FOLDER_EXCLUDES].some((entry) =>
+              relativePath.startsWith(`${entry}/`)
+            )
+          )
+        ) {
+          return false;
+        }
+        if (
+          exampleRelativePath === "advanced/standalone-app-runtime" &&
+          (
+            STANDALONE_RUNTIME_EXCLUDES.has(relativePath) ||
+            [...STANDALONE_RUNTIME_EXCLUDES].some((entry) =>
+              relativePath.startsWith(`${entry}/`)
+            )
+          )
+        ) {
+          return false;
+        }
+        return true;
+      },
+    });
+  }
+
   await rewriteExampleDotEnvForTemp(tempDir);
   return tempDir;
 }
