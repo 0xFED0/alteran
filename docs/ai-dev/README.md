@@ -17,6 +17,11 @@ Then use:
 - `./skills/managed-execution-and-context.md`
 - `./skills/command-surface-and-terminology.md`
 
+Repository-maintainer note:
+
+- repository examples are not disposable scratch workspaces;
+- if examples need to return to their committed baseline, use `deno run -A ./examples/reset.ts`.
+
 ## Scope
 
 This directory is for the Alteran repository itself.

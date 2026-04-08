@@ -5,6 +5,7 @@
 - changing `setup`, `setup.bat`, `activate`, `activate.bat`, or app launcher surfaces
 - touching bootstrap templates or generated script behavior
 - fixing drift between generator logic and committed bootstrap files
+- changing the committed examples reset flow or the baseline of tracked example bootstrap files
 
 ## Read First
 
@@ -23,11 +24,13 @@
 3. Keep `setup` responsible for bootstrap, repair, materialization, and source selection.
 4. Keep generated `activate` narrow, absolute-path-based, and sourced-only on Unix.
 5. Regenerate or resync any committed bootstrap outputs affected by the generator change.
-6. Recheck docs, examples, and tests that describe the touched surface.
+6. If repository examples depend on the touched bootstrap surface, update or rerun `examples/reset.ts`.
+7. Recheck docs, examples, and tests that describe the touched surface.
 
 ## Done Checklist
 
 - [ ] `setup` and generated `activate` responsibilities remain separate.
 - [ ] No fix relies on smarter activation instead of correct setup logic.
 - [ ] Generator and generated outputs are back in sync.
+- [ ] Repository examples can still be restored to baseline through `examples/reset.ts`.
 - [ ] Current docs and tests still describe the live bootstrap contract.

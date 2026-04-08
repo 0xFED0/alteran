@@ -45,6 +45,12 @@ Expected developer tasks include:
 
 When testing high-leverage product flows, prefer exercising them through Alteran entrypoints rather than only through plain `deno test`. This helps catch project-context, logging, and managed-execution regressions that plain Deno runs may miss.
 
+For repository examples, prefer this discipline:
+
+1. normalize committed examples through `deno run -A ./examples/reset.ts` when needed;
+2. prepare hermetic temp copies for execution;
+3. avoid using committed `examples/` directories as in-place scratch workspaces during normal validation.
+
 ## CI Expectations
 
 Repository automation should cover the main supported test surfaces rather than only a single smoke suite.

@@ -29,6 +29,7 @@ These docs are for changing Alteran itself: the repository, runtime, bootstrappi
 - the repository mirrors a managed project where helpful, but is not identical
 - the public bootstrap surface must stay separate from generated activation
 - documentation should stay aligned with specs and ADRs, not only accidental current behavior
+- committed repository examples are source-first teaching surfaces; if they drift locally, restore them through `examples/reset.ts`
 
 If you are brand new to the codebase, the most useful starting sequence is:
 

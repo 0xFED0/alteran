@@ -64,6 +64,8 @@ A single document must not try to serve all of these purposes at once.
 
 The documentation must provide runnable, minimal, concrete examples rather than only abstract explanation.
 
+Documentation that references repository examples must also describe the repository-maintainer reset path for restoring committed examples to their intended source-first baseline when that workflow matters for contributors.
+
 ### 2.5. Future maintainability
 
 The documentation structure must scale as Alteran grows, without turning into a flat and inconsistent pile of markdown files.
@@ -115,6 +117,11 @@ User docs explain how to use Alteran in real projects.
 #### Dev docs
 
 Dev docs explain how Alteran itself is structured and how to change it without violating project rules.
+
+For repository-owned surfaces such as `examples/`, dev docs should explain both:
+
+- the intended committed baseline;
+- the maintainer workflow for resetting that baseline without treating the repository tree as disposable scratch space.
 
 #### Reference docs
 

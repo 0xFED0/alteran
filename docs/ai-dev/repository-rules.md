@@ -34,6 +34,7 @@ It is not a higher authority than `docs/spec/` or `docs/adr/`. Its job is to mak
 - `activate` / `activate.bat` are generated local artifacts.
 - `dist/` is publication output.
 - examples, tests, and docs fixtures must remain honest about what they are.
+- committed `examples/` trees are authored teaching surfaces, not default scratch workspaces.
 
 ## Sync Rules
 
@@ -41,6 +42,7 @@ It is not a higher authority than `docs/spec/` or `docs/adr/`. Its job is to mak
 - If the change is architectural or reverses prior rationale, update `docs/adr/` in the same change.
 - Update `docs/user/`, `docs/dev/`, and `docs/reference/` before or alongside AI overlays.
 - Update `AGENTS.md`, `.github/copilot-instructions.md`, repository `llms.txt`, and `docs/ai-dev/` last.
+- If a change alters the intended committed example baseline or maintainer reset flow, update `examples/README.md` and any reset-related docs in the same change.
 
 ## Stop And Recheck If
 
@@ -49,3 +51,4 @@ It is not a higher authority than `docs/spec/` or `docs/adr/`. Its job is to mak
 - a bootstrap fix starts making `activate` smarter instead of fixing `setup`
 - a change relies on foreign inherited Alteran env across projects
 - docs, examples, tests, and code no longer describe the same command surface
+- a proposed example fix depends on mutating committed `examples/` in place instead of using the reset path and hermetic temp copies

@@ -8,6 +8,18 @@ The examples are intentionally kept as source-first trees:
 - public `setup` / `setup.bat` are tracked bootstrap entrypoints;
 - generated `activate` / `activate.bat` and `.runtime/` are materialized locally.
 
+If maintainer work leaves generated example artifacts behind, use:
+
+```sh
+deno run -A ./examples/reset.ts
+```
+
+or select explicit examples:
+
+```sh
+deno run -A ./examples/reset.ts 01-bootstrap-empty-folder advanced/logtape-categories
+```
+
 Managed project examples in this repository also include a small committed `.env` file that points `ALTERAN_SRC` at the repository `src/` tree. That keeps `./setup` local and inspectable when you run an example from this checkout.
 
 ## Core examples

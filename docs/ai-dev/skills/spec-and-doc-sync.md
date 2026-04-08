@@ -20,6 +20,7 @@
 2. Update `docs/spec/` first when the contract changed.
 3. Update `docs/adr/` in the same change when the decision is architectural or reverses earlier rationale.
 4. Update human-facing docs under `docs/user/`, `docs/dev/`, and `docs/reference/`.
+4.1. If repository examples or their maintainer reset flow changed, update `examples/README.md` too.
 5. Update AI overlays such as `AGENTS.md`, repository `llms.txt`, and `docs/ai-dev/` last.
 6. Validate the changed flow with the smallest honest command or docs check.
 
@@ -29,3 +30,4 @@
 - [ ] Terminology uses current live surfaces such as `setup`, not `init`.
 - [ ] Links point to existing docs and ADRs.
 - [ ] Support boundaries remain honest.
+- [ ] Example-maintainer flows such as `examples/reset.ts` are documented consistently where relevant.

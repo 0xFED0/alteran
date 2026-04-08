@@ -11,6 +11,7 @@ import {
   updateAlteranConfig,
 } from "../src/alteran/config.ts";
 import { ensureDir, exists } from "../src/alteran/fs.ts";
+import { copyDirectory } from "../src/alteran/fs.ts";
 import { updateJsoncFile } from "../src/alteran/jsonc.ts";
 import {
   buildAlteranLogtapeConfig,
@@ -43,6 +44,7 @@ import {
   resolveLatestPreparedJsrVersion,
 } from "../tools/publish_jsr/mod.ts";
 import { prepareReleaseZipStagingAt } from "../tools/prepare_zip/mod.ts";
+import { resetExamples } from "../examples/reset.ts";
 
 function expect(condition: unknown, message: string): void {
   if (!condition) {
@@ -632,6 +634,141 @@ Deno.test("committed example setup scripts stay synchronized with the repository
       expectedSetupBat,
     );
   }
+});
+
+Deno.test("examples reset removes known generated artifacts and restores managed bootstrap scripts", async () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const tempRepo = await Deno.makeTempDir({ prefix: "alteran-examples-reset-" });
+
+  await ensureDir(join(tempRepo, "examples"));
+  await Deno.copyFile(join(repoRoot, "setup"), join(tempRepo, "setup"));
+  await Deno.copyFile(join(repoRoot, "setup.bat"), join(tempRepo, "setup.bat"));
+
+  for (
+    const relativePath of [
+      "examples/01-bootstrap-empty-folder",
+      "examples/07-compact-transfer-ready",
+      "examples/advanced/standalone-app-runtime",
+    ]
+  ) {
+    await copyDirectory(
+      join(repoRoot, relativePath),
+      join(tempRepo, relativePath),
+    );
+  }
+
+  await Deno.writeTextFile(
+    join(tempRepo, "examples", "07-compact-transfer-ready", "setup"),
+    "outdated setup\n",
+  );
+  await Deno.writeTextFile(
+    join(tempRepo, "examples", "01-bootstrap-empty-folder", "alteran.json"),
+    "{}\n",
+  );
+  await Deno.writeTextFile(
+    join(tempRepo, "examples", "01-bootstrap-empty-folder", "deno.json"),
+    "{}\n",
+  );
+  await ensureDir(join(tempRepo, "examples", "01-bootstrap-empty-folder", "libs"));
+  await Deno.writeTextFile(
+    join(tempRepo, "examples", "01-bootstrap-empty-folder", "libs", ".keep"),
+    "\n",
+  );
+  await ensureDir(
+    join(tempRepo, "examples", "07-compact-transfer-ready", ".runtime"),
+  );
+  await Deno.writeTextFile(
+    join(
+      tempRepo,
+      "examples",
+      "07-compact-transfer-ready",
+      "apps",
+      "portable-cli",
+      "app",
+    ),
+    "generated\n",
+  );
+  await Deno.writeTextFile(
+    join(
+      tempRepo,
+      "examples",
+      "advanced",
+      "standalone-app-runtime",
+      "standalone-clock",
+      "app",
+    ),
+    "generated\n",
+  );
+  await ensureDir(
+    join(
+      tempRepo,
+      "examples",
+      "advanced",
+      "standalone-app-runtime",
+      "standalone-clock",
+      ".runtime",
+    ),
+  );
+
+  await resetExamples(tempRepo);
+
+  expect(
+    !(await exists(join(
+      tempRepo,
+      "examples",
+      "01-bootstrap-empty-folder",
+      "alteran.json",
+    ))),
+    "Expected reset to remove materialized bootstrap files from 01-bootstrap-empty-folder",
+  );
+  expect(
+    !(await exists(join(
+      tempRepo,
+      "examples",
+      "07-compact-transfer-ready",
+      ".runtime",
+    ))),
+    "Expected reset to remove project-local runtime material from managed examples",
+  );
+  expect(
+    !(await exists(join(
+      tempRepo,
+      "examples",
+      "07-compact-transfer-ready",
+      "apps",
+      "portable-cli",
+      "app",
+    ))),
+    "Expected reset to remove generated nested app launchers from managed examples",
+  );
+  expect(
+    !(await exists(join(
+      tempRepo,
+      "examples",
+      "advanced",
+      "standalone-app-runtime",
+      "standalone-clock",
+      "app",
+    ))),
+    "Expected reset to remove generated standalone app launchers",
+  );
+  expect(
+    await exists(join(
+      tempRepo,
+      "examples",
+      "advanced",
+      "standalone-app-runtime",
+      "standalone-clock",
+      "libs",
+      ".keep",
+    )),
+    "Expected reset to preserve tracked standalone app baseline files",
+  );
+
+  await assertFileEquals(
+    join(tempRepo, "examples", "07-compact-transfer-ready", "setup"),
+    await Deno.readTextFile(join(repoRoot, "setup")),
+  );
 });
 
 Deno.test("env templates expose runtime variables and Alteran shortcuts", () => {

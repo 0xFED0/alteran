@@ -80,6 +80,8 @@ Examples:
 
 If asymmetry is intentional, it should remain explicit.
 
+Committed repository examples are part of this honesty rule. Contributors must not normalize repository examples by hand-waving away generated drift or by treating committed example directories as temporary workspaces.
+
 ### 3.5 Do not create split-brain trees
 
 Contributors must avoid creating parallel locations that both claim to be the source of truth for the same concern.
@@ -90,6 +92,12 @@ This includes:
 - parallel bootstrap entry models
 - multiple authoritative config homes for the same concept
 - shadow docs that redefine existing behavior
+
+### 3.6 Normalize examples through the committed reset path
+
+If repository examples need to be returned to their intended source-first baseline, contributors should use the committed `examples/reset.ts` helper or equivalent shared logic derived from it.
+
+They should not rely on ad hoc shell deletion loops as the preferred shared workflow once a committed reset helper exists.
 
 ---
 
@@ -136,6 +144,8 @@ Contributors should:
 - prefer simple and robust shell snippets over dynamic path tricks
 
 Avoid shell-specific magic if the value can be determined once at generation time.
+
+This applies to maintainer helpers too. If a repository helper can be expressed directly as TypeScript without a misleading shell wrapper, prefer the direct TypeScript entrypoint.
 
 ### 4.6 Use run sources only for execution bootstrap
 
@@ -559,4 +569,3 @@ If the best-practices directory had to be recreated from scratch, it should be p
 - current ADRs
 
 No unique normative rule should live only inside `docs/dev/best-practices/`.
-
