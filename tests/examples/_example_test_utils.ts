@@ -25,7 +25,6 @@ const README_REPO_COPY_EXCLUDES = new Set([
   "activate.bat",
 ]);
 const BOOTSTRAP_EMPTY_FOLDER_EXCLUDES = new Set([
-  ".gitignore",
   ".runtime",
   "activate",
   "activate.bat",

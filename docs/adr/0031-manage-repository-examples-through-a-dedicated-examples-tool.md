@@ -275,7 +275,7 @@ The intended steady state is:
 - selecting an example path can therefore select its external test deterministically;
 - the repository does not need to guess associations from naming conventions or grep results.
 
-If a current repository-level test file protects more than one example, it should be split during implementation so the association stays one-example-per-file.
+If a current repository-level test file protects more than one example, that should be treated as transitional structure rather than the ideal steady state. The examples tool may temporarily map more than one example selector to the same repository-level test file, but that mapping must be explicit in the catalog rather than inferred.
 
 This means the current multi-example advanced test file is treated as transitional structure, not as the desired long-term contract.
 

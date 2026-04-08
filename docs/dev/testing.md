@@ -52,6 +52,13 @@ For repository examples, prefer this discipline:
    project examples should preferably be copied through `alteran compact-copy`, not through an ad hoc raw directory copy;
 3. avoid using committed `examples/` directories as in-place scratch workspaces during normal validation.
 
+For day-to-day repository maintenance, prefer the orchestrated surface:
+
+- `alteran tool run examples test`
+- `alteran tool run examples reset ...`
+
+instead of ad hoc loops over `examples/`.
+
 ## CI Expectations
 
 Repository automation should cover the main supported test surfaces rather than only a single smoke suite.

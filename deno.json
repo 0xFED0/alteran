@@ -1,6 +1,7 @@
 {
   "workspace": [],
   "tasks": {
+    "tool:examples": "deno run -A ./alteran.ts tool run examples",
     "tool:prepare_jsr": "deno run -A ./alteran.ts tool run prepare_jsr",
     "tool:prepare_zip": "deno run -A ./alteran.ts tool run prepare_zip",
     "tool:publish_jsr": "deno run -A ./alteran.ts tool run publish_jsr",

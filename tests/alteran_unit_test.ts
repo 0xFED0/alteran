@@ -45,6 +45,12 @@ import {
 } from "../tools/publish_jsr/mod.ts";
 import { prepareReleaseZipStagingAt } from "../tools/prepare_zip/mod.ts";
 import { resetExamples } from "../examples/reset.ts";
+import {
+  createExampleTempCopy,
+  EXAMPLE_CATALOG,
+  resolveExampleSelections,
+  renderHelp as renderExamplesToolHelp,
+} from "../tools/examples/mod.ts";
 
 function expect(condition: unknown, message: string): void {
   if (!condition) {
@@ -634,6 +640,121 @@ Deno.test("committed example setup scripts stay synchronized with the repository
       expectedSetupBat,
     );
   }
+});
+
+Deno.test("examples tool catalog resolves selectors in deterministic catalog order", () => {
+  const resolved = resolveExampleSelections([
+    "advanced/logtape-categories",
+    "02-multi-app-workspace",
+    "advanced/standalone-app-runtime",
+  ]);
+
+  expect(
+    JSON.stringify(resolved.map((entry) => entry.selector)) === JSON.stringify([
+      "advanced/logtape-categories",
+      "02-multi-app-workspace",
+      "advanced/standalone-app-runtime",
+    ]),
+    "Expected explicit example selectors to resolve in caller order without duplication",
+  );
+
+  const help = renderExamplesToolHelp();
+  expect(
+    help.includes("alteran tool run examples"),
+    "Expected examples tool help to describe the maintainer entrypoint",
+  );
+});
+
+Deno.test("examples tool temp copy for managed examples uses compact-copy style omission", async () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const tempRepo = await Deno.makeTempDir({
+    prefix: "alteran-examples-tool-managed-copy-",
+  });
+  const entry = EXAMPLE_CATALOG.find((item) => item.selector === "07-compact-transfer-ready");
+
+  expect(entry, "Expected managed example catalog entry");
+
+  await ensureDir(join(tempRepo, "examples"));
+  await copyDirectory(
+    join(repoRoot, "examples", "07-compact-transfer-ready"),
+    join(tempRepo, "examples", "07-compact-transfer-ready"),
+  );
+
+  const sourceDir = join(tempRepo, "examples", "07-compact-transfer-ready");
+  await ensureDir(join(sourceDir, ".runtime"));
+  await Deno.writeTextFile(join(sourceDir, "activate"), "generated\n");
+  await Deno.writeTextFile(join(sourceDir, "activate.bat"), "generated\r\n");
+  await ensureDir(join(sourceDir, "dist"));
+  await ensureDir(join(sourceDir, "apps", "portable-cli", ".runtime"));
+
+  const tempCopy = await createExampleTempCopy(entry!, tempRepo);
+
+  expect(
+    !(await exists(join(tempCopy, ".runtime"))),
+    "Expected managed example temp copy not to include .runtime",
+  );
+  expect(
+    !(await exists(join(tempCopy, "activate"))),
+    "Expected managed example temp copy not to include activate",
+  );
+  expect(
+    !(await exists(join(tempCopy, "dist"))),
+    "Expected managed example temp copy not to include dist",
+  );
+  expect(
+    !(await exists(join(tempCopy, "apps", "portable-cli", ".runtime"))),
+    "Expected managed example temp copy not to include nested app runtime",
+  );
+  expect(
+    await exists(join(tempCopy, "setup")),
+    "Expected managed example temp copy to preserve setup",
+  );
+});
+
+Deno.test("examples tool temp copy for bootstrap-empty examples preserves source-first baseline", async () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const tempRepo = await Deno.makeTempDir({
+    prefix: "alteran-examples-tool-bootstrap-copy-",
+  });
+  const entry = EXAMPLE_CATALOG.find((item) => item.selector === "01-bootstrap-empty-folder");
+
+  expect(entry, "Expected bootstrap-empty example catalog entry");
+
+  await ensureDir(join(tempRepo, "examples"));
+  await copyDirectory(
+    join(repoRoot, "examples", "01-bootstrap-empty-folder"),
+    join(tempRepo, "examples", "01-bootstrap-empty-folder"),
+  );
+
+  const sourceDir = join(tempRepo, "examples", "01-bootstrap-empty-folder");
+  await ensureDir(join(sourceDir, ".runtime"));
+  await Deno.writeTextFile(join(sourceDir, "activate"), "generated\n");
+  await Deno.writeTextFile(join(sourceDir, "alteran.json"), "{}\n");
+  await ensureDir(join(sourceDir, "libs"));
+  await Deno.writeTextFile(join(sourceDir, "libs", ".keep"), "\n");
+
+  const tempCopy = await createExampleTempCopy(entry!, tempRepo);
+
+  expect(
+    !(await exists(join(tempCopy, ".runtime"))),
+    "Expected bootstrap-empty temp copy not to include .runtime",
+  );
+  expect(
+    !(await exists(join(tempCopy, "alteran.json"))),
+    "Expected bootstrap-empty temp copy not to include materialized alteran.json",
+  );
+  expect(
+    !(await exists(join(tempCopy, "libs"))),
+    "Expected bootstrap-empty temp copy not to include materialized source directories",
+  );
+  expect(
+    await exists(join(tempCopy, ".gitignore")),
+    "Expected bootstrap-empty temp copy to preserve its protective .gitignore",
+  );
+  expect(
+    await exists(join(tempCopy, ".env")),
+    "Expected bootstrap-empty temp copy to preserve its authored .env",
+  );
 });
 
 Deno.test("committed examples include protective nested gitignore files for generated artifacts", async () => {

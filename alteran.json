@@ -32,6 +32,12 @@
       "path": "./tools/publish_jsr.ts",
       "discovered": true,
       "shell_aliases": ["tool-publish_jsr"]
+    },
+    "examples": {
+      "name": "examples",
+      "path": "./tools/examples.ts",
+      "discovered": true,
+      "shell_aliases": ["tool-examples"]
     }
   },
   "auto_reimport": {

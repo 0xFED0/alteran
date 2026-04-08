@@ -35,6 +35,8 @@ alteran test -A tests/alteran_e2e_test.ts
 alteran tool run prepare_jsr
 alteran tool run prepare_zip
 alteran tool run publish_jsr
+alteran tool run examples --help
+alteran tool run examples test
 deno run -A ./examples/reset.ts
 ```
 
@@ -55,6 +57,7 @@ Do not treat `.runtime/` as the only authoritative source.
 - activation is generated locally; the checked-in public bootstrap surfaces are `setup` and `setup.bat`
 - if a local run crosses into another Alteran project, do it explicitly rather than by leaking repository context into it
 - if examples accumulate generated drift, restore them through `deno run -A ./examples/reset.ts` instead of treating `examples/` as disposable scratch space
+- for routine example-gallery maintenance, prefer `alteran tool run examples ...` over ad hoc shell loops
 
 ## Navigation
 - Home: [Docs Index](../README.md)

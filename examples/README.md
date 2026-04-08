@@ -22,6 +22,16 @@ deno run -A ./examples/reset.ts 01-bootstrap-empty-folder advanced/logtape-categ
 
 Managed project examples in this repository also include a small committed `.env` file that points `ALTERAN_SRC` at the repository `src/` tree. That keeps `./setup` local and inspectable when you run an example from this checkout.
 
+For repository-maintainer orchestration, prefer:
+
+```sh
+alteran tool run examples --help
+alteran tool run examples test
+alteran tool run examples reset 01-bootstrap-empty-folder
+```
+
+That tool provides the shared path-based workflow for resetting, setting up, compacting, and validating the committed example gallery.
+
 ## Core examples
 
 1. `01-bootstrap-empty-folder`

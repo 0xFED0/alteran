@@ -804,6 +804,20 @@ Deno.test("ALTERAN_EXTERNAL_CTX can target a foreign project without a positiona
   }
 });
 
+Deno.test("tool run examples exposes maintainer help through the registered repository tool", async () => {
+  const previousCwd = Deno.cwd();
+
+  try {
+    Deno.chdir(ALTERAN_REPO_DIR);
+    const exitCode = await runCli(["tool", "run", "examples", "--help"]);
+    if (exitCode !== 0) {
+      throw new Error(`Expected tool run examples --help to succeed, got ${exitCode}`);
+    }
+  } finally {
+    Deno.chdir(previousCwd);
+  }
+});
+
 Deno.test("external rejects deno.json as a context anchor", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-external-deno-json-" });
 
