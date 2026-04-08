@@ -17,6 +17,7 @@ Before bootstrap:
 ```text
 01-bootstrap-empty-folder/
   README.md
+  .gitignore
   .env
   setup
   setup.bat

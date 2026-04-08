@@ -25,7 +25,6 @@ const RESET_TARGETS: ResetTarget[] = [
     root: "01-bootstrap-empty-folder",
     syncRepositoryBootstrap: true,
     remove: [
-      ".gitignore",
       ".runtime",
       "activate",
       "activate.bat",

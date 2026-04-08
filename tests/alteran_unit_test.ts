@@ -636,6 +636,29 @@ Deno.test("committed example setup scripts stay synchronized with the repository
   }
 });
 
+Deno.test("committed examples include protective nested gitignore files for generated artifacts", async () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+  for (
+    const relativePath of [
+      "examples/01-bootstrap-empty-folder/.gitignore",
+      "examples/02-multi-app-workspace/.gitignore",
+      "examples/03-tools-workspace/.gitignore",
+      "examples/04-managed-vs-plain-deno/.gitignore",
+      "examples/05-logging-run-tree/.gitignore",
+      "examples/06-refresh-reimport/.gitignore",
+      "examples/07-compact-transfer-ready/.gitignore",
+      "examples/advanced/logtape-categories/.gitignore",
+      "examples/advanced/standalone-app-runtime/standalone-clock/.gitignore",
+    ]
+  ) {
+    expect(
+      await exists(join(repoRoot, relativePath)),
+      `Expected ${relativePath} to exist`,
+    );
+  }
+});
+
 Deno.test("examples reset removes known generated artifacts and restores managed bootstrap scripts", async () => {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
   const tempRepo = await Deno.makeTempDir({ prefix: "alteran-examples-reset-" });
@@ -722,6 +745,15 @@ Deno.test("examples reset removes known generated artifacts and restores managed
     "Expected reset to remove materialized bootstrap files from 01-bootstrap-empty-folder",
   );
   expect(
+    await exists(join(
+      tempRepo,
+      "examples",
+      "01-bootstrap-empty-folder",
+      ".gitignore",
+    )),
+    "Expected reset to preserve the protective .gitignore in 01-bootstrap-empty-folder",
+  );
+  expect(
     !(await exists(join(
       tempRepo,
       "examples",
@@ -751,6 +783,17 @@ Deno.test("examples reset removes known generated artifacts and restores managed
       "app",
     ))),
     "Expected reset to remove generated standalone app launchers",
+  );
+  expect(
+    await exists(join(
+      tempRepo,
+      "examples",
+      "advanced",
+      "standalone-app-runtime",
+      "standalone-clock",
+      ".gitignore",
+    )),
+    "Expected reset to preserve the standalone app protective .gitignore",
   );
   expect(
     await exists(join(

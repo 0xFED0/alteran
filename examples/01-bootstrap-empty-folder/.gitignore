@@ -2,7 +2,14 @@
 .DS_Store
 Thumbs.db
 .runtime/
-app
-app.bat
+activate
+activate.bat
+alteran.json
+deno.json
+deno.lock
 dist/
+apps/
+tools/
+libs/
+tests/
 # --- alteran example generated: end ---
