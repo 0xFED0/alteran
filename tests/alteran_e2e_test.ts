@@ -131,15 +131,15 @@ async function seedManagedDeno(projectDir: string): Promise<void> {
   }
 }
 
-async function runZsh(
+async function runShell(
   script: string,
   options: {
     cwd?: string;
     env?: Record<string, string>;
   } = {},
 ) {
-  return await new Deno.Command("zsh", {
-    args: ["-lc", script],
+  return await new Deno.Command("sh", {
+    args: ["-c", script],
     cwd: options.cwd,
     env: {
       ...Deno.env.toObject(),
@@ -188,12 +188,28 @@ function hermeticAlteranEnv(
   };
 }
 
+async function commandExists(command: string): Promise<boolean> {
+  try {
+    const output = await new Deno.Command(command, {
+      args: ["--version"],
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    return output.success;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 async function assertSuccessfulShellActivation(
   activationCommand: string,
   targetDir: string,
   env: Record<string, string>,
 ): Promise<void> {
-  const output = await runZsh(
+  const output = await runShell(
     `${activationCommand} >/dev/null && test "$ALTERAN_HOME" = ${
       JSON.stringify(join(targetDir, ".runtime"))
     } && test -f "$ALTERAN_HOME/alteran/mod.ts" && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null`,
@@ -225,8 +241,60 @@ async function isNodeAvailable(): Promise<boolean> {
   }
 }
 
+async function resolveNodeBridgeArgsPrefix(): Promise<string[] | null> {
+  if (!(await isNodeAvailable())) {
+    return null;
+  }
+
+  try {
+    const plainOutput = await new Deno.Command("node", {
+      args: [ALTERAN_ENTRY_PATH, "--help"],
+      cwd: ALTERAN_REPO_DIR,
+      env: {
+        ...Deno.env.toObject(),
+        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
+      },
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    if (plainOutput.success) {
+      return [];
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+    return null;
+  }
+
+  try {
+    const stripTypesOutput = await new Deno.Command("node", {
+      args: ["--experimental-strip-types", ALTERAN_ENTRY_PATH, "--help"],
+      cwd: ALTERAN_REPO_DIR,
+      env: {
+        ...Deno.env.toObject(),
+        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
+      },
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    if (stripTypesOutput.success) {
+      return ["--experimental-strip-types"];
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+    return null;
+  }
+
+  return null;
+}
+
 const IS_WINDOWS = Deno.build.os === "windows";
-const NODE_AVAILABLE = !IS_WINDOWS && await isNodeAvailable();
+const NODE_BRIDGE_ARGS_PREFIX = IS_WINDOWS ? null : await resolveNodeBridgeArgsPrefix();
+const NODE_AVAILABLE = NODE_BRIDGE_ARGS_PREFIX !== null;
+const ZSH_AVAILABLE = !IS_WINDOWS && await commandExists("zsh");
 
 Deno.test("setupProject creates core Alteran layout", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-setup-" });
@@ -435,7 +503,7 @@ Deno.test({
     await setupProject(projectDir);
     await addApp(projectDir, "hello");
 
-    const output = await runZsh(
+    const output = await runShell(
       `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} one two`,
       {
         env: {
@@ -479,7 +547,7 @@ Deno.test({
     await removeIfExists(join(projectDir, ".runtime"));
 
     try {
-      const output = await runZsh(
+      const output = await runShell(
         `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} alpha beta`,
         {
           env: {
@@ -541,7 +609,7 @@ Deno.test({
       ) + "\n",
     );
 
-    const output = await runZsh(
+    const output = await runShell(
       `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))}`,
       {
         env: {
@@ -838,7 +906,7 @@ Deno.test({
     await removeIfExists(join(appDir, ".runtime"));
 
     try {
-      const output = await runZsh(
+      const output = await runShell(
         `cd /tmp && ${JSON.stringify(join(appDir, "app"))} red blue`,
         {
           env: {
@@ -880,7 +948,7 @@ Deno.test({
 
 Deno.test({
   name: "sourced activate does not leak nounset into the caller shell",
-  ignore: IS_WINDOWS,
+  ignore: IS_WINDOWS || !ZSH_AVAILABLE,
   async fn() {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-activate-" });
   await setupProject(projectDir);
@@ -915,7 +983,7 @@ Deno.test({
 
 Deno.test({
   name: "repeated sourced activate does not reinitialize an initialized project",
-  ignore: IS_WINDOWS,
+  ignore: IS_WINDOWS || !ZSH_AVAILABLE,
   async fn() {
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-activate-quiet-",
@@ -1866,9 +1934,9 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
     }
 
     if (Deno.build.os !== "windows") {
-      const command = new Deno.Command("zsh", {
+      const command = new Deno.Command("sh", {
         args: [
-          "-lc",
+          "-c",
           `cd ${
             JSON.stringify(projectDir)
           } && ./setup >/dev/null 2>/dev/null && . ./activate >/dev/null 2>/dev/null && test -f .runtime/alteran/mod.ts && test ! -d .runtime/env`,
@@ -2013,7 +2081,7 @@ Deno.test({
   ignore: !NODE_AVAILABLE,
   async fn() {
   const command = new Deno.Command("node", {
-    args: [ALTERAN_ENTRY_PATH, "--help"],
+    args: [...NODE_BRIDGE_ARGS_PREFIX!, ALTERAN_ENTRY_PATH, "--help"],
     cwd: ALTERAN_REPO_DIR,
     env: {
       ...Deno.env.toObject(),
@@ -2045,7 +2113,7 @@ Deno.test({
   async fn() {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-setup-" });
   const command = new Deno.Command("node", {
-    args: [ALTERAN_ENTRY_PATH, "setup", projectDir],
+    args: [...NODE_BRIDGE_ARGS_PREFIX!, ALTERAN_ENTRY_PATH, "setup", projectDir],
     cwd: ALTERAN_REPO_DIR,
     env: {
       ...Deno.env.toObject(),
@@ -2197,7 +2265,7 @@ Deno.test({
       );
       await Deno.chmod(join(projectDir, "setup"), 0o755);
 
-      const output = await runZsh(
+      const output = await runShell(
         `cd ${JSON.stringify(projectDir)} && ./setup`,
         {
           env: hermeticAlteranEnv({
@@ -2299,7 +2367,7 @@ Deno.test({
   });
 
   try {
-    const initOutput = await runZsh(
+    const initOutput = await runShell(
       `cd ${
         JSON.stringify(repoCopy)
       } && ./setup >/dev/null && . ./activate >/dev/null && alteran setup ${
@@ -2405,7 +2473,7 @@ Deno.test({
     throw new Error("Expected setup to initialize an empty target");
   }
 
-  const shellenvOutput = await runZsh(
+  const shellenvOutput = await runShell(
     `eval "$(${JSON.stringify(Deno.execPath())} run -A ${
       JSON.stringify(ALTERAN_ENTRY_PATH)
     } shellenv ${JSON.stringify(projectDir)})" && test "$ALTERAN_HOME" = ${

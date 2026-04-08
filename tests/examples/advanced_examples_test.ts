@@ -9,7 +9,7 @@ import {
   latestLogDir,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
-  runZsh,
+  runShell,
   startLocalDenoFixture,
   withLocalDenoSources,
 } from "./_example_test_utils.ts";
@@ -59,7 +59,7 @@ Deno.test({
     const fixture = await startLocalDenoFixture();
 
     try {
-      const firstLaunch = await runZsh(
+      const firstLaunch = await runShell(
         `cd ${JSON.stringify(standaloneDir)} && ./app red blue`,
         { DENO_SOURCES: fixture.baseUrl },
       );
@@ -79,7 +79,7 @@ Deno.test({
         "Expected launcher-triggered setup to materialize app-local runtime",
       );
 
-      const secondLaunch = await runZsh(
+      const secondLaunch = await runShell(
         `cd ${JSON.stringify(standaloneDir)} && ./app green`,
         { DENO_SOURCES: fixture.baseUrl },
       );

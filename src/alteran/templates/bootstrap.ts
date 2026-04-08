@@ -45,7 +45,7 @@ load_dotenv_file() {
 }
 
 is_var_defined() {
-  eval "[ \"\\\${$1+x}\" = \"x\" ]"
+  eval "case \\\${$1+__alteran_set__} in __alteran_set__) return 0 ;; *) return 1 ;; esac"
 }
 
 abspath() {

@@ -6,7 +6,7 @@ import {
   assertSuccess,
   prepareRepoCopy,
   REQUIRES_LOCAL_DENO_FIXTURE,
-  runZsh,
+  runShell,
   withLocalDenoSources,
 } from "../examples/_example_test_utils.ts";
 
@@ -22,10 +22,10 @@ Deno.test({
       prefix: "alteran-readme-tool-",
     });
     await withLocalDenoSources(async (env) => {
-      const output = await runZsh(
+      const output = await runShell(
         `cd ${
           JSON.stringify(repoDir)
-        } && ./setup >/dev/null && source ./activate >/dev/null && alteran app add hello >/dev/null && alteran tool add seed >/dev/null && alteran app run hello >${
+        } && ./setup >/dev/null && . ./activate >/dev/null && alteran app add hello >/dev/null && alteran tool add seed >/dev/null && alteran app run hello >${
           JSON.stringify(appLogPath)
         } && alteran tool run seed >${JSON.stringify(toolLogPath)}`,
         env,

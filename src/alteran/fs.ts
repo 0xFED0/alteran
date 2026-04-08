@@ -96,6 +96,13 @@ export async function copyDirectory(
     } else if (entry.isFile) {
       await ensureDir(dirname(targetPath));
       await Deno.copyFile(sourcePath, targetPath);
+      if (Deno.build.os !== "windows") {
+        const sourceInfo = await Deno.lstat(sourcePath);
+        const sourceMode = sourceInfo.mode;
+        if (sourceMode !== null && (sourceMode & 0o111) !== 0) {
+          await Deno.chmod(targetPath, sourceMode & 0o777);
+        }
+      }
     }
   }
 }

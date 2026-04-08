@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   createDefaultAlteranConfig,
@@ -44,6 +45,14 @@ function expect(condition: unknown, message: string): void {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+async function assertFileEquals(path: string, expected: string): Promise<void> {
+  const actual = await Deno.readTextFile(path);
+  expect(
+    actual === expected,
+    `Expected ${path} to stay synchronized with the repository source-of-truth file`,
+  );
 }
 
 function restoreEnv(key: string, value: string | undefined): void {
@@ -554,6 +563,31 @@ Deno.test("publish_jsr can resolve the latest prepared version from dist/jsr", a
     latest === "0.2.0",
     `Expected latest prepared version to prefer stable semver ordering, got ${latest}`,
   );
+});
+
+Deno.test("committed example setup scripts stay synchronized with the repository bootstrap scripts", async () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const expectedSetup = await Deno.readTextFile(join(repoRoot, "setup"));
+  const expectedSetupBat = await Deno.readTextFile(join(repoRoot, "setup.bat"));
+
+  for (
+    const relativeDir of [
+      "examples/01-bootstrap-empty-folder",
+      "examples/02-multi-app-workspace",
+      "examples/03-tools-workspace",
+      "examples/04-managed-vs-plain-deno",
+      "examples/05-logging-run-tree",
+      "examples/06-refresh-reimport",
+      "examples/07-compact-transfer-ready",
+      "examples/advanced/logtape-categories",
+    ]
+  ) {
+    await assertFileEquals(join(repoRoot, relativeDir, "setup"), expectedSetup);
+    await assertFileEquals(
+      join(repoRoot, relativeDir, "setup.bat"),
+      expectedSetupBat,
+    );
+  }
 });
 
 Deno.test("env templates expose runtime variables and Alteran shortcuts", () => {

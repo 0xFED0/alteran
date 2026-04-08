@@ -108,8 +108,8 @@ async function detectLocalFixtureSkipReason(): Promise<string | null> {
     return "Unix-oriented example/docs helpers are not supported on Windows hosts.";
   }
 
-  if (!(await commandExists("zsh"))) {
-    return "Example/docs harness requires the host zsh shell.";
+  if (!(await commandExists("sh"))) {
+    return "Example/docs harness requires the host sh shell.";
   }
 
   if (!(await commandExists("zip"))) {
@@ -207,12 +207,12 @@ export async function runLocalDeno(
   }).output();
 }
 
-export async function runZsh(
+export async function runShell(
   script: string,
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await new Deno.Command("zsh", {
-    args: ["-lc", script],
+  return await new Deno.Command("sh", {
+    args: ["-c", script],
     env: hermeticEnv(env),
     stdout: "piped",
     stderr: "piped",
@@ -223,7 +223,7 @@ export async function runExampleSetup(
   projectDir: string,
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await runZsh(
+  return await runShell(
     `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null`,
     env,
   );
@@ -234,10 +234,10 @@ export async function runExampleActivated(
   command: string,
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await runZsh(
+  return await runShell(
     `cd ${
       JSON.stringify(projectDir)
-    } && ./setup >/dev/null && source ./activate >/dev/null && ${command}`,
+    } && ./setup >/dev/null && . ./activate >/dev/null && ${command}`,
     env,
   );
 }
