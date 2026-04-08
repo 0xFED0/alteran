@@ -49,7 +49,7 @@ Deno.test({
 
 Deno.test({
   name:
-    "advanced standalone app runtime scenario: the launcher bootstraps once and then reuses the app-local runtime",
+    "advanced standalone app runtime scenario: setup regenerates the launcher and later launches reuse the app-local runtime",
   ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
   async fn() {
     const exampleDir = await copyExampleToTemp(
@@ -59,6 +59,18 @@ Deno.test({
     const fixture = await startLocalDenoFixture();
 
     try {
+      const setup = await runShell(
+        `cd ${JSON.stringify(standaloneDir)} && ./setup >/dev/null`,
+        { DENO_SOURCES: fixture.baseUrl },
+      );
+      assertSuccess(setup, "standalone clock setup");
+      assert(
+        await exists(join(standaloneDir, "app")),
+        "Expected setup to regenerate the standalone app launcher",
+      );
+
+      await Deno.remove(join(standaloneDir, ".runtime"), { recursive: true });
+
       const firstLaunch = await runShell(
         `cd ${JSON.stringify(standaloneDir)} && ./app red blue`,
         { DENO_SOURCES: fixture.baseUrl },
@@ -76,7 +88,7 @@ Deno.test({
       );
       assert(
         await exists(join(standaloneDir, ".runtime")),
-        "Expected launcher-triggered setup to materialize app-local runtime",
+        "Expected launcher-triggered setup to rematerialize app-local runtime",
       );
 
       const secondLaunch = await runShell(

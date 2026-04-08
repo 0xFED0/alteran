@@ -20,6 +20,54 @@ if errorlevel 1 (
   exit /b 1
 )
 
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$content = @'
+@echo off
+setlocal
+set "APP_DIR=%~dp0"
+cd /d "%APP_DIR%"
+set "APP_ID=standalone-clock"
+
+if not exist ".\app.bat" (
+  echo Unable to confirm app launcher location. 1>&2
+  exit /b 1
+)
+if not exist ".\deno.json" (
+  echo Standalone app launcher requires .\deno.json 1>&2
+  exit /b 1
+)
+if not exist ".\app.json" (
+  echo Standalone app launcher requires .\app.json 1>&2
+  exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\app.json'));" ^
+  "if ($content -notmatch '"id"\s*:\s*"%APP_ID%"') { exit 1 }" >nul 2>nul
+if errorlevel 1 (
+  echo Standalone app launcher requires app.json id "%APP_ID%" 1>&2
+  exit /b 1
+)
+
+set "ALTERAN_ARCH=x64"
+if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ALTERAN_ARCH=arm64"
+set "LOCAL_DENO=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%\bin\deno.exe"
+
+if not exist "%LOCAL_DENO%" call ".\setup.bat"
+if not exist "%LOCAL_DENO%" (
+  echo Standalone app launcher requires local Deno. Setup did not produce %LOCAL_DENO% 1>&2
+  exit /b 1
+)
+
+set "DENO_DIR=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%\cache"
+"%LOCAL_DENO%" task --config ".\deno.json" app -- %*
+exit /b %ERRORLEVEL%
+'@;" ^
+  "[System.IO.File]::WriteAllText((Join-Path (Resolve-Path '.').Path 'app.bat'), ($content -replace \"`n\", \"`r`n\"))" >nul 2>nul
+if errorlevel 1 (
+  echo Standalone app setup could not regenerate app.bat 1>&2
+  exit /b 1
+)
+
 set "ALTERAN_ARCH=x64"
 if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ALTERAN_ARCH=arm64"
 set "DENO_RUNTIME_ROOT=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%"

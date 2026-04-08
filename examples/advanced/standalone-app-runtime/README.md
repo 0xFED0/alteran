@@ -36,6 +36,8 @@ cd ./standalone-clock
 
 If a usable `deno` is already available on your machine, `./setup` reuses it to seed the app-local runtime instead of downloading a fresh copy immediately.
 
+`./setup` is also the point where the local launcher scripts are regenerated. In a clean repository or release copy, run `./setup` first and then use `./app` as the normal entrypoint.
+
 After the first setup, the generated launcher is the normal entrypoint:
 
 ```sh

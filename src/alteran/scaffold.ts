@@ -271,6 +271,8 @@ export async function ensureManagedAppScripts(
 }
 
 function createStandaloneSetupScript(appId: string): string {
+  const launcher = createStandaloneAppLauncher(appId).trimEnd();
+  const launcherBat = createStandaloneAppLauncherBat(appId).trimEnd();
   return `#!/usr/bin/env sh
 set -eu
 
@@ -285,6 +287,15 @@ grep -Eq '"id"[[:space:]]*:[[:space:]]*"'$APP_ID'"' "./app.json" || {
   printf '%s\\n' "Standalone app setup requires app.json id '$APP_ID'" >&2
   exit 1
 }
+
+cat > "./app" <<'ALTERAN_STANDALONE_APP'
+${launcher}
+ALTERAN_STANDALONE_APP
+chmod +x "./app"
+
+cat > "./app.bat" <<'ALTERAN_STANDALONE_APP_BAT'
+${launcherBat}
+ALTERAN_STANDALONE_APP_BAT
 
 UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
 UNAME_M=$(uname -m)
@@ -378,6 +389,9 @@ exit 1
 }
 
 function createStandaloneSetupScriptBat(appId: string): string {
+  const launcherBat = createStandaloneAppLauncherBat(appId)
+    .trimEnd()
+    .replaceAll("%", "%%");
   return `@echo off
 setlocal
 set "APP_DIR=%~dp0"
@@ -397,6 +411,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "if ($content -notmatch '\"id\"\\s*:\\s*\"%APP_ID%\"') { exit 1 }" >nul 2>nul
 if errorlevel 1 (
   echo Standalone app setup requires app.json id "%APP_ID%" 1>&2
+  exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$content = @'
+${launcherBat}
+'@;" ^
+  "[System.IO.File]::WriteAllText((Join-Path (Resolve-Path '.').Path 'app.bat'), ($content -replace \"\`n\", \"\`r\`n\"))" >nul 2>nul
+if errorlevel 1 (
+  echo Standalone app setup could not regenerate app.bat 1>&2
   exit /b 1
 )
 
