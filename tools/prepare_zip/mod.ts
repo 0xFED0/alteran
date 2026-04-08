@@ -1,7 +1,12 @@
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ensureDir, exists, removeIfExists } from "../../src/alteran/fs.ts";
+import {
+  copyDirectory,
+  ensureDir,
+  exists,
+  removeIfExists,
+} from "../../src/alteran/fs.ts";
 import { ALTERAN_VERSION } from "../../src/alteran/version.ts";
 import { getVersionedJsrDistDir } from "../prepare_jsr/mod.ts";
 
@@ -20,6 +25,24 @@ export function getReleaseZipPath(
     getVersionedZipDistDir(repoRoot, version),
     `alteran-v${version}.zip`,
   );
+}
+
+export async function prepareReleaseZipStagingAt(
+  repoRoot: string,
+  stagingDir: string,
+  version = ALTERAN_VERSION,
+): Promise<void> {
+  const jsrDir = getVersionedJsrDistDir(repoRoot, version);
+
+  if (!(await exists(jsrDir))) {
+    throw new Error(
+      `Versioned JSR release directory does not exist: ${jsrDir}. Run prepare_jsr first.`,
+    );
+  }
+
+  await removeIfExists(stagingDir);
+  await copyDirectory(jsrDir, stagingDir);
+  await copyDirectory(join(repoRoot, "docs"), join(stagingDir, "docs"));
 }
 
 async function createZipArchive(
@@ -68,19 +91,19 @@ async function createZipArchive(
 
 export async function main(_args: string[]): Promise<void> {
   const repoRoot = resolve(fileURLToPath(new URL("../../", import.meta.url)));
-  const jsrDir = getVersionedJsrDistDir(repoRoot);
   const zipDir = getVersionedZipDistDir(repoRoot);
   const zipPath = getReleaseZipPath(repoRoot);
-
-  if (!(await exists(jsrDir))) {
-    throw new Error(
-      `Versioned JSR release directory does not exist: ${jsrDir}. Run prepare_jsr first.`,
-    );
-  }
+  const tempRoot = await Deno.makeTempDir({ prefix: "alteran-release-zip-" });
+  const stagingDir = join(tempRoot, ALTERAN_VERSION);
 
   await ensureDir(zipDir);
   await removeIfExists(zipPath);
-  await createZipArchive(jsrDir, zipPath);
+  try {
+    await prepareReleaseZipStagingAt(repoRoot, stagingDir);
+    await createZipArchive(stagingDir, zipPath);
+  } finally {
+    await removeIfExists(tempRoot);
+  }
 
   console.log(`Prepared ${zipPath}`);
 }

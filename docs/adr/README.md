@@ -35,6 +35,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0027: Separate Portable `ai-user` Bundle from Repository-Scoped `ai-dev`](./0027-separate-portable-ai-user-bundle-from-repository-ai-dev.md)
 - [ADR 0028: Publish JSR from Versioned Staging Workspaces and Default to the Current Version](./0028-publish-jsr-from-versioned-staging-workspaces.md)
 - [ADR 0029: Automate Publication and Test Coverage Through GitHub Actions](./0029-automate-publication-and-ci-through-github-actions.md)
+- [ADR 0030: Keep the JSR Package Lean and Put Full Docs Only in Release Zips](./0030-keep-jsr-package-lean-and-put-full-docs-only-in-release-zips.md)
 
 ## Notes
 

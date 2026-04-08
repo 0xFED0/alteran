@@ -2132,10 +2132,16 @@ The repository should also maintain:
 - `README.md`
 - `docs/`
 
-Prepared publication bundles should copy both `README.md` and `docs/` into the
-versioned JSR package and any archive artifacts derived from it.
+Prepared JSR publication bundles should copy `README.md` into the versioned JSR
+package.
 
-so the public package and project remain understandable.
+They should not copy the full `docs/` tree into the staged JSR package by
+default, because the JSR package page already renders `README.md` and its links
+can point to repository-hosted documentation.
+
+Archive artifacts such as release zips should include both `README.md` and
+`docs/`, so downloadable release bundles remain understandable outside the JSR
+package page itself.
 
 ### 29.9 Dedicated JSR publish flow
 

@@ -86,7 +86,6 @@ export async function prepareJsrPackageAt(
     await Deno.chmod(join(distDir, "setup"), 0o755);
   }
   await Deno.copyFile(join(repoRoot, "README.md"), join(distDir, "README.md"));
-  await copyDirectory(join(repoRoot, "docs"), join(distDir, "docs"));
   await copyDirectory(join(repoRoot, "src"), join(distDir, "src"));
 
   await writeTextFileIfChanged(

@@ -60,7 +60,6 @@ They stage:
 - `setup`
 - `setup.bat`
 - `README.md`
-- `docs/`
 - `src/`
 - generated `jsr.json`
 - publication-local `deno.json`
@@ -69,7 +68,9 @@ Generated local activation artifacts are not part of release payloads.
 
 The publication-local `deno.json` exists because `deno publish` requires the prepared package config to belong to a workspace. Each versioned `dist/jsr/<version>/` directory therefore acts as its own tiny publish workspace instead of depending on the repository-root workspace.
 
-`prepare_zip` packages the prepared versioned JSR directory as-is, so release zips inherit the same staged `README.md`, `docs/`, source tree, and publication config files.
+The staged JSR package intentionally stays lean and does not copy the full `docs/` tree. JSR already renders `README.md`, and links inside that README can point to repository-hosted docs.
+
+`prepare_zip` builds a release bundle from the staged JSR payload and then adds the repository `docs/` tree before archiving. That keeps JSR publication lean while still making release zips useful as richer portable bundles.
 
 ## Automated Publication
 

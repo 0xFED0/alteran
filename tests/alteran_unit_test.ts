@@ -10,7 +10,7 @@ import {
   syncRootDenoConfig,
   updateAlteranConfig,
 } from "../src/alteran/config.ts";
-import { ensureDir } from "../src/alteran/fs.ts";
+import { ensureDir, exists } from "../src/alteran/fs.ts";
 import { updateJsoncFile } from "../src/alteran/jsonc.ts";
 import {
   buildAlteranLogtapeConfig,
@@ -30,8 +30,10 @@ import {
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
 import { renderBatchEnv, renderShellEnv } from "../src/alteran/templates/env.ts";
+import { ALTERAN_VERSION } from "../src/alteran/version.ts";
 import {
   ALTERAN_JSR_PACKAGE_NAME,
+  prepareJsrPackageAt,
   renderJsrPackageConfig,
   renderJsrPublishWorkspaceConfig,
 } from "../tools/prepare_jsr/mod.ts";
@@ -40,6 +42,7 @@ import {
   renderPublishJsrHelp,
   resolveLatestPreparedJsrVersion,
 } from "../tools/publish_jsr/mod.ts";
+import { prepareReleaseZipStagingAt } from "../tools/prepare_zip/mod.ts";
 
 function expect(condition: unknown, message: string): void {
   if (!condition) {
@@ -508,6 +511,39 @@ Deno.test("prepare_jsr renders a self-contained publish workspace config", () =>
   expect(
     JSON.stringify(rendered.workspace) === JSON.stringify(["."]),
     "Expected publish workspace config to treat the versioned JSR dir as its own workspace root",
+  );
+});
+
+Deno.test("prepare_jsr stays lean while release zip staging adds docs", async () => {
+  const repoRoot = await Deno.makeTempDir({
+    prefix: "alteran-publication-shape-",
+  });
+  const jsrDir = join(repoRoot, "dist", "jsr", ALTERAN_VERSION);
+  const zipStageDir = join(repoRoot, "dist", "zip-stage", ALTERAN_VERSION);
+
+  await ensureDir(join(repoRoot, "src", "alteran"));
+  await ensureDir(join(repoRoot, "docs", "user"));
+  await Deno.writeTextFile(join(repoRoot, "alteran.ts"), "export {};\n");
+  await Deno.writeTextFile(join(repoRoot, "README.md"), "# Alteran\n");
+  await Deno.writeTextFile(
+    join(repoRoot, "src", "alteran", "mod.ts"),
+    "export {};\n",
+  );
+  await Deno.writeTextFile(
+    join(repoRoot, "docs", "user", "quickstart.md"),
+    "# Quick Start\n",
+  );
+
+  await prepareJsrPackageAt(repoRoot, jsrDir, ALTERAN_VERSION);
+  expect(
+    !(await exists(join(jsrDir, "docs"))),
+    "Expected staged JSR package not to include the full docs tree",
+  );
+
+  await prepareReleaseZipStagingAt(repoRoot, zipStageDir, ALTERAN_VERSION);
+  expect(
+    await exists(join(zipStageDir, "docs", "user", "quickstart.md")),
+    "Expected release zip staging to include the repository docs tree",
   );
 });
 
