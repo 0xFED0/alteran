@@ -343,6 +343,7 @@ AI-oriented docs must not:
 - present temporary workarounds as the preferred long-term model
 - reintroduce removed legacy command surfaces such as `init`
 - describe heavyweight environment-variable transport for project configuration when the authoritative config belongs in project files such as `alteran.json`
+- treat deferred `postrun` cleanup or compact phases as optional background detail when the numbered specs define them as part of the final command result
 
 ---
 

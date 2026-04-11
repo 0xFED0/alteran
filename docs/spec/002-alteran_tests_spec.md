@@ -286,6 +286,20 @@ Tests must not rely on the committed `examples/` directories as their normal scr
 
 When a test needs to exercise an example through `setup`, `activate`, `refresh`, `compact`, or launcher flows, it should prefer a hermetic temp directory derived from that example rather than mutating the committed example directory itself.
 
+### 7.6 Deferred postrun behavior must be tested as part of final command semantics
+
+When `clean`, `compact`, or future runtime-sensitive commands rely on deferred `postrun` hooks, tests must treat the entire launcher cycle as the user-visible command boundary.
+
+This means tests should verify:
+
+- the final exit code after any `postrun` phase;
+- the actual resulting filesystem state after the hook completed;
+- hook-directory cleanup on success;
+- hook-directory retention on failure when that behavior is part of the contract;
+- `postrun.msg` visibility and `postrun.log` persistence rules where applicable.
+
+Tests must not treat an in-process TypeScript success return as sufficient if deferred hook behavior is part of the command contract.
+
 ## 8. Failure Interpretation Rules
 
 ### 8.1 Product bug

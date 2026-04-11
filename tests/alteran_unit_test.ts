@@ -941,7 +941,8 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     cacheDir: "/tmp/project/.runtime/deno/linux-x64/cache",
     platformDir: "/tmp/project/.runtime/deno/linux-x64",
     denoBinDir: "/tmp/project/.runtime/deno/linux-x64/bin",
-    alteranEntry: "/tmp/project/.runtime/alteran/mod.ts",
+    shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
+    batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
     appAliases: ["alias app-hello='alteran app run hello'"],
     toolAliases: ["alias tool-seed='alteran tool run seed'"],
     shellAliases: ["alias myrun='alt run scripts/demo.ts'"],
@@ -951,9 +952,10 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     cacheDir: "C:\\project\\.runtime\\deno\\windows-x64\\cache",
     platformDir: "C:\\project\\.runtime\\deno\\windows-x64",
     denoBinDir: "C:\\project\\.runtime\\deno\\windows-x64\\bin",
-    alteranEntry: "C:\\project\\.runtime\\alteran\\mod.ts",
-    appAliases: ['doskey app-hello=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" app run hello $*'],
-    toolAliases: ['doskey tool-seed=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" tool run seed $*'],
+    shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
+    batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
+    appAliases: ['doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*'],
+    toolAliases: ['doskey tool-seed=call "C:\\project\\.runtime\\alteran\\alteran.bat" tool run seed $*'],
     shellAliases: ['doskey myrun=alt run scripts/demo.ts $*'],
   });
 
@@ -962,7 +964,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     "Expected shell env to export ALTERAN_HOME",
   );
   expect(
-    shell.includes("alteran() { deno run -A \"/tmp/project/.runtime/alteran/mod.ts\" \"$@\"; }"),
+    shell.includes("alteran() { \"/tmp/project/.runtime/alteran/alteran.sh\" \"$@\"; }"),
     "Expected shell env to expose the alteran function",
   );
   expect(
@@ -978,13 +980,13 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     "Expected batch env to set ALTERAN_HOME",
   );
   expect(
-    batch.includes('doskey alteran=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" $*'),
+    batch.includes('doskey alteran=call "C:\\project\\.runtime\\alteran\\alteran.bat" $*'),
     "Expected batch env to expose the alteran doskey shim",
   );
   expect(
-    batch.includes("doskey atest=alteran test $*") &&
-      batch.includes('doskey app-hello=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" app run hello $*') &&
-      batch.includes('doskey tool-seed=deno run -A "C:\\project\\.runtime\\alteran\\mod.ts" tool run seed $*') &&
+    batch.includes('doskey atest=call "C:\\project\\.runtime\\alteran\\alteran.bat" test $*') &&
+      batch.includes('doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*') &&
+      batch.includes('doskey tool-seed=call "C:\\project\\.runtime\\alteran\\alteran.bat" tool run seed $*') &&
       batch.includes("doskey myrun=alt run scripts/demo.ts $*"),
     "Expected batch env to contain core and registry-derived doskey shortcuts",
   );

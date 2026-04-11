@@ -151,7 +151,7 @@ async function runShell(
     cwd: options.cwd,
     env: {
       ...Deno.env.toObject(),
-      ...options.env,
+      ...hermeticAlteranEnv(options.env ?? {}),
     },
     stdout: "piped",
     stderr: "piped",
@@ -193,6 +193,14 @@ function hermeticAlteranEnv(
     ...env,
     ALTERAN_SRC: "",
     ALTERAN_HOME: "",
+    ALTERAN_RUN_ID: "",
+    ALTERAN_ROOT_RUN_ID: "",
+    ALTERAN_PARENT_RUN_ID: "",
+    ALTERAN_ROOT_LOG_DIR: "",
+    ALTERAN_LOG_MODE: "",
+    ALTERAN_LOG_CONTEXT_JSON: "",
+    ALTERAN_LOGTAPE_ENABLED: "",
+    ALTERAN_POSTRUN_SESSION_FILE: "",
   };
 }
 
@@ -2039,6 +2047,142 @@ Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () 
   await Deno.stat(join(platformDir, "cache"));
 });
 
+Deno.test("activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-runtime-clean-postrun-",
+  });
+  await setupProject(projectDir);
+
+  const platform = detectPlatform();
+  const activeManagedDeno = join(
+    projectDir,
+    ".runtime",
+    "deno",
+    platform.id,
+    "bin",
+    platform.denoBinaryName,
+  );
+
+  await Deno.mkdir(join(projectDir, ".runtime", "legacy-junk"), { recursive: true });
+  await Deno.writeTextFile(
+    join(projectDir, ".runtime", "legacy-junk", "marker.txt"),
+    "junk",
+  );
+  await Deno.mkdir(join(projectDir, ".runtime", "logs"), { recursive: true });
+  await Deno.writeTextFile(join(projectDir, ".runtime", "logs", "old.log"), "old");
+
+  const output = await runShell(
+    `cd ${
+      JSON.stringify(projectDir)
+    } && . ./activate >/dev/null 2>/dev/null && alteran clean runtime`,
+    {
+      env: {
+        PATH: hostDenoPath(),
+      },
+    },
+  );
+
+  if (!output.success) {
+    throw new Error(
+      `Expected activated alteran clean runtime to succeed. stdout=${
+        decode(output.stdout)
+      } stderr=${decode(output.stderr)}`,
+    );
+  }
+
+  await Deno.stat(activeManagedDeno);
+  await Deno.stat(join(projectDir, ".runtime", "alteran", "mod.ts"));
+  await Deno.stat(join(projectDir, ".runtime", "tools"));
+  await Deno.stat(join(projectDir, ".runtime", "libs"));
+
+  try {
+    await Deno.stat(join(projectDir, ".runtime", "legacy-junk"));
+    throw new Error("Expected deferred clean runtime to remove legacy runtime entries");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+
+  try {
+    await Deno.stat(join(projectDir, ".runtime", "logs"));
+    throw new Error("Expected deferred clean runtime to remove logs");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+});
+
+Deno.test("activated alteran clean builds persists postrun artifacts and removes the completed hook dir", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-clean-builds-postrun-",
+  });
+  await setupProject(projectDir);
+
+  await Deno.mkdir(join(projectDir, "dist", "jsr"), { recursive: true });
+  await Deno.writeTextFile(
+    join(projectDir, "dist", "jsr", "artifact.txt"),
+    "dist",
+  );
+
+  const output = await runShell(
+    `cd ${
+      JSON.stringify(projectDir)
+    } && . ./activate >/dev/null 2>/dev/null && alteran clean builds`,
+    {
+      env: {
+        PATH: hostDenoPath(),
+      },
+    },
+  );
+
+  if (!output.success) {
+    throw new Error(
+      `Expected activated alteran clean builds to succeed. stdout=${
+        decode(output.stdout)
+      } stderr=${decode(output.stderr)}`,
+    );
+  }
+
+  try {
+    await Deno.stat(join(projectDir, "dist"));
+    throw new Error("Expected deferred clean builds to remove dist");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+
+  const logDir = await latestProjectLogDir(projectDir, "runs");
+  const postrunLogPath = join(logDir, "postrun.log");
+  const postrunMsgPath = join(logDir, "postrun.msg");
+  const postrunLog = await Deno.readTextFile(postrunLogPath);
+
+  if (
+    !(
+      postrunLog.includes("intent: clean-builds") &&
+      postrunLog.includes("--- begin postrun script ---") &&
+      postrunLog.includes("remove_path_checked")
+    )
+  ) {
+    throw new Error(
+      "Expected postrun.log to capture the clean-builds intent, script body, and execution trace",
+    );
+  }
+  await Deno.stat(postrunMsgPath);
+
+  const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
+  try {
+    await Deno.stat(join(projectDir, ".runtime", "hooks", sessionDir));
+    throw new Error("Expected successful postrun execution to remove the completed hook dir");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+});
+
 Deno.test("alteran compact removes generated runtime artifacts but keeps bootstrap files", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-compact-" });
   await setupProject(projectDir);
@@ -2133,6 +2277,80 @@ Deno.test("alteran compact removes generated runtime artifacts but keeps bootstr
     } else {
       Deno.env.set("ALTERAN_HOME", previousAlteranHome);
     }
+  }
+});
+
+Deno.test("activated alteran compact -y uses deferred postrun and leaves the project compacted before returning", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-compact-postrun-",
+  });
+  await setupProject(projectDir);
+
+  await Deno.mkdir(join(projectDir, "apps", "demo", ".runtime"), {
+    recursive: true,
+  });
+  await Deno.writeTextFile(
+    join(projectDir, "apps", "demo", ".runtime", "marker.txt"),
+    "demo",
+  );
+  await Deno.mkdir(join(projectDir, "dist", "jsr"), { recursive: true });
+  await Deno.writeTextFile(
+    join(projectDir, "dist", "jsr", "artifact.txt"),
+    "dist",
+  );
+
+  const output = await runShell(
+    `cd ${
+      JSON.stringify(projectDir)
+    } && . ./activate >/dev/null 2>/dev/null && alteran compact -y`,
+    {
+      env: {
+        PATH: hostDenoPath(),
+      },
+    },
+  );
+
+  if (!output.success) {
+    throw new Error(
+      `Expected activated alteran compact -y to succeed. stdout=${
+        decode(output.stdout)
+      } stderr=${decode(output.stderr)}`,
+    );
+  }
+
+  for (
+    const removedPath of [
+      join(projectDir, ".runtime"),
+      join(projectDir, "dist"),
+      join(projectDir, "apps", "demo", ".runtime"),
+    ]
+  ) {
+    try {
+      await Deno.stat(removedPath);
+      throw new Error(
+        `Expected ${removedPath} to be absent after deferred compact completed`,
+      );
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+  }
+
+  for (
+    const preservedPath of [
+      join(projectDir, "setup"),
+      join(projectDir, "setup.bat"),
+      join(projectDir, "alteran.json"),
+      join(projectDir, "deno.json"),
+      join(projectDir, ".gitignore"),
+      join(projectDir, "apps"),
+      join(projectDir, "tools"),
+      join(projectDir, "libs"),
+      join(projectDir, "tests"),
+    ]
+  ) {
+    await Deno.stat(preservedPath);
   }
 });
 

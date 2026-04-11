@@ -41,6 +41,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0033: Add `compact-copy` as a Non-Destructive Portability Command](./0033-add-compact-copy-as-a-non-destructive-portability-command.md)
 - [ADR 0034: Normalize Committed Examples Through a Non-Destructive `reset` Script](./0034-normalize-committed-examples-through-a-reset-script.md)
 - [ADR 0035: Add an Explicit `from` Command for Context-Rebased Execution](./0035-add-an-explicit-from-command-for-context-rebased-execution.md)
+- [ADR 0036: Use Run-Scoped `postrun` Hooks for Deferred Runtime Mutations](./0036-use-run-scoped-postrun-hooks-for-deferred-runtime-mutations.md)
 
 ## Notes
 

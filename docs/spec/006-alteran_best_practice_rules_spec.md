@@ -259,7 +259,17 @@ The canonical root log tree belongs under:
 
 External or custom log destinations may mirror or copy logs, but they must not replace the canonical project-local root log identity unless the product spec explicitly changes.
 
-### 5.8 Messages are part of the interface
+### 5.8 Treat deferred postrun mutations as part of command truth
+
+If a command relies on a root-session-scoped `postrun` hook for cleanup or compacting, contributors must treat that hook as part of the command contract, not as a disposable implementation detail.
+
+In particular, contributors must not:
+
+- declare cleanup or compact behavior successful before required `postrun` actions have completed;
+- write `postrun` logic that depends on project-local log files surviving commands that intentionally remove them;
+- silently weaken deletion verification on platforms with stricter file locking.
+
+### 5.9 Messages are part of the interface
 
 Error and status messages should state:
 

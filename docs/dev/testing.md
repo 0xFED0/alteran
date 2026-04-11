@@ -40,10 +40,13 @@ Expected developer tasks include:
 - standalone app launcher contract
 - examples as executable documentation
 - project-scoped logging and managed execution boundaries
+- deferred `postrun` cleanup and compact semantics through the real wrapper cycle
 
 ## Execution Guidance
 
 When testing high-leverage product flows, prefer exercising them through Alteran entrypoints rather than only through plain `deno test`. This helps catch project-context, logging, and managed-execution regressions that plain Deno runs may miss.
+
+For cleanup-sensitive commands such as `clean` and `compact`, treat the launcher wrapper and any deferred `postrun` hook as part of the product behavior. Tests should therefore prefer activated-shell or generated-launcher paths when validating final cleanup semantics, and they should assert the resulting filesystem state after the whole command cycle rather than trusting a zero exit code alone. Where the session log directory survives, dedicated checks for `postrun.log`, `postrun.msg`, and hook-dir cleanup are encouraged.
 
 For repository examples, prefer this discipline:
 
