@@ -44,7 +44,7 @@ jobs:
 
       - name: Run repository e2e tests
         working-directory: .
-        run: deno run -A ./alteran.ts test -A ./tests/alteran_e2e_test.ts
+        run: deno run -A ./alteran.ts test -A ./tests/alteran_e2e_test.ts ./tests/alteran_unix_e2e_test.ts
 
       - name: Run docs and examples tests
         working-directory: .

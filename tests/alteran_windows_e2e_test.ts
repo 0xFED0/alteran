@@ -14,6 +14,11 @@ function cmdQuote(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+function cmdCallBatch(path: string, ...args: string[]): string {
+  const renderedArgs = args.map((arg) => ` ${cmdQuote(arg)}`).join("");
+  return `call ""${path.replaceAll('"', '""')}"${renderedArgs}`;
+}
+
 function psQuote(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
@@ -42,6 +47,28 @@ function windowsDenoTarget(arch: "x64" | "arm64"): string {
     : "x86_64-pc-windows-msvc";
 }
 
+function currentWindowsArch(): "x64" | "arm64" {
+  return Deno.build.arch === "aarch64" ? "arm64" : "x64";
+}
+
+function hermeticAlteranEnvWindows(
+  env: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    ...env,
+    ALTERAN_SRC: "",
+    ALTERAN_HOME: "",
+    ALTERAN_RUN_ID: "",
+    ALTERAN_ROOT_RUN_ID: "",
+    ALTERAN_PARENT_RUN_ID: "",
+    ALTERAN_ROOT_LOG_DIR: "",
+    ALTERAN_LOG_MODE: "",
+    ALTERAN_LOG_CONTEXT_JSON: "",
+    ALTERAN_LOGTAPE_ENABLED: "",
+    ALTERAN_POSTRUN_SESSION_FILE: "",
+  };
+}
+
 async function runCmd(
   script: string,
   options: {
@@ -54,7 +81,7 @@ async function runCmd(
     cwd: options.cwd,
     env: {
       ...Deno.env.toObject(),
-      ...options.env,
+      ...hermeticAlteranEnvWindows(options.env ?? {}),
     },
     stdout: "piped",
     stderr: "piped",
@@ -73,7 +100,7 @@ async function runPowerShell(
     cwd: options.cwd,
     env: {
       ...Deno.env.toObject(),
-      ...options.env,
+      ...hermeticAlteranEnvWindows(options.env ?? {}),
     },
     stdout: "piped",
     stderr: "piped",
@@ -208,6 +235,21 @@ function assertFailureContains(
   }
 }
 
+async function latestLogDirUnder(
+  rootDir: string,
+  category: "runs" | "tests" | "tools" | "apps" | "tasks",
+): Promise<string> {
+  const categoryDir = join(rootDir, category);
+  const entries = await Array.fromAsync(Deno.readDir(categoryDir));
+  const dirs = entries.filter((entry) => entry.isDirectory)
+    .map((entry) => entry.name)
+    .sort();
+  if (dirs.length === 0) {
+    throw new Error(`Expected at least one log dir under ${categoryDir}`);
+  }
+  return join(categoryDir, dirs.at(-1)!);
+}
+
 Deno.test({
   name: "windows cmd: generated activate.bat preserves session env and exposes deno/alteran",
   ignore: !IS_WINDOWS,
@@ -221,8 +263,8 @@ Deno.test({
   try {
     const output = await runCmd(
       [
-        `call ${cmdQuote(join(repoCopy, "setup.bat"))} ${cmdQuote(targetDir)}`,
-        `call ${cmdQuote(join(targetDir, "activate.bat"))}`,
+        cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+        cmdCallBatch(join(targetDir, "activate.bat")),
         `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
         "where deno >nul",
         "alteran help >nul",
@@ -256,8 +298,8 @@ Deno.test({
   try {
     const output = await runCmd(
       [
-        `call ${cmdQuote(join(repoCopy, "setup.bat"))} ${cmdQuote(targetDir)}`,
-        `call ${cmdQuote(join(targetDir, "activate.bat"))}`,
+        cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+        cmdCallBatch(join(targetDir, "activate.bat")),
         "alt help >nul",
         "atest --help >nul",
         "adeno --version >nul",
@@ -288,10 +330,10 @@ Deno.test({
   const alteranSource = pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href;
   const output = await runCmd(
     [
-      `call ${cmdQuote(join(targetDir, "setup.bat"))}`,
+      cmdCallBatch(join(targetDir, "setup.bat")),
       `if not exist ${cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))} exit /b 1`,
       `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
-      `call ${cmdQuote(join(targetDir, "activate.bat"))}`,
+      cmdCallBatch(join(targetDir, "activate.bat")),
       "alteran help >nul",
     ].join(" && "),
     {
@@ -317,7 +359,7 @@ Deno.test({
   await copySetupScripts(targetDir);
 
   const output = await runCmd(
-    `call ${cmdQuote(join(targetDir, "setup.bat"))}`,
+    cmdCallBatch(join(targetDir, "setup.bat")),
     {
       cwd: targetDir,
       env: {
@@ -378,9 +420,9 @@ Deno.test({
 
   try {
     const output = await runPowerShell(
-      `cmd /d /c ${psQuote(`call ${cmdQuote(join(repoCopy, "setup.bat"))} ${
-        cmdQuote(targetDir)
-      } && call ${cmdQuote(join(targetDir, "activate.bat"))} && alteran help >nul`)}`,
+      `cmd /d /c ${psQuote(`${cmdCallBatch(join(repoCopy, "setup.bat"), targetDir)} && ${
+        cmdCallBatch(join(targetDir, "activate.bat"))
+      } && alteran help >nul`)}`,
       {
         env: {
           PATH: hostDenoPathWindows(),
@@ -411,7 +453,7 @@ Deno.test({
   try {
     const output = await runCmd(
       [
-        `call ${cmdQuote(join(targetDir, "setup.bat"))}`,
+        cmdCallBatch(join(targetDir, "setup.bat")),
         `if not exist ${
           cmdQuote(
             join(
@@ -478,7 +520,7 @@ Deno.test({
 
   const output = await runCmd(
     [
-      `call ${cmdQuote(join(targetDir, "activate.bat"))}`,
+      cmdCallBatch(join(targetDir, "activate.bat")),
       `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
       "alteran help >nul",
     ].join(" && "),
@@ -494,5 +536,253 @@ Deno.test({
     output,
     "Expected generated activate.bat to activate through its concrete local runtime path",
   );
+  },
+});
+
+Deno.test({
+  name: "windows cmd: activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-postrun-clean-runtime-",
+      "postrun clean runtime target with spaces",
+    );
+    const arch = currentWindowsArch();
+    const managedDenoPath = join(
+      targetDir,
+      ".runtime",
+      "deno",
+      windowsPlatformId(arch),
+      "bin",
+      "deno.exe",
+    );
+
+    const repoSetup = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      cwd: ALTERAN_REPO_DIR,
+      env: hermeticAlteranEnvWindows({
+        PATH: hostDenoPathWindows(),
+      }),
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+
+    await Deno.mkdir(join(targetDir, ".runtime", "legacy-junk"), { recursive: true });
+    await Deno.writeTextFile(
+      join(targetDir, ".runtime", "legacy-junk", "marker.txt"),
+      "junk",
+    );
+    await Deno.mkdir(join(targetDir, ".runtime", "logs"), { recursive: true });
+    await Deno.writeTextFile(join(targetDir, ".runtime", "logs", "old.log"), "old");
+
+    const output = await runCmd(
+      [
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        "alteran clean runtime",
+      ].join(" && "),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+        },
+      },
+    );
+    assertSuccess(
+      output,
+      "Expected activated Windows alteran clean runtime to succeed",
+    );
+
+    await Deno.stat(managedDenoPath);
+    await Deno.stat(join(targetDir, ".runtime", "alteran", "mod.ts"));
+    await Deno.stat(join(targetDir, ".runtime", "tools"));
+    await Deno.stat(join(targetDir, ".runtime", "libs"));
+
+    try {
+      await Deno.stat(join(targetDir, ".runtime", "legacy-junk"));
+      throw new Error("Expected deferred clean runtime to remove legacy runtime entries");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+
+    try {
+      await Deno.stat(join(targetDir, ".runtime", "logs"));
+      throw new Error("Expected deferred clean runtime to remove logs");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+  },
+});
+
+Deno.test({
+  name: "windows cmd: activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-postrun-clean-builds-",
+      "postrun clean builds target with spaces",
+    );
+
+    const repoSetup = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      cwd: ALTERAN_REPO_DIR,
+      env: hermeticAlteranEnvWindows({
+        PATH: hostDenoPathWindows(),
+      }),
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+
+    await Deno.mkdir(join(targetDir, "dist", "jsr"), { recursive: true });
+    await Deno.writeTextFile(
+      join(targetDir, "dist", "jsr", "artifact.txt"),
+      "dist",
+    );
+
+    const output = await runCmd(
+      [
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        "alteran clean builds",
+      ].join(" && "),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+        },
+      },
+    );
+    assertSuccess(
+      output,
+      "Expected activated Windows alteran clean builds to succeed",
+    );
+
+    try {
+      await Deno.stat(join(targetDir, "dist"));
+      throw new Error("Expected deferred clean builds to remove dist");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+
+    const logDir = await latestLogDirUnder(join(targetDir, ".runtime", "logs"), "runs");
+    const postrunLogPath = join(logDir, "postrun.log");
+    const postrunMsgPath = join(logDir, "postrun.msg");
+    const postrunLog = await Deno.readTextFile(postrunLogPath);
+
+    if (
+      !(
+        postrunLog.includes("intent: clean-builds") &&
+        postrunLog.includes("--- begin postrun script ---") &&
+        postrunLog.includes("remove_path_checked")
+      )
+    ) {
+      throw new Error(
+        "Expected Windows postrun.log to capture the clean-builds intent, script body, and execution trace",
+      );
+    }
+    await Deno.stat(postrunMsgPath);
+
+    const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
+    try {
+      await Deno.stat(join(targetDir, ".runtime", "hooks", sessionDir));
+      throw new Error("Expected successful Windows postrun execution to remove the completed hook dir");
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+  },
+});
+
+Deno.test({
+  name: "windows cmd: activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-postrun-compact-",
+      "postrun compact target with spaces",
+    );
+
+    const repoSetup = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      cwd: ALTERAN_REPO_DIR,
+      env: hermeticAlteranEnvWindows({
+        PATH: hostDenoPathWindows(),
+      }),
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+
+    await Deno.mkdir(join(targetDir, "apps", "demo", ".runtime"), {
+      recursive: true,
+    });
+    await Deno.writeTextFile(
+      join(targetDir, "apps", "demo", ".runtime", "marker.txt"),
+      "demo",
+    );
+    await Deno.mkdir(join(targetDir, "dist", "jsr"), { recursive: true });
+    await Deno.writeTextFile(
+      join(targetDir, "dist", "jsr", "artifact.txt"),
+      "dist",
+    );
+
+    const output = await runCmd(
+      [
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        "alteran compact -y",
+      ].join(" && "),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+        },
+      },
+    );
+    assertSuccess(
+      output,
+      "Expected activated Windows alteran compact -y to succeed",
+    );
+
+    for (
+      const removedPath of [
+        join(targetDir, ".runtime"),
+        join(targetDir, "dist"),
+        join(targetDir, "apps", "demo", ".runtime"),
+      ]
+    ) {
+      try {
+        await Deno.stat(removedPath);
+        throw new Error(
+          `Expected ${removedPath} to be absent after deferred Windows compact completed`,
+        );
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
+
+    for (
+      const preservedPath of [
+        join(targetDir, "setup"),
+        join(targetDir, "setup.bat"),
+        join(targetDir, "alteran.json"),
+        join(targetDir, "deno.json"),
+        join(targetDir, ".gitignore"),
+        join(targetDir, "apps"),
+        join(targetDir, "tools"),
+        join(targetDir, "libs"),
+        join(targetDir, "tests"),
+      ]
+    ) {
+      await Deno.stat(preservedPath);
+    }
   },
 });

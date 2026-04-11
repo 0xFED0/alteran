@@ -113,7 +113,28 @@ Current file:
 
 - `tests/alteran_e2e_test.ts`
 
-### 4.3 Windows-specific e2e tests
+This file should keep only cross-platform repository e2e scenarios that are expected to behave the same on Unix and Windows.
+
+### 4.3 Unix-specific e2e tests
+
+Unix shell behavior is sufficiently different that it must be tested explicitly in a separate suite.
+
+These tests cover:
+
+- sourced `activate`
+- shell alias behavior in `sh`/`zsh`
+- Unix launcher execution semantics
+- node bridge scenarios validated from Unix hosts
+- copied `setup` bootstrap flows that are exercised through Unix shells
+- Unix `postrun` behavior for `clean` and `compact`
+
+Current file:
+
+- `tests/alteran_unix_e2e_test.ts`
+
+These tests must be skipped on Windows hosts using explicit `ignore` conditions rather than early `return`.
+
+### 4.4 Windows-specific e2e tests
 
 Windows behavior is sufficiently different that it must be tested explicitly.
 
@@ -133,7 +154,7 @@ Current file:
 
 These tests must be skipped on non-Windows hosts using explicit `ignore` conditions rather than early `return`.
 
-### 4.4 Docker e2e tests
+### 4.5 Docker e2e tests
 
 Docker tests validate bootstrap and activation in minimal isolated Linux environments.
 

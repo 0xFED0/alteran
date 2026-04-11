@@ -3,6 +3,7 @@ export interface EnvTemplateInput {
   cacheDir: string;
   platformDir: string;
   denoBinDir: string;
+  wrapperBinDir: string;
   shellWrapper: string;
   batchWrapper: string;
   appAliases: string[];
@@ -36,7 +37,7 @@ export function renderBatchEnv(input: EnvTemplateInput): string {
     `set "ALTERAN_HOME=${input.runtimeDir}"`,
     `set "DENO_DIR=${input.cacheDir}"`,
     `set "DENO_INSTALL_ROOT=${input.platformDir}"`,
-    `set "PATH=${input.denoBinDir};%PATH%"`,
+    `set "PATH=${input.wrapperBinDir};${input.denoBinDir};%PATH%"`,
     `doskey alteran=call "${input.batchWrapper}" $*`,
     `doskey alt=call "${input.batchWrapper}" $*`,
     `doskey arun=call "${input.batchWrapper}" run $*`,

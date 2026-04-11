@@ -30,10 +30,12 @@ import {
   loadProjectDotEnv,
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
+import { runCli } from "../src/alteran/mod.ts";
 import { renderBatchEnv, renderShellEnv } from "../src/alteran/templates/env.ts";
 import { ALTERAN_VERSION } from "../src/alteran/version.ts";
 import {
   ALTERAN_JSR_PACKAGE_NAME,
+  getVersionedJsrDistDir,
   prepareJsrPackageAt,
   renderJsrPackageConfig,
   renderJsrPublishWorkspaceConfig,
@@ -43,7 +45,11 @@ import {
   renderPublishJsrHelp,
   resolveLatestPreparedJsrVersion,
 } from "../tools/publish_jsr/mod.ts";
-import { prepareReleaseZipStagingAt } from "../tools/prepare_zip/mod.ts";
+import {
+  getReleaseZipPath,
+  getVersionedZipDistDir,
+  prepareReleaseZipStagingAt,
+} from "../tools/prepare_zip/mod.ts";
 import { resetExamples } from "../examples/reset.ts";
 import {
   createExampleTempCopy,
@@ -129,6 +135,66 @@ Deno.test("source configuration helpers honor defaults, explicit values, and emp
     restoreEnv("ALTERAN_RUN_SOURCES", previousRunSources);
     restoreEnv("ALTERAN_SOURCES", previousLegacySources);
     restoreEnv("ALTERAN_ARCHIVE_SOURCES", previousArchiveSources);
+  }
+});
+
+Deno.test("runCli provides help for subcommands instead of treating help as data", async () => {
+  const consoleLog = console.log;
+  const consoleError = console.error;
+  const messages: string[] = [];
+  const errors: string[] = [];
+  console.log = (...args: unknown[]) => {
+    messages.push(args.map(String).join(" "));
+  };
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(" "));
+  };
+
+  try {
+    const legacySetupAlias = ["in", "it"].join("");
+    const appHelpExitCode = await runCli(["app", "--help"]);
+    const cleanHelpExitCode = await runCli(["clean", "--help"]);
+    const cleanNoScopeExitCode = await runCli(["clean"]);
+    const externalHelpExitCode = await runCli(["external", "--help"]);
+    const fromHelpExitCode = await runCli(["from", "--help"]);
+    const legacyAppSetupAliasExitCode = await runCli([
+      "app",
+      legacySetupAlias,
+      "./portable-clock",
+    ]);
+
+    expect(
+      appHelpExitCode === 0 &&
+        cleanHelpExitCode === 0 &&
+        cleanNoScopeExitCode === 0 &&
+        externalHelpExitCode === 0 &&
+        fromHelpExitCode === 0 &&
+        legacyAppSetupAliasExitCode !== 0,
+      "Expected help invocations to exit with code 0 and legacy app setup alias to fail",
+    );
+
+    const joined = messages.join("\n");
+    const joinedErrors = errors.join("\n");
+    expect(joined.includes("alteran app"), "Expected app help output");
+    expect(joined.includes("alteran clean"), "Expected clean help output");
+    expect(joined.includes("alteran external"), "Expected external help output");
+    expect(joined.includes("alteran from"), "Expected from help output");
+    expect(joined.includes("Scopes:"), "Expected clean scopes in help output");
+    expect(
+      joined.includes("alteran clean <scope> [<scope> ...]"),
+      "Expected multi-scope clean usage in help output",
+    );
+    expect(
+      !joined.includes(`app ${legacySetupAlias}`),
+      "Expected app help output not to advertise the removed legacy app setup alias",
+    );
+    expect(
+      joinedErrors.includes(`Unsupported app command: ${legacySetupAlias}`),
+      "Expected the removed legacy app setup alias to be rejected explicitly",
+    );
+  } finally {
+    console.log = consoleLog;
+    console.error = consoleError;
   }
 });
 
@@ -519,6 +585,32 @@ Deno.test("prepare_jsr renders a self-contained publish workspace config", () =>
   expect(
     JSON.stringify(rendered.workspace) === JSON.stringify(["."]),
     "Expected publish workspace config to treat the versioned JSR dir as its own workspace root",
+  );
+});
+
+Deno.test("release helpers use versioned dist directories", () => {
+  const repoRoot = Deno.build.os === "windows" ? "C:\\alteran" : "/tmp/alteran";
+
+  expect(
+    getVersionedJsrDistDir(repoRoot) ===
+      join(repoRoot, "dist", "jsr", ALTERAN_VERSION),
+    "Expected prepare_jsr output to be versioned",
+  );
+  expect(
+    getVersionedZipDistDir(repoRoot) ===
+      join(repoRoot, "dist", "zips", ALTERAN_VERSION),
+    "Expected prepare_zip output directory to be versioned",
+  );
+  expect(
+    getReleaseZipPath(repoRoot) ===
+      join(
+        repoRoot,
+        "dist",
+        "zips",
+        ALTERAN_VERSION,
+        `alteran-v${ALTERAN_VERSION}.zip`,
+      ),
+    "Expected release zip path to include version",
   );
 });
 
@@ -941,6 +1033,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     cacheDir: "/tmp/project/.runtime/deno/linux-x64/cache",
     platformDir: "/tmp/project/.runtime/deno/linux-x64",
     denoBinDir: "/tmp/project/.runtime/deno/linux-x64/bin",
+    wrapperBinDir: "/tmp/project/.runtime/alteran",
     shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
     batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
     appAliases: ["alias app-hello='alteran app run hello'"],
@@ -952,6 +1045,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     cacheDir: "C:\\project\\.runtime\\deno\\windows-x64\\cache",
     platformDir: "C:\\project\\.runtime\\deno\\windows-x64",
     denoBinDir: "C:\\project\\.runtime\\deno\\windows-x64\\bin",
+    wrapperBinDir: "C:\\project\\.runtime\\alteran",
     shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
     batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
     appAliases: ['doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*'],
@@ -978,6 +1072,10 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
   expect(
     batch.includes('set "ALTERAN_HOME=C:\\project\\.runtime"'),
     "Expected batch env to set ALTERAN_HOME",
+  );
+  expect(
+    batch.includes('set "PATH=C:\\project\\.runtime\\alteran;C:\\project\\.runtime\\deno\\windows-x64\\bin;%PATH%"'),
+    "Expected batch env to prepend the wrapper dir and managed deno dir to PATH",
   );
   expect(
     batch.includes('doskey alteran=call "C:\\project\\.runtime\\alteran\\alteran.bat" $*'),

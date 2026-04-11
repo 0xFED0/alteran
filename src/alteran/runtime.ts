@@ -1170,6 +1170,25 @@ async function ensureCliWrappers(projectDir: string): Promise<void> {
       alteranEntry: join(paths.alteranDir, "mod.ts").replaceAll("/", "\\"),
     }),
   );
+
+  const coreBatchShims = new Map<string, string[]>([
+    ["alt.bat", []],
+    ["arun.bat", ["run"]],
+    ["atask.bat", ["task"]],
+    ["atest.bat", ["test"]],
+    ["ax.bat", ["x"]],
+    ["adeno.bat", ["deno"]],
+  ]);
+  for (const [filename, fixedArgs] of coreBatchShims) {
+    const fixedArgSuffix = fixedArgs.length === 0 ? "" : ` ${fixedArgs.join(" ")}`;
+    await writeTextFileIfChanged(
+      join(paths.alteranDir, filename),
+      `@echo off
+call "%~dp0alteran.bat"${fixedArgSuffix} %*
+exit /b %ERRORLEVEL%
+`,
+    );
+  }
 }
 
 async function ensureProjectGitignore(projectDir: string): Promise<void> {
@@ -1434,6 +1453,7 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
     cacheDir: relativeExecutable(paths.cacheDir),
     platformDir: relativeExecutable(paths.platformDir),
     denoBinDir: relativeExecutable(paths.denoBinDir),
+    wrapperBinDir: relativeExecutable(paths.alteranDir),
     shellWrapper: relativeExecutable(join(paths.alteranDir, "alteran.sh")),
     batchWrapper: relativeExecutable(join(paths.alteranDir, "alteran.bat")),
     appAliases,
@@ -1461,6 +1481,7 @@ export async function generateBatchEnv(projectDir: string): Promise<string> {
     cacheDir: paths.cacheDir,
     platformDir: paths.platformDir,
     denoBinDir: paths.denoBinDir,
+    wrapperBinDir: paths.alteranDir,
     shellWrapper: join(paths.alteranDir, "alteran.sh"),
     batchWrapper: join(paths.alteranDir, "alteran.bat"),
     appAliases,

@@ -6,6 +6,7 @@ Alteran testing is guided by product specs, examples specs, and ADRs rather than
 
 - unit tests
 - repository-level end-to-end tests
+- Unix-specific end-to-end tests
 - Windows-specific end-to-end tests
 - Docker end-to-end tests
 - examples tests
