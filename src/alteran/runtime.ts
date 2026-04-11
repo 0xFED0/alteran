@@ -197,6 +197,7 @@ function batchPostrunBaseScript(): string {
 setlocal EnableExtensions EnableDelayedExpansion
 set "ERRORS=0"
 break > "%ALTERAN_POSTRUN_MSG%"
+goto :postrun_main
 
 :postrun_error
 >> "%ALTERAN_POSTRUN_MSG%" echo %~1
@@ -210,6 +211,7 @@ if exist "%TARGET%" del /f /q "%TARGET%" >nul 2>nul
 if exist "%TARGET%" call :postrun_error Failed to remove %TARGET%
 exit /b 0
 
+:postrun_main
 rem __ALTERAN_POSTRUN_BODY__
 if not "%ERRORS%"=="0" exit /b 1
 exit /b 0

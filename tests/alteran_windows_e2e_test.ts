@@ -16,7 +16,12 @@ function cmdQuote(value: string): string {
 
 function cmdCallBatch(path: string, ...args: string[]): string {
   const renderedArgs = args.map((arg) => ` ${cmdQuote(arg)}`).join("");
-  return `call ""${path.replaceAll('"', '""')}"${renderedArgs}`;
+  return `call ${cmdQuote(path)}${renderedArgs}`;
+}
+
+function cmdCallCommand(command: string, ...args: string[]): string {
+  const renderedArgs = args.map((arg) => ` ${arg}`).join("");
+  return `call ${command}${renderedArgs}`;
 }
 
 function psQuote(value: string): string {
@@ -76,16 +81,28 @@ async function runCmd(
     env?: Record<string, string>;
   } = {},
 ) {
-  return await new Deno.Command("cmd", {
-    args: ["/d", "/c", script],
-    cwd: options.cwd,
-    env: {
-      ...Deno.env.toObject(),
-      ...hermeticAlteranEnvWindows(options.env ?? {}),
-    },
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+  const scriptFile = await Deno.makeTempFile({
+    prefix: "alteran-win-cmd-",
+    suffix: ".cmd",
+  });
+  try {
+    await Deno.writeTextFile(
+      scriptFile,
+      `@echo off\r\n${script}\r\n`,
+    );
+    return await new Deno.Command("cmd", {
+      args: ["/d", "/c", "call", scriptFile],
+      cwd: options.cwd,
+      env: {
+        ...Deno.env.toObject(),
+        ...hermeticAlteranEnvWindows(options.env ?? {}),
+      },
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+  } finally {
+    await removeIfExists(scriptFile);
+  }
 }
 
 async function runPowerShell(
@@ -267,7 +284,7 @@ Deno.test({
         cmdCallBatch(join(targetDir, "activate.bat")),
         `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
         "where deno >nul",
-        "alteran help >nul",
+        cmdCallCommand("alteran", "help", ">nul"),
       ].join(" && "),
       {
         env: {
@@ -300,9 +317,9 @@ Deno.test({
       [
         cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
         cmdCallBatch(join(targetDir, "activate.bat")),
-        "alt help >nul",
-        "atest --help >nul",
-        "adeno --version >nul",
+        cmdCallCommand("alt", "help", ">nul"),
+        cmdCallCommand("atest", "--help", ">nul"),
+        cmdCallCommand("adeno", "--version", ">nul"),
       ].join(" && "),
       {
         env: {
@@ -334,7 +351,7 @@ Deno.test({
       `if not exist ${cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))} exit /b 1`,
       `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
       cmdCallBatch(join(targetDir, "activate.bat")),
-      "alteran help >nul",
+      cmdCallCommand("alteran", "help", ">nul"),
     ].join(" && "),
     {
       cwd: targetDir,
@@ -522,7 +539,7 @@ Deno.test({
     [
       cmdCallBatch(join(targetDir, "activate.bat")),
       `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
-      "alteran help >nul",
+      cmdCallCommand("alteran", "help", ">nul"),
     ].join(" && "),
     {
       cwd: targetDir,
@@ -579,7 +596,7 @@ Deno.test({
     const output = await runCmd(
       [
         cmdCallBatch(join(targetDir, "activate.bat")),
-        "alteran clean runtime",
+        cmdCallCommand("alteran", "clean", "runtime"),
       ].join(" && "),
       {
         cwd: targetDir,
@@ -647,7 +664,7 @@ Deno.test({
     const output = await runCmd(
       [
         cmdCallBatch(join(targetDir, "activate.bat")),
-        "alteran clean builds",
+        cmdCallCommand("alteran", "clean", "builds"),
       ].join(" && "),
       {
         cwd: targetDir,
@@ -736,7 +753,7 @@ Deno.test({
     const output = await runCmd(
       [
         cmdCallBatch(join(targetDir, "activate.bat")),
-        "alteran compact -y",
+        cmdCallCommand("alteran", "compact", "-y"),
       ].join(" && "),
       {
         cwd: targetDir,
