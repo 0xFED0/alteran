@@ -435,7 +435,7 @@ if exist "%LOCAL_DENO%" exit /b 0
 
 where deno >nul 2>nul
 if %ERRORLEVEL%==0 (
-  for /f "usebackq delims=" %%I in (\`where deno\`) do (
+  for /f "usebackq delims=" %%I in (\`where deno 2^>nul\`) do (
     if not exist "%DENO_RUNTIME_ROOT%\\bin" mkdir "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
     if not exist "%DENO_RUNTIME_ROOT%\\cache" mkdir "%DENO_RUNTIME_ROOT%\\cache" >nul 2>nul
     copy /y "%%~I" "%LOCAL_DENO%" >nul

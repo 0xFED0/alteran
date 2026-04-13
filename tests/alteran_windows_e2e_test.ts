@@ -105,6 +105,10 @@ async function runCmd(
   }
 }
 
+function cmdScript(lines: string[]): string {
+  return lines.join("\r\n");
+}
+
 async function runPowerShell(
   script: string,
   options: {
@@ -279,13 +283,16 @@ Deno.test({
 
   try {
     const output = await runCmd(
-      [
+      cmdScript([
         cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+        "if errorlevel 1 exit /b %ERRORLEVEL%",
         cmdCallBatch(join(targetDir, "activate.bat")),
+        "if errorlevel 1 exit /b %ERRORLEVEL%",
         `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
         "where deno >nul",
+        "if errorlevel 1 exit /b %ERRORLEVEL%",
         cmdCallCommand("alteran", "help", ">nul"),
-      ].join(" && "),
+      ]),
       {
         env: {
           PATH: hostDenoPathWindows(),
@@ -536,11 +543,12 @@ Deno.test({
   }
 
   const output = await runCmd(
-    [
+    cmdScript([
       cmdCallBatch(join(targetDir, "activate.bat")),
+      "if errorlevel 1 exit /b %ERRORLEVEL%",
       `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
       cmdCallCommand("alteran", "help", ">nul"),
-    ].join(" && "),
+    ]),
     {
       cwd: targetDir,
       env: {

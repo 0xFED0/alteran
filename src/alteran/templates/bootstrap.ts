@@ -384,7 +384,7 @@ if exist "%SCRIPT_DENO%" (
 ) else (
   where deno >nul 2>nul
   if %ERRORLEVEL%==0 (
-    for /f "usebackq delims=" %%I in (\`where deno\`) do (
+    for /f "usebackq delims=" %%I in (\`where deno 2^>nul\`) do (
       set "BOOTSTRAP_DENO=%%I"
       goto :have_deno
     )

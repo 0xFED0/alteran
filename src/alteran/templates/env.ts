@@ -38,13 +38,16 @@ export function renderBatchEnv(input: EnvTemplateInput): string {
     `set "DENO_DIR=${input.cacheDir}"`,
     `set "DENO_INSTALL_ROOT=${input.platformDir}"`,
     `set "PATH=${input.wrapperBinDir};${input.denoBinDir};%PATH%"`,
-    `doskey alteran=call "${input.batchWrapper}" $*`,
-    `doskey alt=call "${input.batchWrapper}" $*`,
-    `doskey arun=call "${input.batchWrapper}" run $*`,
-    `doskey atask=call "${input.batchWrapper}" task $*`,
-    `doskey atest=call "${input.batchWrapper}" test $*`,
-    `doskey ax=call "${input.batchWrapper}" x $*`,
-    `doskey adeno=call "${input.batchWrapper}" deno $*`,
+    `set "ALTERAN_SESSION_WRAPPER=%TEMP%\\alteran-wrapper-%RANDOM%%RANDOM%%RANDOM%.bat"`,
+    `copy /y "${input.batchWrapper}" "%ALTERAN_SESSION_WRAPPER%" >nul 2>nul`,
+    `if errorlevel 1 set "ALTERAN_SESSION_WRAPPER=${input.batchWrapper}"`,
+    `doskey alteran=call "%ALTERAN_SESSION_WRAPPER%" $*`,
+    `doskey alt=call "%ALTERAN_SESSION_WRAPPER%" $*`,
+    `doskey arun=call "%ALTERAN_SESSION_WRAPPER%" run $*`,
+    `doskey atask=call "%ALTERAN_SESSION_WRAPPER%" task $*`,
+    `doskey atest=call "%ALTERAN_SESSION_WRAPPER%" test $*`,
+    `doskey ax=call "%ALTERAN_SESSION_WRAPPER%" x $*`,
+    `doskey adeno=call "%ALTERAN_SESSION_WRAPPER%" deno $*`,
     ...input.appAliases,
     ...input.toolAliases,
     ...input.shellAliases,
@@ -154,9 +157,9 @@ if [ -n "\${ALTERAN_POSTRUN_HOOK_PATH-}" ] && [ -f "$ALTERAN_POSTRUN_HOOK_PATH" 
   fi
 
   if [ "$postrun_status" -eq 0 ]; then
-    rm -rf "$ALTERAN_POSTRUN_HOOK_DIR"
-    rmdir "$(dirname "$ALTERAN_POSTRUN_HOOK_DIR")" 2>/dev/null || true
-    rmdir "$RUNTIME_DIR" 2>/dev/null || true
+    [ ! -e "$ALTERAN_POSTRUN_HOOK_DIR" ] || rm -rf "$ALTERAN_POSTRUN_HOOK_DIR"
+    [ ! -d "$RUNTIME_DIR/hooks" ] || rmdir "$RUNTIME_DIR/hooks" 2>/dev/null || true
+    [ ! -d "$RUNTIME_DIR" ] || rmdir "$RUNTIME_DIR" 2>/dev/null || true
   fi
 
   rm -rf "$postrun_temp_dir"
@@ -184,9 +187,27 @@ set "ALTERAN_ENTRY=${batchLiteral(input.alteranEntry)}"
 set "COMMAND_NAME=%~1"
 set "SESSION_FILE="
 
+if not defined ALTERAN_WINDOWS_WRAPPER_HANDOFF (
+  if /I "%COMMAND_NAME%"=="clean" goto :handoff
+  if /I "%COMMAND_NAME%"=="compact" goto :handoff
+  if /I "%COMMAND_NAME%"=="refresh" goto :handoff
+)
+
 if /I "%COMMAND_NAME%"=="clean" goto :with_postrun
 if /I "%COMMAND_NAME%"=="compact" goto :with_postrun
 goto :direct
+
+:handoff
+set "HANDOFF_TEMP_ROOT=%TEMP%\\alteran-wrapper"
+if not exist "%HANDOFF_TEMP_ROOT%" mkdir "%HANDOFF_TEMP_ROOT%" >nul 2>nul
+set "HANDOFF_WRAPPER=%HANDOFF_TEMP_ROOT%\\alteran-%RANDOM%%RANDOM%%RANDOM%.bat"
+copy /y "%~f0" "%HANDOFF_WRAPPER%" >nul 2>nul
+if errorlevel 1 exit /b 1
+set "ALTERAN_WINDOWS_WRAPPER_HANDOFF=1"
+cmd /d /c call "%HANDOFF_WRAPPER%" %*
+set "STATUS=%ERRORLEVEL%"
+del /q "%HANDOFF_WRAPPER%" >nul 2>nul
+exit /b %STATUS%
 
 :with_postrun
 set "POSTRUN_TEMP_ROOT=%TEMP%\\alteran-postrun"
@@ -201,44 +222,70 @@ goto :after_main
 "%DENO_EXE%" run -A "%ALTERAN_ENTRY%" %*
 exit /b %ERRORLEVEL%
 
+:wait_for_path_unlock
+set "WAIT_TARGET=%~1"
+if not exist "%WAIT_TARGET%" exit /b 0
+for /L %%N in (1,1,120) do (
+  set "WAIT_STATUS=1"
+  for %%I in ("%WAIT_TARGET%") do (
+    pushd "%%~dpI" >nul 2>nul
+    if errorlevel 1 (
+      set "WAIT_STATUS=0"
+    ) else (
+      ren "%%~nxI" "%%~nxI" >nul 2>nul
+      @set "WAIT_STATUS=!ERRORLEVEL!"
+      popd >nul 2>nul
+    )
+  )
+  if "!WAIT_STATUS!"=="0" exit /b 0
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 50" >nul 2>nul
+)
+exit /b 0
+
 :after_main
 if not exist "%SESSION_FILE%" exit /b %STATUS%
 call "%SESSION_FILE%"
 del /q "%SESSION_FILE%" >nul 2>nul
 
 if defined ALTERAN_POSTRUN_HOOK_PATH if exist "%ALTERAN_POSTRUN_HOOK_PATH%" (
+  call :wait_for_path_unlock "%DENO_EXE%"
   set "POSTRUN_TEMP_DIR=%TEMP%\\alteran-postrun-%ALTERAN_POSTRUN_SESSION_DIR%-%RANDOM%%RANDOM%"
-  mkdir "%POSTRUN_TEMP_DIR%" >nul 2>nul
-  set "ALTERAN_POSTRUN_LOG=%POSTRUN_TEMP_DIR%\\postrun.log"
-  set "ALTERAN_POSTRUN_MSG=%POSTRUN_TEMP_DIR%\\postrun.msg"
+  mkdir "!POSTRUN_TEMP_DIR!" >nul 2>nul
+  set "POSTRUN_EXEC_HOOK=%ALTERAN_POSTRUN_HOOK_PATH%"
+  set "POSTRUN_TEMP_HOOK=!POSTRUN_TEMP_DIR!\\postrun.bat"
+  copy /y "%ALTERAN_POSTRUN_HOOK_PATH%" "!POSTRUN_TEMP_HOOK!" >nul 2>nul
+  if exist "!POSTRUN_TEMP_HOOK!" set "POSTRUN_EXEC_HOOK=!POSTRUN_TEMP_HOOK!"
+  set "ALTERAN_POSTRUN_LOG=!POSTRUN_TEMP_DIR!\\postrun.log"
+  set "ALTERAN_POSTRUN_MSG=!POSTRUN_TEMP_DIR!\\postrun.msg"
 
   (
-    echo intent: %ALTERAN_POSTRUN_INTENT%
-    echo hook: %ALTERAN_POSTRUN_HOOK_PATH%
+    echo intent: !ALTERAN_POSTRUN_INTENT!
+    echo hook: !POSTRUN_EXEC_HOOK!
     echo --- begin postrun script ---
-    type "%ALTERAN_POSTRUN_HOOK_PATH%"
+    type "!POSTRUN_EXEC_HOOK!"
     echo --- end postrun script ---
-  ) > "%ALTERAN_POSTRUN_LOG%"
+  ) > "!ALTERAN_POSTRUN_LOG!"
 
-  call "%ALTERAN_POSTRUN_HOOK_PATH%" >> "%ALTERAN_POSTRUN_LOG%" 2>&1
-  set "POSTRUN_STATUS=%ERRORLEVEL%"
+  cmd /d /c call "!POSTRUN_EXEC_HOOK!" >> "!ALTERAN_POSTRUN_LOG!" 2>&1
+  @set "POSTRUN_STATUS=!ERRORLEVEL!"
+  @echo off
 
-  if exist "%ALTERAN_POSTRUN_MSG%" type "%ALTERAN_POSTRUN_MSG%"
+  if exist "!ALTERAN_POSTRUN_MSG!" type "!ALTERAN_POSTRUN_MSG!"
 
   if defined ALTERAN_POSTRUN_LOG_DIR if exist "%ALTERAN_POSTRUN_LOG_DIR%" (
-    if exist "%ALTERAN_POSTRUN_LOG%" copy /y "%ALTERAN_POSTRUN_LOG%" "%ALTERAN_POSTRUN_LOG_DIR%\\postrun.log" >nul 2>nul
-    if exist "%ALTERAN_POSTRUN_MSG%" copy /y "%ALTERAN_POSTRUN_MSG%" "%ALTERAN_POSTRUN_LOG_DIR%\\postrun.msg" >nul 2>nul
+    if exist "!ALTERAN_POSTRUN_LOG!" copy /y "!ALTERAN_POSTRUN_LOG!" "%ALTERAN_POSTRUN_LOG_DIR%\\postrun.log" >nul 2>nul
+    if exist "!ALTERAN_POSTRUN_MSG!" copy /y "!ALTERAN_POSTRUN_MSG!" "%ALTERAN_POSTRUN_LOG_DIR%\\postrun.msg" >nul 2>nul
   )
 
-  if "%POSTRUN_STATUS%"=="0" (
-    rmdir /s /q "%ALTERAN_POSTRUN_HOOK_DIR%" >nul 2>nul
-    for %%I in ("%ALTERAN_POSTRUN_HOOK_DIR%\\..") do rmdir "%%~fI" >nul 2>nul
-    rmdir "%RUNTIME_DIR%" >nul 2>nul
+  if "!POSTRUN_STATUS!"=="0" (
+    if exist "%ALTERAN_POSTRUN_HOOK_DIR%" rmdir /s /q "%ALTERAN_POSTRUN_HOOK_DIR%" >nul 2>nul
+    if exist "%RUNTIME_DIR%\\hooks" rmdir "%RUNTIME_DIR%\\hooks" >nul 2>nul
+    if exist "%RUNTIME_DIR%" rmdir "%RUNTIME_DIR%" >nul 2>nul
   )
 
-  rmdir /s /q "%POSTRUN_TEMP_DIR%" >nul 2>nul
+  rmdir /s /q "!POSTRUN_TEMP_DIR!" >nul 2>nul
 
-  if "%STATUS%"=="0" exit /b %POSTRUN_STATUS%
+  if "%STATUS%"=="0" exit /b !POSTRUN_STATUS!
 )
 
 exit /b %STATUS%

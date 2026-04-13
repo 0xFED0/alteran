@@ -200,14 +200,22 @@ break > "%ALTERAN_POSTRUN_MSG%"
 goto :postrun_main
 
 :postrun_error
->> "%ALTERAN_POSTRUN_MSG%" echo %~1
+>> "%ALTERAN_POSTRUN_MSG%" echo %*
 set "ERRORS=1"
 exit /b 0
 
 :remove_path_checked
 set "TARGET=%~1"
+set "REMOVE_ATTEMPTS=50"
+:remove_path_retry
 if exist "%TARGET%" rmdir /s /q "%TARGET%" >nul 2>nul
 if exist "%TARGET%" del /f /q "%TARGET%" >nul 2>nul
+if not exist "%TARGET%" exit /b 0
+if "!REMOVE_ATTEMPTS!"=="0" goto :remove_path_failed
+set /a REMOVE_ATTEMPTS-=1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 100" >nul 2>nul
+goto :remove_path_retry
+:remove_path_failed
 if exist "%TARGET%" call :postrun_error Failed to remove %TARGET%
 exit /b 0
 
