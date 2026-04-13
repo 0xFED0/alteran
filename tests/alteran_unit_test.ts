@@ -1078,11 +1078,14 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     "Expected batch env to prepend the wrapper dir and managed deno dir to PATH",
   );
   expect(
-    batch.includes('doskey alteran=call "C:\\project\\.runtime\\alteran\\alteran.bat" $*'),
+    batch.includes('set "ALTERAN_SESSION_WRAPPER=%TEMP%\\alteran-wrapper-%RANDOM%%RANDOM%%RANDOM%.bat"') &&
+      batch.includes('copy /y "C:\\project\\.runtime\\alteran\\alteran.bat" "%ALTERAN_SESSION_WRAPPER%" >nul 2>nul') &&
+      batch.includes('if errorlevel 1 set "ALTERAN_SESSION_WRAPPER=C:\\project\\.runtime\\alteran\\alteran.bat"') &&
+      batch.includes('doskey alteran=call "%ALTERAN_SESSION_WRAPPER%" $*'),
     "Expected batch env to expose the alteran doskey shim",
   );
   expect(
-    batch.includes('doskey atest=call "C:\\project\\.runtime\\alteran\\alteran.bat" test $*') &&
+    batch.includes('doskey atest=call "%ALTERAN_SESSION_WRAPPER%" test $*') &&
       batch.includes('doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*') &&
       batch.includes('doskey tool-seed=call "C:\\project\\.runtime\\alteran\\alteran.bat" tool run seed $*') &&
       batch.includes("doskey myrun=alt run scripts/demo.ts $*"),
