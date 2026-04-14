@@ -32,6 +32,8 @@ alteran refresh
 alteran test -A
 alteran test -A tests/alteran_unit_test.ts
 alteran test -A tests/alteran_e2e_test.ts
+deno task test:examples
+alteran task test:examples
 alteran tool run prepare_jsr
 alteran tool run prepare_zip
 alteran tool run publish_jsr
@@ -41,6 +43,11 @@ deno run -A ./examples/reset.ts
 ```
 
 `deno task ...` remains available, but for high-leverage product flows prefer running through Alteran so managed execution, logging, and project context stay honest.
+
+`test:examples` is the repository entrypoint for examples and README validation.
+It exercises repository-level example tests and, for self-testable mini-project
+examples, also runs their local internal tests from inside the prepared example
+context.
 
 ## Source Of Truth
 

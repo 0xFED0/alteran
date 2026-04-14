@@ -8,6 +8,7 @@ import {
   readJson,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
+  runExampleInternalTests,
   withLocalDenoSources,
 } from "./_example_test_utils.ts";
 
@@ -35,6 +36,19 @@ Deno.test({
         stdout.includes("audit imported unit:audit-report"),
         "Expected reimported tool output",
       );
+    });
+  },
+});
+
+Deno.test({
+  name:
+    "refresh and reimport internal tests stay runnable through alteran test",
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  async fn() {
+    const projectDir = await copyExampleToTemp("06-refresh-reimport");
+    await withLocalDenoSources(async (env) => {
+      const output = await runExampleInternalTests(projectDir, env);
+      assertSuccess(output, "refresh and reimport internal tests");
     });
   },
 });

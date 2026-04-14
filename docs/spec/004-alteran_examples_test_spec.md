@@ -16,6 +16,10 @@ Examples in Alteran are not decorative repository content. They are part of the 
 
 This document defines what must be tested, what must not be over-tested, how example tests should be categorized, and how example validation relates to documentation and README quick start flows.
 
+Internal example self-tests are governed additionally by:
+
+- `docs/spec/008-alteran_examples_internal_tests_spec.md`
+
 ---
 
 ## 2. Why Example Testing Is Required
@@ -311,6 +315,8 @@ At minimum:
 - smoke validation for all maintained examples must run in CI;
 - README quick start validation must run in CI;
 - scenario tests for core examples must run in CI.
+- for self-testable examples, repository-level validation should also invoke the
+  example's local internal test entry path
 
 Projects may choose to split execution across jobs for performance reasons, but example coverage must remain part of the official quality gate.
 
@@ -332,6 +338,10 @@ The preferred lifecycle is:
 2. create a compact bootstrap-ready temp copy;
 3. run `setup` in that temp copy;
 4. run the documented validation flow in that temp copy.
+
+For self-testable mini-project examples, that validation flow may include
+running the example's own internal tests from inside the prepared temp-copy
+context.
 
 For examples whose root is itself an Alteran project, step 2 should preferably use `alteran compact-copy` rather than a raw filesystem copy.
 

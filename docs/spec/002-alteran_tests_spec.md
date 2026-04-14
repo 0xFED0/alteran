@@ -169,6 +169,26 @@ Current file:
 
 - `tests/alteran_docker_e2e_test.ts`
 
+### 4.6 Examples and docs validation
+
+Repository-level examples and docs validation protect executable documentation.
+
+These tests cover:
+
+- example smoke scenarios
+- example scenario assertions
+- README quick start validation
+- invocation of example-local internal tests for self-testable examples
+
+Current files:
+
+- `tests/examples/*.ts`
+- `tests/docs/readme_quickstart_test.ts`
+
+Current task:
+
+- `deno task test:examples`
+
 ## 5. Required User-Facing Scenarios
 
 The suite should explicitly cover the following bootstrap/activation entrypaths.
@@ -229,6 +249,21 @@ At minimum, the contract test should verify:
 - a later launch can reuse the already materialized app-local runtime
 - the launcher rejects a mismatched `app.json` identity instead of silently treating a different app directory as valid
 
+### 5.8 Example self-tests for mini-project examples
+
+For examples that meaningfully behave like small self-contained Alteran
+projects, the suite should also verify that the example's own local test entry
+path remains runnable after the example is prepared.
+
+In the current repository, this means:
+
+- internal tests may live under `examples/<path>/tests/`
+- repository-level tests still make their own outer assertions
+- repository-level tests also invoke the example's local internal test command
+  from inside the prepared temp-copy example context
+
+Bootstrap-oriented examples are not required to gain this layer.
+
 ## 6. Platform Coverage Rules
 
 ### 6.1 Unix-like shells
@@ -255,6 +290,22 @@ The suite should continue to include:
 - spaces in repository and target paths
 - legacy source env aliases where still supported
 - direct execution of generated `app.bat` launchers for supported standalone app scenarios
+
+## 7. Repository Task Model
+
+The repository should expose explicit top-level tasks for the main suite slices.
+
+Current expected tasks include:
+
+- `test:unit`
+- `test:e2e`
+- `test:examples`
+- `test:windows`
+- `test:docker`
+- `test`
+
+`test` should act as an orchestrated aggregate entrypoint rather than relying on
+an unconstrained root-level `deno test -A` over the whole repository tree.
 
 ### 6.3 Linux in Docker
 

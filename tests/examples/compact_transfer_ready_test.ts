@@ -7,6 +7,7 @@ import {
   copyExampleToTemp,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
+  runExampleInternalTests,
   withLocalDenoSources,
 } from "./_example_test_utils.ts";
 
@@ -45,6 +46,19 @@ Deno.test({
         !(await exists(join(projectDir, "apps", "portable-cli", ".runtime"))),
         "Expected nested app runtime to be removed",
       );
+    });
+  },
+});
+
+Deno.test({
+  name:
+    "compact transfer ready internal tests stay runnable through alteran test",
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  async fn() {
+    const projectDir = await copyExampleToTemp("07-compact-transfer-ready");
+    await withLocalDenoSources(async (env) => {
+      const output = await runExampleInternalTests(projectDir, env);
+      assertSuccess(output, "compact transfer ready internal tests");
     });
   },
 });

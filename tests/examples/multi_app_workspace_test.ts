@@ -8,6 +8,7 @@ import {
   readJson,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
+  runExampleInternalTests,
   runExampleSetup,
   withLocalDenoSources,
 } from "./_example_test_utils.ts";
@@ -36,6 +37,19 @@ Deno.test({
         stdout.includes("shared greeting for ops-report"),
         "Expected ops-report to use the root shared library",
       );
+    });
+  },
+});
+
+Deno.test({
+  name:
+    "multi app workspace internal tests stay runnable through alteran test",
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  async fn() {
+    const projectDir = await copyExampleToTemp("02-multi-app-workspace");
+    await withLocalDenoSources(async (env) => {
+      const output = await runExampleInternalTests(projectDir, env);
+      assertSuccess(output, "multi app workspace internal tests");
     });
   },
 });

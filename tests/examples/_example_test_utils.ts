@@ -329,6 +329,13 @@ export async function runExampleActivated(
   );
 }
 
+export async function runExampleInternalTests(
+  projectDir: string,
+  env: Record<string, string> = {},
+): Promise<Deno.CommandOutput> {
+  return await runExampleActivated(projectDir, "deno test -A", env);
+}
+
 export function assertSuccess(
   output: Deno.CommandOutput,
   label: string,
@@ -395,6 +402,9 @@ export async function prepareRepoCopy(): Promise<string> {
   for (const relativePath of trackedFiles) {
     const sourcePath = join(ALTERAN_REPO_DIR, relativePath);
     const targetPath = join(tempDir, relativePath);
+    if (!(await exists(sourcePath))) {
+      continue;
+    }
     await ensureDir(dirname(targetPath));
     await Deno.copyFile(sourcePath, targetPath);
 

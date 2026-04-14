@@ -58,6 +58,24 @@ source ./activate
 
 For examples that evolve after setup, continue with the commands shown in the example README.
 
+Several mini-project examples also carry local internal tests under `tests/`.
+After running:
+
+```sh
+./setup
+. ./activate
+```
+
+their local self-check path is:
+
+```sh
+deno test -A
+```
+
+Repository-level validation still remains the outer source of truth, but these
+internal tests help keep transferable mini-project examples self-checking when
+copied independently.
+
 Standalone app examples document their own app-local `setup` / launcher flow.
 
 From the repository root, a public bootstrap path is also valid:

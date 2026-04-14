@@ -9,6 +9,7 @@
     "refresh": "deno run -A ./alteran.ts refresh",
     "test:unit": "deno test -A ./tests/alteran_unit_test.ts",
     "test:e2e": "deno test -A ./tests/alteran_e2e_test.ts ./tests/alteran_unix_e2e_test.ts",
+    "test:examples": "deno test -A ./tests/examples/bootstrap_empty_project_test.ts ./tests/examples/multi_app_workspace_test.ts ./tests/examples/tools_workspace_test.ts ./tests/examples/managed_vs_plain_test.ts ./tests/examples/logging_run_tree_test.ts ./tests/examples/refresh_reimport_test.ts ./tests/examples/compact_transfer_ready_test.ts ./tests/examples/advanced_examples_test.ts ./tests/docs/readme_quickstart_test.ts",
     "test:windows": "deno test -A ./tests/alteran_windows_e2e_test.ts",
     "test:docker": "deno test -A ./tests/alteran_docker_e2e_test.ts",
     "test": "deno test -A"

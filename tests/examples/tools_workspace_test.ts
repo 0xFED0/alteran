@@ -5,6 +5,7 @@ import {
   decode,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
+  runExampleInternalTests,
   withLocalDenoSources,
 } from "./_example_test_utils.ts";
 
@@ -32,6 +33,18 @@ Deno.test({
         stdout.includes("release 0.2.0"),
         "Expected release-notes to print the requested release header",
       );
+    });
+  },
+});
+
+Deno.test({
+  name: "tools workspace internal tests stay runnable through alteran test",
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  async fn() {
+    const projectDir = await copyExampleToTemp("03-tools-workspace");
+    await withLocalDenoSources(async (env) => {
+      const output = await runExampleInternalTests(projectDir, env);
+      assertSuccess(output, "tools workspace internal tests");
     });
   },
 });

@@ -18,6 +18,7 @@ Expected developer tasks include:
 
 - `test:unit`
 - `test:e2e`
+- `test:examples`
 - `test:windows`
 - `test:docker`
 - `test`
@@ -62,6 +63,11 @@ For day-to-day repository maintenance, prefer the orchestrated surface:
 - `alteran tool run examples reset ...`
 
 instead of ad hoc loops over `examples/`.
+
+For self-testable mini-project examples, repository-level validation should
+also invoke the example's own local internal tests after setup. In the current
+repository that inner command model is `deno test -A` from inside the prepared
+example copy, while the outer repository test still keeps its own assertions.
 
 ## CI Expectations
 

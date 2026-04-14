@@ -9,6 +9,7 @@ import {
   latestLogDir,
   REQUIRES_LOCAL_DENO_FIXTURE,
   runExampleActivated,
+  runExampleInternalTests,
   runShell,
   startLocalDenoFixture,
   withLocalDenoSources,
@@ -43,6 +44,19 @@ Deno.test({
         events.includes('"job":"nightly-sync"'),
         "Expected job context in log events",
       );
+    });
+  },
+});
+
+Deno.test({
+  name:
+    "advanced logtape categories internal tests stay runnable through alteran test",
+  ignore: !REQUIRES_LOCAL_DENO_FIXTURE,
+  async fn() {
+    const projectDir = await copyExampleToTemp("advanced/logtape-categories");
+    await withLocalDenoSources(async (env) => {
+      const output = await runExampleInternalTests(projectDir, env);
+      assertSuccess(output, "advanced logtape categories internal tests");
     });
   },
 });

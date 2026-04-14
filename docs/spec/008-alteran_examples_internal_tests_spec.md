@@ -185,7 +185,7 @@ This means the repository-level test should run the example's internal test comm
 Typical acceptable forms include:
 
 - `alteran test` from inside the example;
-- `deno test` from inside the example;
+- `deno test -A` from inside the example;
 - another example-local documented test entrypoint if intentionally designed.
 
 The important rule is that the repository-level test must execute the internal tests **as the example itself would expect them to be executed**, not by bypassing the example's own local execution model.
@@ -262,6 +262,14 @@ The chosen command should be obvious, documented in the example README when need
 
 Repository-level orchestration should call that local entry path rather than reimplement the example's entire internal test behavior externally.
 
+In the current Alteran repository, the maintained self-testable examples expose
+their local internal tests through:
+
+- `deno test -A`
+
+after the example has first been prepared through its normal local `setup`
+flow.
+
 ---
 
 ## 14. Example Selection Guidance
@@ -275,6 +283,16 @@ The following examples are strong candidates for internal tests when their local
 - refresh or reimport examples;
 - compact or transfer-ready examples;
 - advanced examples that are intentionally maintained as real mini-projects.
+
+In the current repository, internal tests are implemented for:
+
+- `02-multi-app-workspace`
+- `03-tools-workspace`
+- `04-managed-vs-plain-deno`
+- `05-logging-run-tree`
+- `06-refresh-reimport`
+- `07-compact-transfer-ready`
+- `advanced/logtape-categories`
 
 Bootstrap-empty-folder style examples are not strong candidates by default.
 
