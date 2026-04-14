@@ -15,6 +15,10 @@ on:
       - ".github/workflows/test.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   linux:
     runs-on: ubuntu-latest
@@ -38,21 +42,33 @@ jobs:
         run: |
           deno check alteran.ts src/alteran/**/*.ts tests/*.ts tests/examples/*.ts tests/docs/*.ts tools/**/*.ts
 
+      - name: Prepare Linux test report directory
+        working-directory: .
+        run: mkdir -p .ci/test-results
+
       - name: Run unit tests
         working-directory: .
-        run: deno run -A ./alteran.ts test -A ./tests/alteran_unit_test.ts
+        run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/linux-unit.junit.xml ./tests/alteran_unit_test.ts
 
       - name: Run repository e2e tests
         working-directory: .
-        run: deno run -A ./alteran.ts test -A ./tests/alteran_e2e_test.ts ./tests/alteran_unix_e2e_test.ts
+        run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/linux-e2e.junit.xml ./tests/alteran_e2e_test.ts ./tests/alteran_unix_e2e_test.ts
 
       - name: Run docs and examples tests
         working-directory: .
-        run: deno run -A ./alteran.ts test -A ./tests/examples/*.ts ./tests/docs/*.ts
+        run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/linux-examples.junit.xml ./tests/examples/*.ts ./tests/docs/*.ts
 
       - name: Run docker e2e tests
         working-directory: .
-        run: deno run -A ./alteran.ts test -A ./tests/alteran_docker_e2e_test.ts
+        run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/linux-docker.junit.xml ./tests/alteran_docker_e2e_test.ts
+
+      - name: Publish Linux test report
+        if: success() || failure()
+        continue-on-error: true
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          check_name: Linux Test Report
+          files: .ci/test-results/linux-*.junit.xml
 
   windows:
     runs-on: windows-latest
@@ -66,7 +82,20 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Prepare Windows test report directory
+        working-directory: .
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path .ci/test-results | Out-Null
+
       - name: Run windows e2e tests
         working-directory: .
         shell: pwsh
-        run: deno run -A ./alteran.ts test -A ./tests/alteran_windows_e2e_test.ts
+        run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/windows-e2e.junit.xml ./tests/alteran_windows_e2e_test.ts
+
+      - name: Publish Windows test report
+        if: success() || failure()
+        continue-on-error: true
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          check_name: Windows Test Report
+          files: .ci/test-results/windows-*.junit.xml
