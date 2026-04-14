@@ -3,13 +3,25 @@ import { fileURLToPath } from "node:url";
 
 import { ensureDir } from "../src/alteran/fs.ts";
 import { prepareBootstrapFixture } from "./bootstrap_fixture.ts";
+import {
+  summarizeEnvKeys,
+  TEST_TRACE_CATEGORY,
+  traceCommandResult,
+  traceCommandStart,
+  traceTestStep,
+  traceTestWarning,
+} from "./test_trace.ts";
 
 function decode(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes);
 }
 
 const ALTERAN_REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DOCKER_TMP_ROOT = resolve(ALTERAN_REPO_DIR, ".runtime", "docker-test-fixtures");
+const DOCKER_TMP_ROOT = resolve(
+  ALTERAN_REPO_DIR,
+  ".runtime",
+  "docker-test-fixtures",
+);
 
 async function dockerAvailable(): Promise<boolean> {
   try {
@@ -18,9 +30,19 @@ async function dockerAvailable(): Promise<boolean> {
       stdout: "null",
       stderr: "null",
     }).output();
+    await traceCommandResult(TEST_TRACE_CATEGORY.e2eDocker, output, {
+      command: "docker info",
+    });
     return output.success;
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
+      await traceTestWarning(
+        TEST_TRACE_CATEGORY.e2eDocker,
+        "docker-based tests skipped",
+        {
+          reason: "docker command is not available on the host",
+        },
+      );
       return false;
     }
     throw error;
@@ -76,28 +98,26 @@ function buildDockerScript(baseImage: string, withGlobalDeno: boolean): string {
   const setupSteps = [
     "set -eu",
     buildBootstrapCommand(baseImage),
-    withGlobalDeno
-      ? buildGlobalDenoCommand(baseImage)
-      : "",
+    withGlobalDeno ? buildGlobalDenoCommand(baseImage) : "",
     "unset ALTERAN_SRC ALTERAN_HOME || true",
-    "cat >/tmp/bootstrap_server.py <<'PY'\n"
-      + "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler\n"
-      + "import functools\n"
-      + "import mimetypes\n"
-      + "mimetypes.add_type('application/typescript; charset=utf-8', '.ts')\n"
-      + "mimetypes.add_type('application/javascript; charset=utf-8', '.js')\n"
-      + "mimetypes.add_type('application/json; charset=utf-8', '.json')\n"
-      + "handler = functools.partial(SimpleHTTPRequestHandler, directory='/served')\n"
-      + "server = ThreadingHTTPServer(('127.0.0.1', 18080), handler)\n"
-      + "server.serve_forever()\n"
-      + "PY",
-    'python3 /tmp/bootstrap_server.py >/tmp/bootstrap-server.log 2>&1 & SERVER_PID=$!',
+    "cat >/tmp/bootstrap_server.py <<'PY'\n" +
+    "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler\n" +
+    "import functools\n" +
+    "import mimetypes\n" +
+    "mimetypes.add_type('application/typescript; charset=utf-8', '.ts')\n" +
+    "mimetypes.add_type('application/javascript; charset=utf-8', '.js')\n" +
+    "mimetypes.add_type('application/json; charset=utf-8', '.json')\n" +
+    "handler = functools.partial(SimpleHTTPRequestHandler, directory='/served')\n" +
+    "server = ThreadingHTTPServer(('127.0.0.1', 18080), handler)\n" +
+    "server.serve_forever()\n" +
+    "PY",
+    "python3 /tmp/bootstrap_server.py >/tmp/bootstrap-server.log 2>&1 & SERVER_PID=$!",
     'cleanup() { kill "$SERVER_PID" >/dev/null 2>&1 || true; }',
-    'trap cleanup EXIT',
-    'server_ready() { curl -fsS http://127.0.0.1:18080/bundle/alteran.ts >/dev/null; }',
+    "trap cleanup EXIT",
+    "server_ready() { curl -fsS http://127.0.0.1:18080/bundle/alteran.ts >/dev/null; }",
     'attempt=0; until server_ready; do attempt=$((attempt + 1)); if [ "$attempt" -ge 50 ]; then cat /tmp/bootstrap-server.log >&2 || true; echo "Local bootstrap fixture server did not become ready" >&2; exit 1; fi; sleep 0.1; done',
-    'export REMOTE_RUN_SOURCE=http://127.0.0.1:18080/bundle/alteran.ts',
-    'export REMOTE_ARCHIVE_SOURCE=http://127.0.0.1:18080/alteran.zip',
+    "export REMOTE_RUN_SOURCE=http://127.0.0.1:18080/bundle/alteran.ts",
+    "export REMOTE_ARCHIVE_SOURCE=http://127.0.0.1:18080/alteran.zip",
     'ensure_deno_in_path() { if command -v deno >/dev/null 2>&1; then return 0; fi; local_deno=$(find /target -type f -path "*/.runtime/deno/*/bin/deno" | head -n 1 || true); [ -n "$local_deno" ] || { echo "No deno executable available" >&2; exit 1; }; export PATH="$(dirname "$local_deno"):$PATH"; }',
     'assert_active() { target_dir=$1; ( cd "$target_dir" && . ./activate >/dev/null && [ "$ALTERAN_HOME" = "$target_dir/.runtime" ] && [ -f "$ALTERAN_HOME/alteran/mod.ts" ] && command -v deno >/dev/null && deno --version >/dev/null && alteran help >/dev/null ); }',
     "mkdir -p /work /target",
@@ -117,7 +137,7 @@ function buildDockerScript(baseImage: string, withGlobalDeno: boolean): string {
     "ensure_deno_in_path",
     "cp -R /source/. /work/repo",
     "chmod +x /work/repo/setup",
-    '( cd /work/repo && ./setup >/dev/null && . ./activate >/dev/null && alteran setup /target/repo-setup >/dev/null )',
+    "( cd /work/repo && ./setup >/dev/null && . ./activate >/dev/null && alteran setup /target/repo-setup >/dev/null )",
     "assert_active /target/repo-setup",
     "ensure_deno_in_path",
     "deno run -A /source/alteran.ts setup /target/direct-setup >/dev/null",
@@ -133,33 +153,58 @@ async function runDockerMatrix(
   withGlobalDeno: boolean,
 ): Promise<void> {
   await ensureDir(DOCKER_TMP_ROOT);
+  await traceTestStep(
+    TEST_TRACE_CATEGORY.e2eDocker,
+    "preparing docker matrix run",
+    {
+      base_image: baseImage,
+      with_global_deno: withGlobalDeno,
+    },
+  );
   const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR, {
     tempDir: DOCKER_TMP_ROOT,
   });
   try {
+    const dockerArgs = [
+      "run",
+      "--rm",
+      "--user",
+      "root",
+      "-v",
+      `${ALTERAN_REPO_DIR}:/source:ro`,
+      "-v",
+      `${fixture.servedDir}:/served:ro`,
+      "-e",
+      "ALTERAN_RUN_SOURCES=http://127.0.0.1:18080/bundle/alteran.ts",
+      "-e",
+      "ALTERAN_ARCHIVE_SOURCES=http://127.0.0.1:18080/alteran.zip",
+      baseImage,
+      "sh",
+      "-lc",
+      buildDockerScript(baseImage, withGlobalDeno),
+    ];
+    await traceCommandStart(
+      TEST_TRACE_CATEGORY.e2eDocker,
+      `docker ${dockerArgs.slice(0, -1).join(" ")} <script>`,
+      {
+        base_image: baseImage,
+        served_dir: fixture.servedDir,
+        env_keys: summarizeEnvKeys({
+          ALTERAN_RUN_SOURCES: "http://127.0.0.1:18080/bundle/alteran.ts",
+          ALTERAN_ARCHIVE_SOURCES: "http://127.0.0.1:18080/alteran.zip",
+        }),
+      },
+    );
     const output = await new Deno.Command("docker", {
-      args: [
-        "run",
-        "--rm",
-        "--user",
-        "root",
-        "-v",
-        `${ALTERAN_REPO_DIR}:/source:ro`,
-        "-v",
-        `${fixture.servedDir}:/served:ro`,
-        "-e",
-        "ALTERAN_RUN_SOURCES=http://127.0.0.1:18080/bundle/alteran.ts",
-        "-e",
-        "ALTERAN_ARCHIVE_SOURCES=http://127.0.0.1:18080/alteran.zip",
-        baseImage,
-        "sh",
-        "-lc",
-        buildDockerScript(baseImage, withGlobalDeno),
-      ],
+      args: dockerArgs,
       env: Deno.env.toObject(),
       stdout: "piped",
       stderr: "piped",
     }).output();
+    await traceCommandResult(TEST_TRACE_CATEGORY.e2eDocker, output, {
+      base_image: baseImage,
+      with_global_deno: withGlobalDeno,
+    });
 
     if (!output.success) {
       throw new Error(
@@ -169,6 +214,14 @@ async function runDockerMatrix(
       );
     }
   } finally {
+    await traceTestStep(
+      TEST_TRACE_CATEGORY.e2eDocker,
+      "cleaning docker matrix fixture",
+      {
+        base_image: baseImage,
+        with_global_deno: withGlobalDeno,
+      },
+    );
     await fixture.cleanup();
   }
 }

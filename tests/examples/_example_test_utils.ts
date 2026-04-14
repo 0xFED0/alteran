@@ -9,6 +9,14 @@ import {
 } from "../../src/alteran/fs.ts";
 import { detectPlatform } from "../../src/alteran/platform.ts";
 import { startStaticFileServer } from "../bootstrap_fixture.ts";
+import {
+  summarizeEnvKeys,
+  TEST_TRACE_CATEGORY,
+  traceCommandResult,
+  traceCommandStart,
+  traceTestStep,
+  traceTestWarning,
+} from "../test_trace.ts";
 
 export const ALTERAN_REPO_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -124,14 +132,36 @@ async function commandExists(command: string): Promise<boolean> {
 
 async function detectLocalFixtureSkipReason(): Promise<string | null> {
   if (IS_WINDOWS) {
+    await traceTestWarning(
+      [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+      "local fixture support skipped",
+      {
+        reason:
+          "Unix-oriented example/docs helpers are not supported on Windows hosts.",
+      },
+    );
     return "Unix-oriented example/docs helpers are not supported on Windows hosts.";
   }
 
   if (!(await commandExists("sh"))) {
+    await traceTestWarning(
+      [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+      "local fixture support skipped",
+      {
+        reason: "Example/docs harness requires the host sh shell.",
+      },
+    );
     return "Example/docs harness requires the host sh shell.";
   }
 
   if (!(await commandExists("zip"))) {
+    await traceTestWarning(
+      [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+      "local fixture support skipped",
+      {
+        reason: "Local Deno fixture requires the host zip command.",
+      },
+    );
     return "Local Deno fixture requires the host zip command.";
   }
 
@@ -143,6 +173,14 @@ async function detectLocalFixtureSkipReason(): Promise<string | null> {
     return null;
   } catch (error) {
     if (error instanceof Deno.errors.PermissionDenied) {
+      await traceTestWarning(
+        [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+        "local fixture support skipped",
+        {
+          reason:
+            "Local Deno fixture requires permission to bind a loopback HTTP server.",
+        },
+      );
       return "Local Deno fixture requires permission to bind a loopback HTTP server.";
     }
     throw error;
@@ -153,6 +191,13 @@ async function detectLocalFixtureSkipReason(): Promise<string | null> {
 
 async function detectGitRepoCopySkipReason(): Promise<string | null> {
   if (!(await commandExists("git"))) {
+    await traceTestWarning(
+      [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+      "git repo-copy support skipped",
+      {
+        reason: "Repository copy fixture requires the host git command.",
+      },
+    );
     return "Repository copy fixture requires the host git command.";
   }
 
@@ -170,6 +215,14 @@ async function detectGitRepoCopySkipReason(): Promise<string | null> {
 
   const stderr = decode(output.stderr);
   if (stderr.includes("detected dubious ownership in repository")) {
+    await traceTestWarning(
+      [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+      "git repo-copy support skipped",
+      {
+        reason:
+          "Repository copy fixture requires a git-safe checkout or copy. Docker bind mounts with dubious ownership are skipped.",
+      },
+    );
     return "Repository copy fixture requires a git-safe checkout or copy. Docker bind mounts with dubious ownership are skipped.";
   }
 
@@ -215,6 +268,15 @@ export async function copyExampleToTemp(
     prefix: `alteran-example-${exampleRelativePath.replaceAll("/", "-")}-`,
   });
   const tempDir = join(tempParentDir, "example");
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    "copying example to temp",
+    {
+      example: exampleRelativePath,
+      source_dir: sourceDir,
+      temp_dir: tempDir,
+    },
+  );
 
   if (await exists(join(sourceDir, "alteran.json"))) {
     const copy = await runAlteranCli(ALTERAN_REPO_DIR, [
@@ -232,7 +294,9 @@ export async function copyExampleToTemp(
         if (!relativePath) {
           return true;
         }
-        if (relativePath === ".runtime" || relativePath.startsWith(".runtime/")) {
+        if (
+          relativePath === ".runtime" || relativePath.startsWith(".runtime/")
+        ) {
           return false;
         }
         if (
@@ -263,6 +327,14 @@ export async function copyExampleToTemp(
   }
 
   await rewriteExampleDotEnvForTemp(tempDir);
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    "example temp copy ready",
+    {
+      example: exampleRelativePath,
+      temp_dir: tempDir,
+    },
+  );
   return tempDir;
 }
 
@@ -271,13 +343,30 @@ export async function runAlteranCli(
   args: string[],
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await new Deno.Command(Deno.execPath(), {
+  const rendered = `deno run -A ${join(ALTERAN_REPO_DIR, "alteran.ts")} ${
+    args.join(" ")
+  }`;
+  await traceCommandStart(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    rendered,
+    {
+      cwd,
+      env_keys: summarizeEnvKeys(env),
+    },
+  );
+  const output = await new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), ...args],
     cwd,
     env: hermeticEnv(env),
     stdout: "piped",
     stderr: "piped",
   }).output();
+  await traceCommandResult(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    output,
+    { cwd },
+  );
+  return output;
 }
 
 export async function runLocalDeno(
@@ -285,25 +374,51 @@ export async function runLocalDeno(
   args: string[],
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await new Deno.Command(Deno.execPath(), {
+  await traceCommandStart(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    `deno ${args.join(" ")}`,
+    {
+      cwd,
+      env_keys: summarizeEnvKeys(env),
+    },
+  );
+  const output = await new Deno.Command(Deno.execPath(), {
     args,
     cwd,
     env: hermeticEnv(env),
     stdout: "piped",
     stderr: "piped",
   }).output();
+  await traceCommandResult(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    output,
+    { cwd },
+  );
+  return output;
 }
 
 export async function runShell(
   script: string,
   env: Record<string, string> = {},
 ): Promise<Deno.CommandOutput> {
-  return await new Deno.Command("sh", {
+  await traceCommandStart(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    `sh -c ${script}`,
+    {
+      env_keys: summarizeEnvKeys(env),
+    },
+  );
+  const output = await new Deno.Command("sh", {
     args: ["-c", script],
     env: hermeticEnv(env),
     stdout: "piped",
     stderr: "piped",
   }).output();
+  await traceCommandResult(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    output,
+  );
+  return output;
 }
 
 export async function runExampleSetup(
@@ -372,6 +487,13 @@ export async function prepareRepoCopy(): Promise<string> {
   const tempDir = await Deno.makeTempDir({
     prefix: "alteran-readme-quickstart-",
   });
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    "preparing tracked repo copy",
+    {
+      temp_dir: tempDir,
+    },
+  );
 
   const trackedFilesOutput = await new Deno.Command("git", {
     args: ["ls-files", "-z"],
@@ -416,6 +538,14 @@ export async function prepareRepoCopy(): Promise<string> {
     }
   }
 
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    "tracked repo copy ready",
+    {
+      temp_dir: tempDir,
+      tracked_file_count: trackedFiles.length,
+    },
+  );
   return tempDir;
 }
 
@@ -435,8 +565,17 @@ export async function startLocalDenoFixture(): Promise<{
     ? Deno.version.deno
     : `v${Deno.version.deno}`;
   const versionDir = join(releaseRoot, version);
-  const stagingDir = join(tempDir, "staging");
   const archiveName = `deno-${PLATFORM.archiveTarget}.zip`;
+  const stagingDir = join(tempDir, "staging");
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+    "preparing local deno fixture",
+    {
+      temp_dir: tempDir,
+      version,
+      archive_name: archiveName,
+    },
+  );
 
   await Deno.mkdir(versionDir, { recursive: true });
   await Deno.mkdir(stagingDir, { recursive: true });
@@ -471,6 +610,14 @@ export async function startLocalDenoFixture(): Promise<{
   return {
     baseUrl: server.baseUrl,
     close: async () => {
+      await traceTestStep(
+        [...TEST_TRACE_CATEGORY.e2eExamples, "harness"],
+        "cleaning local deno fixture",
+        {
+          base_url: server.baseUrl,
+          temp_dir: tempDir,
+        },
+      );
       await server.close();
       await Deno.remove(tempDir, { recursive: true });
     },

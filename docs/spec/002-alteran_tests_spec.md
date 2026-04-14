@@ -2,9 +2,11 @@
 
 ## 1. Purpose
 
-This document defines the purpose, scope, structure, and operating rules of the Alteran test suite.
+This document defines the purpose, scope, structure, and operating rules of the
+Alteran test suite.
 
-It exists so that the test suite is guided by explicit product expectations rather than by the current implementation alone.
+It exists so that the test suite is guided by explicit product expectations
+rather than by the current implementation alone.
 
 The test suite must answer four questions:
 
@@ -26,38 +28,70 @@ This document complements:
 
 Tests should follow the Alteran specification first.
 
-If current code behaves differently from the specification, the test should prefer the specification unless the specification is clearly ambiguous or internally contradictory.
+If current code behaves differently from the specification, the test should
+prefer the specification unless the specification is clearly ambiguous or
+internally contradictory.
 
 ### 2.2 Signal over greenness
 
 The goal is not to make all tests green at any cost.
 
-The goal is to surface important user-facing breakage, especially in scenarios that are:
+The goal is to surface important user-facing breakage, especially in scenarios
+that are:
 
 - common
 - plausible
 - easy for a user to attempt
 - dangerous when broken
 
-If a test reproduces a realistic product bug, the test should remain strict rather than being weakened to match the current bug.
+If a test reproduces a realistic product bug, the test should remain strict
+rather than being weakened to match the current bug.
 
 ### 2.3 User-centered scenarios
 
-The suite should prioritize the user-facing bootstrap and activation flows of Alteran rather than only internal implementation details.
+The suite should prioritize the user-facing bootstrap and activation flows of
+Alteran rather than only internal implementation details.
 
 ### 2.4 Deterministic where possible
 
-Tests should prefer local, self-hosted, deterministic inputs over public network dependencies.
+Tests should prefer local, self-hosted, deterministic inputs over public network
+dependencies.
 
-Repository and example test harnesses may rely on a small explicit host-tool baseline when building deterministic local fixtures. On Unix-like hosts this baseline currently includes `curl`, `unzip`, `zip`, and `git`. CI configuration should install these tools explicitly instead of assuming they happen to be present on the runner image. Tests that specifically require tracked-file repository-copy behavior may be skipped when `git` is unavailable on a local host.
+Repository and example test harnesses may rely on a small explicit host-tool
+baseline when building deterministic local fixtures. On Unix-like hosts this
+baseline currently includes `curl`, `unzip`, `zip`, and `git`. CI configuration
+should install these tools explicitly instead of assuming they happen to be
+present on the runner image. Tests that specifically require tracked-file
+repository-copy behavior may be skipped when `git` is unavailable on a local
+host.
 
-Example validation should also prefer temp-copy-based workflows over mutating committed `examples/` trees in place.
+Example validation should also prefer temp-copy-based workflows over mutating
+committed `examples/` trees in place.
 
 ### 2.5 Honest platform scope
 
-Supported behavior, unsupported behavior, and exploratory behavior must be clearly separated.
+Supported behavior, unsupported behavior, and exploratory behavior must be
+clearly separated.
 
-If a platform is intentionally unsupported by product ADR, tests should reflect that honestly.
+If a platform is intentionally unsupported by product ADR, tests should reflect
+that honestly.
+
+### 2.6 Useful external-test observability
+
+Repository-level end-to-end tests can fail in ways that are expensive to
+reconstruct after the fact.
+
+External test harnesses should therefore emit concise structured diagnostic
+events when that helps explain:
+
+- which scenario is running
+- which fixture or temp-copy path was prepared
+- which command or entrypath was chosen
+- which important environment overrides were applied
+- why a test was skipped or treated as harness-limited
+
+This observability should improve failure triage without turning the suite into
+verbose log spam.
 
 ## 3. Test Suite Goals
 
@@ -70,7 +104,8 @@ The Alteran suite exists to verify that:
 - cleanup commands are safe and consistent with the specification
 - bootstrap works from realistic source combinations
 - standalone app launchers can auto-materialize and launch a basic app flow
-- Windows activation behavior is covered explicitly rather than inferred from Unix behavior
+- Windows activation behavior is covered explicitly rather than inferred from
+  Unix behavior
 - Docker bootstrap paths are exercised in isolated environments
 
 ## 4. Test Categories
@@ -87,7 +122,8 @@ These tests should cover:
 - source-list parsing and precedence
 - `.env` loading and source-root resolution
 - environment template rendering
-- small deterministic helpers that do not require shell or container orchestration
+- small deterministic helpers that do not require shell or container
+  orchestration
 
 Current file:
 
@@ -95,7 +131,8 @@ Current file:
 
 ### 4.2 Repository-level e2e tests
 
-These tests create temporary projects or repository copies and exercise Alteran through real commands and generated files.
+These tests create temporary projects or repository copies and exercise Alteran
+through real commands and generated files.
 
 They should cover:
 
@@ -113,11 +150,13 @@ Current file:
 
 - `tests/alteran_e2e_test.ts`
 
-This file should keep only cross-platform repository e2e scenarios that are expected to behave the same on Unix and Windows.
+This file should keep only cross-platform repository e2e scenarios that are
+expected to behave the same on Unix and Windows.
 
 ### 4.3 Unix-specific e2e tests
 
-Unix shell behavior is sufficiently different that it must be tested explicitly in a separate suite.
+Unix shell behavior is sufficiently different that it must be tested explicitly
+in a separate suite.
 
 These tests cover:
 
@@ -132,7 +171,8 @@ Current file:
 
 - `tests/alteran_unix_e2e_test.ts`
 
-These tests must be skipped on Windows hosts using explicit `ignore` conditions rather than early `return`.
+These tests must be skipped on Windows hosts using explicit `ignore` conditions
+rather than early `return`.
 
 ### 4.4 Windows-specific e2e tests
 
@@ -152,11 +192,13 @@ Current file:
 
 - `tests/alteran_windows_e2e_test.ts`
 
-These tests must be skipped on non-Windows hosts using explicit `ignore` conditions rather than early `return`.
+These tests must be skipped on non-Windows hosts using explicit `ignore`
+conditions rather than early `return`.
 
 ### 4.5 Docker e2e tests
 
-Docker tests validate bootstrap and activation in minimal isolated Linux environments.
+Docker tests validate bootstrap and activation in minimal isolated Linux
+environments.
 
 They exist to validate:
 
@@ -195,19 +237,23 @@ The suite should explicitly cover the following bootstrap/activation entrypaths.
 
 ### 5.1 Copied bootstrap scripts
 
-The user copies `setup` and `setup.bat` into a target directory and runs them there.
+The user copies `setup` and `setup.bat` into a target directory and runs them
+there.
 
-This is a first-class scenario because it represents bootstrap from an empty or near-empty folder.
+This is a first-class scenario because it represents bootstrap from an empty or
+near-empty folder.
 
 ### 5.2 Direct setup script invocation with explicit target
 
 The user runs repository `setup` and supplies a target directory.
 
-This covers a common bootstrap flow from a checked-out Alteran source repository.
+This covers a common bootstrap flow from a checked-out Alteran source
+repository.
 
 ### 5.3 Repository environment activation plus `alteran setup`
 
-The user enters an Alteran-capable repository environment and sets up some other target directory through `alteran setup`.
+The user enters an Alteran-capable repository environment and sets up some other
+target directory through `alteran setup`.
 
 ### 5.4 Direct `deno run alteran.ts ...`
 
@@ -224,11 +270,13 @@ The suite must cover bootstrap from:
 - runnable sources
 - archive sources
 
-These should be hosted by test-local fixtures rather than public network resources.
+These should be hosted by test-local fixtures rather than public network
+resources.
 
 ### 5.6 Generated Unix activation semantics
 
-The suite must cover generated Unix `activate` behavior as a sourced-only artifact.
+The suite must cover generated Unix `activate` behavior as a sourced-only
+artifact.
 
 This includes:
 
@@ -244,10 +292,12 @@ At minimum, the contract test should verify:
 
 - a basic app launcher can be executed directly by the user
 - no `source app` style flow is required or supported
-- if the app-local runtime is missing, launcher-triggered setup/bootstrap can materialize enough runtime to proceed
+- if the app-local runtime is missing, launcher-triggered setup/bootstrap can
+  materialize enough runtime to proceed
 - the launcher then runs the main app task successfully
 - a later launch can reuse the already materialized app-local runtime
-- the launcher rejects a mismatched `app.json` identity instead of silently treating a different app directory as valid
+- the launcher rejects a mismatched `app.json` identity instead of silently
+  treating a different app directory as valid
 
 ### 5.8 Example self-tests for mini-project examples
 
@@ -268,7 +318,8 @@ Bootstrap-oriented examples are not required to gain this layer.
 
 ### 6.1 Unix-like shells
 
-Unix shell tests should exercise sourced activation semantics, especially cases that can break shell state or path resolution.
+Unix shell tests should exercise sourced activation semantics, especially cases
+that can break shell state or path resolution.
 
 Examples include:
 
@@ -280,7 +331,8 @@ Examples include:
 
 ### 6.2 Windows
 
-Windows tests should treat `.bat`, `cmd`, and PowerShell behavior as native surfaces, not as approximations of Unix shell behavior.
+Windows tests should treat `.bat`, `cmd`, and PowerShell behavior as native
+surfaces, not as approximations of Unix shell behavior.
 
 The suite should continue to include:
 
@@ -289,7 +341,8 @@ The suite should continue to include:
 - PowerShell to `cmd /c call ...`
 - spaces in repository and target paths
 - legacy source env aliases where still supported
-- direct execution of generated `app.bat` launchers for supported standalone app scenarios
+- direct execution of generated `app.bat` launchers for supported standalone app
+  scenarios
 
 ## 7. Repository Task Model
 
@@ -309,9 +362,11 @@ an unconstrained root-level `deno test -A` over the whole repository tree.
 
 ### 6.3 Linux in Docker
 
-Docker coverage should focus on supported GNU-based Linux environments and on bootstrap isolation.
+Docker coverage should focus on supported GNU-based Linux environments and on
+bootstrap isolation.
 
-Exploratory tests for unsupported Linux variants may exist, but their meaning must stay clear and must not silently redefine product support.
+Exploratory tests for unsupported Linux variants may exist, but their meaning
+must stay clear and must not silently redefine product support.
 
 The current support boundary for Linux is governed by ADR 0002.
 
@@ -319,7 +374,8 @@ The current support boundary for Linux is governed by ADR 0002.
 
 ### 7.1 Shared helpers are preferred
 
-When multiple tests need the same setup or assertions, the shared logic should move into helper modules under `tests/`.
+When multiple tests need the same setup or assertions, the shared logic should
+move into helper modules under `tests/`.
 
 Examples include:
 
@@ -336,7 +392,8 @@ Remote bootstrap tests should use self-hosted local fixtures that expose:
 - a runnable source bundle
 - an archive source bundle
 
-This keeps tests deterministic and allows controlled reproduction of bootstrap behavior.
+This keeps tests deterministic and allows controlled reproduction of bootstrap
+behavior.
 
 Current helper:
 
@@ -344,33 +401,91 @@ Current helper:
 
 ### 7.3 Docker fixture strategy
 
-Docker bind-mounted temporary fixtures should live under repository-controlled paths rather than host-specific system temp locations when required for container runtime compatibility.
+Docker bind-mounted temporary fixtures should live under repository-controlled
+paths rather than host-specific system temp locations when required for
+container runtime compatibility.
 
-This avoids environment-specific mount failures and keeps Docker tests stable on development setups such as Colima.
+This avoids environment-specific mount failures and keeps Docker tests stable on
+development setups such as Colima.
 
 ### 7.4 Ignore unsupported host conditions explicitly
 
-If a test requires Windows or Docker availability, it should use `ignore` metadata rather than pass as `ok (0ms)` by returning early.
+If a test requires Windows or Docker availability, it should use `ignore`
+metadata rather than pass as `ok (0ms)` by returning early.
 
 ### 7.5 Repository examples are not scratch workspaces
 
-Tests must not rely on the committed `examples/` directories as their normal scratch workspace.
+Tests must not rely on the committed `examples/` directories as their normal
+scratch workspace.
 
-When a test needs to exercise an example through `setup`, `activate`, `refresh`, `compact`, or launcher flows, it should prefer a hermetic temp directory derived from that example rather than mutating the committed example directory itself.
+When a test needs to exercise an example through `setup`, `activate`, `refresh`,
+`compact`, or launcher flows, it should prefer a hermetic temp directory derived
+from that example rather than mutating the committed example directory itself.
 
 ### 7.6 Deferred postrun behavior must be tested as part of final command semantics
 
-When `clean`, `compact`, or future runtime-sensitive commands rely on deferred `postrun` hooks, tests must treat the entire launcher cycle as the user-visible command boundary.
+When `clean`, `compact`, or future runtime-sensitive commands rely on deferred
+`postrun` hooks, tests must treat the entire launcher cycle as the user-visible
+command boundary.
 
 This means tests should verify:
 
 - the final exit code after any `postrun` phase;
 - the actual resulting filesystem state after the hook completed;
 - hook-directory cleanup on success;
-- hook-directory retention on failure when that behavior is part of the contract;
+- hook-directory retention on failure when that behavior is part of the
+  contract;
 - `postrun.msg` visibility and `postrun.log` persistence rules where applicable.
 
-Tests must not treat an in-process TypeScript success return as sufficient if deferred hook behavior is part of the command contract.
+Tests must not treat an in-process TypeScript success return as sufficient if
+deferred hook behavior is part of the command contract.
+
+### 7.7 External harness tracing should be structured and selective
+
+Repository-level e2e, Unix, Windows, Docker, examples, and docs harnesses may
+use structured logging to enrich `events.jsonl` and similar diagnostic streams.
+
+That tracing should focus on useful breadcrumbs such as:
+
+- prepared temp directories or repo copies;
+- selected bootstrap source mode;
+- fixture server startup or shutdown;
+- actual command entrypaths under test;
+- important environment overrides;
+- explicit skip reasons;
+- file-system expectations before or after a destructive step.
+
+Current repository conventions should keep these traces under the
+`["alteran", "tests", ...]` category tree, with stable slices such as:
+
+- `["alteran", "tests", "unit"]`
+- `["alteran", "tests", "e2e", "repo"]`
+- `["alteran", "tests", "e2e", "repo", "unix"]`
+- `["alteran", "tests", "e2e", "repo", "windows"]`
+- `["alteran", "tests", "e2e", "docker"]`
+- `["alteran", "tests", "e2e", "examples", "harness"]`
+- `["alteran", "tests", "e2e", "harness", ...]` for shared outer helpers
+
+Such tracing should not:
+
+- duplicate complete stdout/stderr payloads that are already captured elsewhere;
+- add noisy per-line command echoing without diagnostic value;
+- be required for pure unit tests;
+- force extra logging dependencies into example-internal tests.
+
+By default this extra tracing should remain file-oriented and should enrich
+`events.jsonl` rather than mirroring additional noise to stdout/stderr.
+
+When a repository-level test intentionally simulates a foreign
+`ALTERAN_ROOT_LOG_DIR` or similar rebased log context, outer test breadcrumbs
+should still stay scoped under the current top-level test run directory. They
+should therefore prefer a nested path such as:
+
+- `.runtime/logs/tests/<run-id>/foreign-root/events.jsonl`
+
+rather than writing directly into a reused global location such as:
+
+- `.runtime/logs/tests/foreign-root/events.jsonl`
 
 ## 8. Failure Interpretation Rules
 
@@ -381,7 +496,8 @@ A failure should be treated as a product bug when:
 - the scenario is aligned with the specification
 - the setup is realistic
 - the fixture is valid
-- the failure happens after bootstrap/setup has succeeded enough to exercise the intended behavior
+- the failure happens after bootstrap/setup has succeeded enough to exercise the
+  intended behavior
 
 ### 8.2 Test harness bug
 
@@ -392,11 +508,16 @@ A failure should be treated as test-infrastructure breakage when:
 - a local test server serves the wrong content or content type
 - the test injects contradictory environment assumptions
 
-Harness bugs should be fixed so that the suite reveals product behavior more accurately.
+Harness bugs should be fixed so that the suite reveals product behavior more
+accurately.
+
+When structured harness tracing exists, failure interpretation should prefer
+those breadcrumbs before making assumptions from sparse stdout/stderr alone.
 
 ### 8.3 Known open issues
 
-If a test cannot be written correctly, or if the specification and product are blocked by an unresolved contradiction, the problem should be documented under:
+If a test cannot be written correctly, or if the specification and product are
+blocked by an unresolved contradiction, the problem should be documented under:
 
 - `tests/issues.md`
 
@@ -414,11 +535,13 @@ Expected tasks:
 - `test:docker`
 - `test`
 
-These tasks are part of the expected developer workflow and should stay in sync with the actual test file layout.
+These tasks are part of the expected developer workflow and should stay in sync
+with the actual test file layout.
 
 ## 10. Non-Goals
 
-The test suite does not need to exhaustively enumerate every theoretical shell, container, or path combination.
+The test suite does not need to exhaustively enumerate every theoretical shell,
+container, or path combination.
 
 It should instead optimize for:
 

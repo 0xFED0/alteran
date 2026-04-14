@@ -1,6 +1,11 @@
 import { basename, extname, join, resolve } from "node:path";
 
 import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
+import {
+  TEST_TRACE_CATEGORY,
+  traceTestStep,
+  traceTestWarning,
+} from "./test_trace.ts";
 
 function contentTypeForPath(path: string): string {
   switch (extname(path)) {
@@ -19,7 +24,10 @@ function contentTypeForPath(path: string): string {
   }
 }
 
-async function createZipArchive(sourceDir: string, archivePath: string): Promise<void> {
+async function createZipArchive(
+  sourceDir: string,
+  archivePath: string,
+): Promise<void> {
   const output = Deno.build.os === "windows"
     ? await new Deno.Command("powershell", {
       args: [
@@ -71,9 +79,22 @@ export async function prepareBootstrapFixture(
   const bundleDir = join(servedDir, "bundle");
   const archivePath = join(servedDir, "alteran.zip");
 
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+    "preparing bootstrap fixture",
+    {
+      repo_dir: repoDir,
+      temp_root: tempRoot,
+      served_dir: servedDir,
+    },
+  );
+
   await copyDirectory(repoDir, bundleDir, {
     filter: (absolutePath) => {
-      const relativePath = absolutePath.slice(repoDir.length + 1).replaceAll("\\", "/");
+      const relativePath = absolutePath.slice(repoDir.length + 1).replaceAll(
+        "\\",
+        "/",
+      );
       return !relativePath.startsWith(".git/") &&
         !relativePath.startsWith(".runtime/") &&
         !relativePath.startsWith("dist/");
@@ -81,10 +102,25 @@ export async function prepareBootstrapFixture(
   });
   await removeIfExists(join(bundleDir, ".runtime"));
   await createZipArchive(bundleDir, archivePath);
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+    "bootstrap fixture ready",
+    {
+      run_source_url_path: "/bundle/alteran.ts",
+      archive_path: archivePath,
+    },
+  );
 
   return {
     archivePath,
     cleanup: async () => {
+      await traceTestStep(
+        [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+        "cleaning bootstrap fixture",
+        {
+          temp_root: tempRoot,
+        },
+      );
       await removeIfExists(tempRoot);
     },
     runSourceUrlPath: "/bundle/alteran.ts",
@@ -96,6 +132,13 @@ export async function startStaticFileServer(rootDir: string): Promise<{
   baseUrl: string;
   close: () => Promise<void>;
 }> {
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+    "starting static file server",
+    {
+      root_dir: rootDir,
+    },
+  );
   let resolveBaseUrl: ((value: string) => void) | undefined;
   const baseUrlPromise = new Promise<string>((resolve) => {
     resolveBaseUrl = resolve;
@@ -126,6 +169,14 @@ export async function startStaticFileServer(rootDir: string): Promise<{
       });
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
+        void traceTestWarning(
+          [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+          "static file request missed",
+          {
+            root_dir: rootDir,
+            path: relativePath,
+          },
+        );
         return new Response("not found", { status: 404 });
       }
       return new Response(String(error), { status: 500 });
@@ -133,9 +184,24 @@ export async function startStaticFileServer(rootDir: string): Promise<{
   });
 
   const baseUrl = await baseUrlPromise;
+  await traceTestStep(
+    [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+    "static file server ready",
+    {
+      root_dir: rootDir,
+      base_url: baseUrl,
+    },
+  );
   return {
     baseUrl,
     close: async () => {
+      await traceTestStep(
+        [...TEST_TRACE_CATEGORY.e2eHarness, "bootstrap_fixture"],
+        "stopping static file server",
+        {
+          base_url: baseUrl,
+        },
+      );
       await server.shutdown();
     },
   };

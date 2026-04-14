@@ -3,8 +3,16 @@ import { fileURLToPath } from "node:url";
 
 import { runCli } from "../src/alteran/mod.ts";
 import { addApp, setupProject } from "../src/alteran/runtime.ts";
-import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
+import { copyDirectory, removeIfExists } from "../src/alteran/fs.ts";
 import { detectPlatform } from "../src/alteran/platform.ts";
+import {
+  summarizeEnvKeys,
+  TEST_TRACE_CATEGORY,
+  traceCommandResult,
+  traceCommandStart,
+  traceTestStep,
+  traceTestWarning,
+} from "./test_trace.ts";
 import {
   prepareBootstrapFixture,
   startStaticFileServer,
@@ -57,7 +65,10 @@ async function createLocalDenoReleaseDir(): Promise<string> {
 
   await Deno.mkdir(versionDir, { recursive: true });
   await Deno.mkdir(stagingDir, { recursive: true });
-  await Deno.copyFile(Deno.execPath(), join(stagingDir, platform.denoBinaryName));
+  await Deno.copyFile(
+    Deno.execPath(),
+    join(stagingDir, platform.denoBinaryName),
+  );
   await Deno.chmod(join(stagingDir, platform.denoBinaryName), 0o755);
   await Deno.writeTextFile(
     join(releaseRoot, "release-latest.txt"),
@@ -65,7 +76,11 @@ async function createLocalDenoReleaseDir(): Promise<string> {
   );
 
   const zipOutput = await new Deno.Command("zip", {
-    args: ["-jq", join(versionDir, archiveName), join(stagingDir, platform.denoBinaryName)],
+    args: [
+      "-jq",
+      join(versionDir, archiveName),
+      join(stagingDir, platform.denoBinaryName),
+    ],
     stdout: "null",
     stderr: "piped",
   }).output();
@@ -128,7 +143,11 @@ async function runShell(
     env?: Record<string, string>;
   } = {},
 ) {
-  return await new Deno.Command("sh", {
+  await traceCommandStart(TEST_TRACE_CATEGORY.e2eRepoUnix, `sh -c ${script}`, {
+    cwd: options.cwd,
+    env_keys: summarizeEnvKeys(options.env ?? {}),
+  });
+  const output = await new Deno.Command("sh", {
     args: ["-c", script],
     cwd: options.cwd,
     env: {
@@ -138,16 +157,37 @@ async function runShell(
     stdout: "piped",
     stderr: "piped",
   }).output();
+  await traceCommandResult(TEST_TRACE_CATEGORY.e2eRepoUnix, output, {
+    cwd: options.cwd,
+  });
+  return output;
 }
 
-async function tryStartFixtureServer(rootDir: string): Promise<{
-  baseUrl: string;
-  close: () => Promise<void>;
-} | null> {
+async function tryStartFixtureServer(rootDir: string): Promise<
+  {
+    baseUrl: string;
+    close: () => Promise<void>;
+  } | null
+> {
   try {
+    await traceTestStep(
+      TEST_TRACE_CATEGORY.e2eRepoUnix,
+      "starting local fixture server",
+      {
+        root_dir: rootDir,
+      },
+    );
     return await startStaticFileServer(rootDir);
   } catch (error) {
     if (error instanceof Deno.errors.PermissionDenied) {
+      await traceTestWarning(
+        TEST_TRACE_CATEGORY.e2eRepoUnix,
+        "local fixture server unavailable",
+        {
+          root_dir: rootDir,
+          reason: "permission denied while binding loopback server",
+        },
+      );
       return null;
     }
     throw error;
@@ -279,13 +319,17 @@ Deno.test({
   name: "managed app launcher runs from another working directory",
   ignore: IS_WINDOWS,
   async fn() {
-    const projectDir = await Deno.makeTempDir({ prefix: "alteran-managed-app-" });
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-managed-app-",
+    });
     await seedManagedDeno(projectDir);
     await setupProject(projectDir);
     await addApp(projectDir, "hello");
 
     const output = await runShell(
-      `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} one two`,
+      `cd /tmp && ${
+        JSON.stringify(join(projectDir, "apps", "hello", "app"))
+      } one two`,
       {
         env: {
           PATH: hostDenoPath(),
@@ -295,7 +339,9 @@ Deno.test({
 
     if (!output.success) {
       throw new Error(
-        `Expected managed app launcher to succeed. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+        `Expected managed app launcher to succeed. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
       );
     }
 
@@ -304,13 +350,16 @@ Deno.test({
       throw new Error(`Expected managed app launcher stdout, got: ${stdout}`);
     }
     if (!stdout.includes("one") || !stdout.includes("two")) {
-      throw new Error(`Expected managed app launcher args to propagate, got: ${stdout}`);
+      throw new Error(
+        `Expected managed app launcher args to propagate, got: ${stdout}`,
+      );
     }
   },
 });
 
 Deno.test({
-  name: "managed app launcher can bootstrap the managed project when runtime is missing",
+  name:
+    "managed app launcher can bootstrap the managed project when runtime is missing",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -329,7 +378,9 @@ Deno.test({
 
     try {
       const output = await runShell(
-        `cd /tmp && ${JSON.stringify(join(projectDir, "apps", "hello", "app"))} alpha beta`,
+        `cd /tmp && ${
+          JSON.stringify(join(projectDir, "apps", "hello", "app"))
+        } alpha beta`,
         {
           env: {
             PATH: hostDenoPath(),
@@ -342,14 +393,18 @@ Deno.test({
 
       if (!output.success) {
         throw new Error(
-          `Expected managed app launcher to bootstrap missing runtime. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+          `Expected managed app launcher to bootstrap missing runtime. stdout=${
+            decode(output.stdout)
+          } stderr=${decode(output.stderr)}`,
         );
       }
 
       await Deno.stat(join(projectDir, ".runtime", "alteran", "mod.ts"));
       const stdout = decode(output.stdout);
       if (!stdout.includes("App hello started")) {
-        throw new Error(`Expected managed app bootstrap launcher stdout, got: ${stdout}`);
+        throw new Error(
+          `Expected managed app bootstrap launcher stdout, got: ${stdout}`,
+        );
       }
     } finally {
       await localDenoServer.close();
@@ -416,7 +471,9 @@ Deno.test({
   name: "standalone app launcher auto-runs local setup when runtime is missing",
   ignore: IS_WINDOWS,
   async fn() {
-    const appDir = await Deno.makeTempDir({ prefix: "alteran-standalone-app-" });
+    const appDir = await Deno.makeTempDir({
+      prefix: "alteran-standalone-app-",
+    });
     const localDenoReleaseDir = await createLocalDenoReleaseDir();
     const localDenoServer = await tryStartFixtureServer(localDenoReleaseDir);
     if (localDenoServer === null) {
@@ -425,18 +482,26 @@ Deno.test({
     }
     const exitCode = await runCli(["app", "setup", appDir]);
     if (exitCode !== 0) {
-      throw new Error(`Expected standalone app scaffold to be created, got exit code ${exitCode}`);
+      throw new Error(
+        `Expected standalone app scaffold to be created, got exit code ${exitCode}`,
+      );
     }
 
-    const standaloneGitignore = await Deno.readTextFile(join(appDir, ".gitignore"));
+    const standaloneGitignore = await Deno.readTextFile(
+      join(appDir, ".gitignore"),
+    );
     for (const expected of [".runtime/", "app", "app.bat"]) {
       if (!standaloneGitignore.includes(expected)) {
-        throw new Error(`Expected standalone app .gitignore to include ${expected}`);
+        throw new Error(
+          `Expected standalone app .gitignore to include ${expected}`,
+        );
       }
     }
     for (const unexpected of ["setup", "setup.bat"]) {
       if (standaloneGitignore.includes(unexpected)) {
-        throw new Error(`Expected standalone app .gitignore not to ignore ${unexpected}`);
+        throw new Error(
+          `Expected standalone app .gitignore not to ignore ${unexpected}`,
+        );
       }
     }
 
@@ -455,7 +520,9 @@ Deno.test({
 
       if (!output.success) {
         throw new Error(
-          `Expected standalone app launcher to auto-setup and succeed. stdout=${decode(output.stdout)} stderr=${decode(output.stderr)}`,
+          `Expected standalone app launcher to auto-setup and succeed. stdout=${
+            decode(output.stdout)
+          } stderr=${decode(output.stderr)}`,
         );
       }
 
@@ -471,10 +538,14 @@ Deno.test({
       await Deno.stat(localDenoPath);
       const stdout = decode(output.stdout);
       if (!stdout.includes("Standalone app")) {
-        throw new Error(`Expected standalone app launcher stdout, got: ${stdout}`);
+        throw new Error(
+          `Expected standalone app launcher stdout, got: ${stdout}`,
+        );
       }
       if (!stdout.includes("red") || !stdout.includes("blue")) {
-        throw new Error(`Expected standalone app launcher args to propagate, got: ${stdout}`);
+        throw new Error(
+          `Expected standalone app launcher args to propagate, got: ${stdout}`,
+        );
       }
     } finally {
       await localDenoServer.close();
@@ -511,13 +582,16 @@ Deno.test({
     }
 
     if (stdout !== "") {
-      throw new Error(`Expected no nounset output after sourcing activate, got: ${stdout}`);
+      throw new Error(
+        `Expected no nounset output after sourcing activate, got: ${stdout}`,
+      );
     }
   },
 });
 
 Deno.test({
-  name: "repeated sourced activate does not reinitialize an initialized project",
+  name:
+    "repeated sourced activate does not reinitialize an initialized project",
   ignore: IS_WINDOWS || !ZSH_AVAILABLE,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -558,7 +632,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
+  name:
+    "activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -576,13 +651,18 @@ Deno.test({
       platform.denoBinaryName,
     );
 
-    await Deno.mkdir(join(projectDir, ".runtime", "legacy-junk"), { recursive: true });
+    await Deno.mkdir(join(projectDir, ".runtime", "legacy-junk"), {
+      recursive: true,
+    });
     await Deno.writeTextFile(
       join(projectDir, ".runtime", "legacy-junk", "marker.txt"),
       "junk",
     );
     await Deno.mkdir(join(projectDir, ".runtime", "logs"), { recursive: true });
-    await Deno.writeTextFile(join(projectDir, ".runtime", "logs", "old.log"), "old");
+    await Deno.writeTextFile(
+      join(projectDir, ".runtime", "logs", "old.log"),
+      "old",
+    );
 
     const output = await runShell(
       `cd ${
@@ -610,7 +690,9 @@ Deno.test({
 
     try {
       await Deno.stat(join(projectDir, ".runtime", "legacy-junk"));
-      throw new Error("Expected deferred clean runtime to remove legacy runtime entries");
+      throw new Error(
+        "Expected deferred clean runtime to remove legacy runtime entries",
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -629,7 +711,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
+  name:
+    "activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -689,7 +772,9 @@ Deno.test({
     const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
     try {
       await Deno.stat(join(projectDir, ".runtime", "hooks", sessionDir));
-      throw new Error("Expected successful postrun execution to remove the completed hook dir");
+      throw new Error(
+        "Expected successful postrun execution to remove the completed hook dir",
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -699,7 +784,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
+  name:
+    "activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -799,8 +885,12 @@ Deno.test({
         `Expected node bridge help to succeed. stdout=${stdout} stderr=${stderr}`,
       );
     }
-    if (!stdout.includes("Alteran") || !stdout.includes("alteran setup [dir]")) {
-      throw new Error(`Expected Alteran help output from node bridge, got: ${stdout}`);
+    if (
+      !stdout.includes("Alteran") || !stdout.includes("alteran setup [dir]")
+    ) {
+      throw new Error(
+        `Expected Alteran help output from node bridge, got: ${stdout}`,
+      );
     }
   },
 });
@@ -809,9 +899,16 @@ Deno.test({
   name: "node compatibility bridge can set up a project through Deno",
   ignore: !NODE_AVAILABLE,
   async fn() {
-    const projectDir = await Deno.makeTempDir({ prefix: "alteran-node-setup-" });
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-node-setup-",
+    });
     const command = new Deno.Command("node", {
-      args: [...NODE_BRIDGE_ARGS_PREFIX!, ALTERAN_ENTRY_PATH, "setup", projectDir],
+      args: [
+        ...NODE_BRIDGE_ARGS_PREFIX!,
+        ALTERAN_ENTRY_PATH,
+        "setup",
+        projectDir,
+      ],
       cwd: ALTERAN_REPO_DIR,
       env: {
         ...Deno.env.toObject(),
@@ -847,14 +944,21 @@ Deno.test({
 });
 
 Deno.test({
-  name: "copied setup bootstraps an empty project directory and generates local activation",
+  name:
+    "copied setup bootstraps an empty project directory and generates local activation",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
       prefix: "alteran-copy-setup-",
     });
-    await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup"), join(projectDir, "setup"));
-    await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup.bat"), join(projectDir, "setup.bat"));
+    await Deno.copyFile(
+      join(ALTERAN_REPO_DIR, "setup"),
+      join(projectDir, "setup"),
+    );
+    await Deno.copyFile(
+      join(ALTERAN_REPO_DIR, "setup.bat"),
+      join(projectDir, "setup.bat"),
+    );
     await Deno.chmod(join(projectDir, "setup"), 0o755);
 
     await assertSuccessfulShellActivation(
@@ -882,7 +986,9 @@ Deno.test({
 
     try {
       await Deno.stat(join(projectDir, ".runtime", "env"));
-      throw new Error("Expected copied setup bootstrap not to generate .runtime/env");
+      throw new Error(
+        "Expected copied setup bootstrap not to generate .runtime/env",
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -892,7 +998,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "copied setup can bootstrap from hosted runnable source when archive source is also available",
+  name:
+    "copied setup can bootstrap from hosted runnable source when archive source is also available",
   ignore: IS_WINDOWS,
   async fn() {
     const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
@@ -906,12 +1013,20 @@ Deno.test({
     });
 
     try {
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup"), join(projectDir, "setup"));
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup.bat"), join(projectDir, "setup.bat"));
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
+      );
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
+      );
       await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       await assertSuccessfulShellActivation(
-        `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null && . ./activate`,
+        `cd ${
+          JSON.stringify(projectDir)
+        } && ./setup >/dev/null && . ./activate`,
         projectDir,
         {
           ALTERAN_RUN_SOURCES: `${server.baseUrl}${fixture.runSourceUrlPath}`,
@@ -927,7 +1042,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "hosted runnable source alone fails because archive sources are required for materialization",
+  name:
+    "hosted runnable source alone fails because archive sources are required for materialization",
   ignore: IS_WINDOWS,
   async fn() {
     const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
@@ -941,8 +1057,14 @@ Deno.test({
     });
 
     try {
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup"), join(projectDir, "setup"));
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup.bat"), join(projectDir, "setup.bat"));
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
+      );
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
+      );
       await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       const output = await runShell(
@@ -965,7 +1087,9 @@ Deno.test({
 
       const stderr = decode(output.stderr);
       if (!stderr.includes("ALTERAN_ARCHIVE_SOURCES is empty")) {
-        throw new Error(`Expected missing archive-source guidance, got stderr=${stderr}`);
+        throw new Error(
+          `Expected missing archive-source guidance, got stderr=${stderr}`,
+        );
       }
     } finally {
       await server.close();
@@ -989,12 +1113,20 @@ Deno.test({
     });
 
     try {
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup"), join(projectDir, "setup"));
-      await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup.bat"), join(projectDir, "setup.bat"));
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
+      );
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
+      );
       await Deno.chmod(join(projectDir, "setup"), 0o755);
 
       await assertSuccessfulShellActivation(
-        `cd ${JSON.stringify(projectDir)} && ./setup >/dev/null && . ./activate`,
+        `cd ${
+          JSON.stringify(projectDir)
+        } && ./setup >/dev/null && . ./activate`,
         projectDir,
         {
           ALTERAN_RUN_SOURCES: "",
@@ -1010,7 +1142,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "repository setup can initialize an explicit target directory and generated activate can then be sourced",
+  name:
+    "repository setup can initialize an explicit target directory and generated activate can then be sourced",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
@@ -1030,7 +1163,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "activated repository environment can set up an external target project",
+  name:
+    "activated repository environment can set up an external target project",
   ignore: IS_WINDOWS,
   async fn() {
     const repoCopy = await makeRepoCopy("alteran-repo-env-");
@@ -1097,7 +1231,11 @@ Deno.test({
       );
     }
 
-    if (!decode(setupOutput.stderr).includes(`Set up Alteran project at ${projectDir}`)) {
+    if (
+      !decode(setupOutput.stderr).includes(
+        `Set up Alteran project at ${projectDir}`,
+      )
+    ) {
       throw new Error("Expected setup to initialize an empty target");
     }
 

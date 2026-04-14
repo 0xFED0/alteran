@@ -2,6 +2,13 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
+import {
+  summarizeEnvKeys,
+  TEST_TRACE_CATEGORY,
+  traceCommandResult,
+  traceCommandStart,
+  traceTestStep,
+} from "./test_trace.ts";
 
 const ALTERAN_REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const IS_WINDOWS = Deno.build.os === "windows";
@@ -86,11 +93,19 @@ async function runCmd(
     suffix: ".cmd",
   });
   try {
+    await traceCommandStart(
+      TEST_TRACE_CATEGORY.e2eRepoWindows,
+      "cmd /d /c call <temp-script>",
+      {
+        cwd: options.cwd,
+        env_keys: summarizeEnvKeys(options.env ?? {}),
+      },
+    );
     await Deno.writeTextFile(
       scriptFile,
       `@echo off\r\n${script}\r\n`,
     );
-    return await new Deno.Command("cmd", {
+    const output = await new Deno.Command("cmd", {
       args: ["/d", "/c", "call", scriptFile],
       cwd: options.cwd,
       env: {
@@ -100,6 +115,11 @@ async function runCmd(
       stdout: "piped",
       stderr: "piped",
     }).output();
+    await traceCommandResult(TEST_TRACE_CATEGORY.e2eRepoWindows, output, {
+      cwd: options.cwd,
+      script_file: scriptFile,
+    });
+    return output;
   } finally {
     await removeIfExists(scriptFile);
   }
@@ -116,7 +136,15 @@ async function runPowerShell(
     env?: Record<string, string>;
   } = {},
 ) {
-  return await new Deno.Command("powershell", {
+  await traceCommandStart(
+    TEST_TRACE_CATEGORY.e2eRepoWindows,
+    "powershell -Command <script>",
+    {
+      cwd: options.cwd,
+      env_keys: summarizeEnvKeys(options.env ?? {}),
+    },
+  );
+  const output = await new Deno.Command("powershell", {
     args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
     cwd: options.cwd,
     env: {
@@ -126,9 +154,16 @@ async function runPowerShell(
     stdout: "piped",
     stderr: "piped",
   }).output();
+  await traceCommandResult(TEST_TRACE_CATEGORY.e2eRepoWindows, output, {
+    cwd: options.cwd,
+  });
+  return output;
 }
 
-async function makeDirWithSpaces(prefix: string, name: string): Promise<string> {
+async function makeDirWithSpaces(
+  prefix: string,
+  name: string,
+): Promise<string> {
   const root = await Deno.makeTempDir({ prefix });
   const result = join(root, name);
   await ensureDir(result);
@@ -150,7 +185,10 @@ async function makeRepoCopyWithSpaces(prefix: string): Promise<string> {
 }
 
 async function copySetupScripts(targetDir: string): Promise<void> {
-  await Deno.copyFile(join(ALTERAN_REPO_DIR, "setup"), join(targetDir, "setup"));
+  await Deno.copyFile(
+    join(ALTERAN_REPO_DIR, "setup"),
+    join(targetDir, "setup"),
+  );
   await Deno.copyFile(
     join(ALTERAN_REPO_DIR, "setup.bat"),
     join(targetDir, "setup.bat"),
@@ -173,9 +211,9 @@ async function createDenoZipArchive(
     );
     if (!output.success) {
       throw new Error(
-        `Failed to create Deno archive. stdout=${decode(output.stdout)} stderr=${
-          decode(output.stderr)
-        }`,
+        `Failed to create Deno archive. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
       );
     }
     return await Deno.readFile(zipPath);
@@ -188,6 +226,13 @@ async function startLocalDenoMirror(arch: "x64" | "arm64"): Promise<{
   baseUrl: string;
   close: () => Promise<void>;
 }> {
+  await traceTestStep(
+    TEST_TRACE_CATEGORY.e2eRepoWindows,
+    "starting local deno mirror",
+    {
+      arch,
+    },
+  );
   const version = "v0.0.1-local";
   const archiveTarget = windowsDenoTarget(arch);
   const archiveBytes = await createDenoZipArchive(arch);
@@ -207,14 +252,17 @@ async function startLocalDenoMirror(arch: "x64" | "arm64"): Promise<{
       return new Response(version);
     }
     if (pathname === `/${version}/deno-${archiveTarget}.zip`) {
-      return new Response(new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(archiveBytes);
-          controller.close();
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(archiveBytes);
+            controller.close();
+          },
+        }),
+        {
+          headers: { "content-type": "application/zip" },
         },
-      }), {
-        headers: { "content-type": "application/zip" },
-      });
+      );
     }
     return new Response("not found", { status: 404 });
   });
@@ -223,6 +271,14 @@ async function startLocalDenoMirror(arch: "x64" | "arm64"): Promise<{
   return {
     baseUrl,
     close: async () => {
+      await traceTestStep(
+        TEST_TRACE_CATEGORY.e2eRepoWindows,
+        "stopping local deno mirror",
+        {
+          base_url: baseUrl,
+          arch,
+        },
+      );
       await server.shutdown();
     },
   };
@@ -272,40 +328,43 @@ async function latestLogDirUnder(
 }
 
 Deno.test({
-  name: "windows cmd: generated activate.bat preserves session env and exposes deno/alteran",
+  name:
+    "windows cmd: generated activate.bat preserves session env and exposes deno/alteran",
   ignore: !IS_WINDOWS,
   async fn() {
-  const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-env-");
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-target-env-",
-    "target project with spaces",
-  );
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-env-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-env-",
+      "target project with spaces",
+    );
 
-  try {
-    const output = await runCmd(
-      cmdScript([
-        cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
-        "if errorlevel 1 exit /b %ERRORLEVEL%",
-        cmdCallBatch(join(targetDir, "activate.bat")),
-        "if errorlevel 1 exit /b %ERRORLEVEL%",
-        `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
-        "where deno >nul",
-        "if errorlevel 1 exit /b %ERRORLEVEL%",
-        cmdCallCommand("alteran", "help", ">nul"),
-      ]),
-      {
-        env: {
-          PATH: hostDenoPathWindows(),
+    try {
+      const output = await runCmd(
+        cmdScript([
+          cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+          "if errorlevel 1 exit /b %ERRORLEVEL%",
+          cmdCallBatch(join(targetDir, "activate.bat")),
+          "if errorlevel 1 exit /b %ERRORLEVEL%",
+          `if /I not "%ALTERAN_HOME%"==${
+            cmdQuote(join(targetDir, ".runtime"))
+          } exit /b 1`,
+          "where deno >nul",
+          "if errorlevel 1 exit /b %ERRORLEVEL%",
+          cmdCallCommand("alteran", "help", ">nul"),
+        ]),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
         },
-      },
-    );
-    assertSuccess(
-      output,
-      "Expected cmd activation to preserve env and expose managed commands",
-    );
-  } finally {
-    await removeIfExists(repoCopy);
-  }
+      );
+      assertSuccess(
+        output,
+        "Expected cmd activation to preserve env and expose managed commands",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
   },
 });
 
@@ -313,259 +372,305 @@ Deno.test({
   name: "windows cmd: generated activate.bat exposes alt/atest/adeno aliases",
   ignore: !IS_WINDOWS,
   async fn() {
-  const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-aliases-");
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-target-aliases-",
-    "target project with spaces",
-  );
-
-  try {
-    const output = await runCmd(
-      [
-        cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
-        cmdCallBatch(join(targetDir, "activate.bat")),
-        cmdCallCommand("alt", "help", ">nul"),
-        cmdCallCommand("atest", "--help", ">nul"),
-        cmdCallCommand("adeno", "--version", ">nul"),
-      ].join(" && "),
-      {
-        env: {
-          PATH: hostDenoPathWindows(),
-        },
-      },
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-aliases-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-aliases-",
+      "target project with spaces",
     );
-    assertSuccess(output, "Expected core cmd aliases to work after activation");
-  } finally {
-    await removeIfExists(repoCopy);
-  }
-  },
-});
 
-Deno.test({
-  name: "windows cmd: copied setup.bat supports legacy ALTERAN_SOURCES alias and generates local activation",
-  ignore: !IS_WINDOWS,
-  async fn() {
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-legacy-alias-",
-    "copied target with spaces",
-  );
-  await copySetupScripts(targetDir);
-
-  const alteranSource = pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href;
-  const output = await runCmd(
-    [
-      cmdCallBatch(join(targetDir, "setup.bat")),
-      `if not exist ${cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))} exit /b 1`,
-      `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
-      cmdCallBatch(join(targetDir, "activate.bat")),
-      cmdCallCommand("alteran", "help", ">nul"),
-    ].join(" && "),
-    {
-      cwd: targetDir,
-      env: {
-        PATH: hostDenoPathWindows(),
-        ALTERAN_SOURCES: alteranSource,
-      },
-    },
-  );
-  assertSuccess(output, "Expected legacy ALTERAN_SOURCES alias to bootstrap copied setup.bat");
-  },
-});
-
-Deno.test({
-  name: "windows cmd: copied setup.bat fails fast when both Alteran source lists are empty",
-  ignore: !IS_WINDOWS,
-  async fn() {
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-empty-sources-",
-    "empty source target",
-  );
-  await copySetupScripts(targetDir);
-
-  const output = await runCmd(
-    cmdCallBatch(join(targetDir, "setup.bat")),
-    {
-      cwd: targetDir,
-      env: {
-        PATH: hostDenoPathWindows(),
-        ALTERAN_RUN_SOURCES: "",
-        ALTERAN_ARCHIVE_SOURCES: "",
-      },
-    },
-  );
-
-  assertFailureContains(
-    output,
-    "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES.",
-    "Expected copied setup.bat to fail fast when both Alteran source lists are empty",
-  );
-  },
-});
-
-Deno.test({
-  name: "windows powershell: direct & setup.bat initializes target and generates activate.bat",
-  ignore: !IS_WINDOWS,
-  async fn() {
-  const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-ps-");
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-target-ps-",
-    "powershell target with spaces",
-  );
-
-  try {
-    const output = await runPowerShell(
-      [
-        `& ${psQuote(join(repoCopy, "setup.bat"))} ${psQuote(targetDir)}`,
-        `if (!(Test-Path ${psQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))})) { exit 1 }`,
-        `if (!(Test-Path ${psQuote(join(targetDir, "activate.bat"))})) { exit 1 }`,
-      ].join("; "),
-      {
-        env: {
-          PATH: hostDenoPathWindows(),
+    try {
+      const output = await runCmd(
+        [
+          cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+          cmdCallBatch(join(targetDir, "activate.bat")),
+          cmdCallCommand("alt", "help", ">nul"),
+          cmdCallCommand("atest", "--help", ">nul"),
+          cmdCallCommand("adeno", "--version", ">nul"),
+        ].join(" && "),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
         },
-      },
-    );
-    assertSuccess(output, "Expected PowerShell direct invocation to initialize the target");
-  } finally {
-    await removeIfExists(repoCopy);
-  }
+      );
+      assertSuccess(
+        output,
+        "Expected core cmd aliases to work after activation",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
   },
 });
 
 Deno.test({
-  name: "windows powershell: cmd /c call generated activate.bat can activate and run alteran",
+  name:
+    "windows cmd: copied setup.bat supports legacy ALTERAN_SOURCES alias and generates local activation",
   ignore: !IS_WINDOWS,
   async fn() {
-  const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-ps-cmd-");
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-target-ps-cmd-",
-    "powershell cmd target with spaces",
-  );
-
-  try {
-    const output = await runPowerShell(
-      `cmd /d /c ${psQuote(`${cmdCallBatch(join(repoCopy, "setup.bat"), targetDir)} && ${
-        cmdCallBatch(join(targetDir, "activate.bat"))
-      } && alteran help >nul`)}`,
-      {
-        env: {
-          PATH: hostDenoPathWindows(),
-        },
-      },
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-legacy-alias-",
+      "copied target with spaces",
     );
-    assertSuccess(output, "Expected PowerShell->cmd bridge activation to keep alteran usable");
-  } finally {
-    await removeIfExists(repoCopy);
-  }
-  },
-});
+    await copySetupScripts(targetDir);
 
-Deno.test({
-  name: "windows cmd: mirror-only DENO_SOURCES can bootstrap local deno without global install",
-  ignore: !IS_WINDOWS,
-  async fn() {
-  const arch: "x64" | "arm64" = Deno.build.arch === "aarch64"
-    ? "arm64"
-    : "x64";
-  const mirror = await startLocalDenoMirror(arch);
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-mirror-deno-",
-    "mirror deno target with spaces",
-  );
-  await copySetupScripts(targetDir);
-
-  try {
+    const alteranSource =
+      pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href;
     const output = await runCmd(
       [
         cmdCallBatch(join(targetDir, "setup.bat")),
         `if not exist ${
-          cmdQuote(
-            join(
-              targetDir,
-              ".runtime",
-              "deno",
-              windowsPlatformId(arch),
-              "bin",
-              "deno.exe",
-            ),
-          )
+          cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
         } exit /b 1`,
-        `if not exist ${cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))} exit /b 1`,
         `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        cmdCallCommand("alteran", "help", ">nul"),
       ].join(" && "),
       {
         cwd: targetDir,
         env: {
-          PATH: windowsSystemPath(),
-          DENO_SOURCES: mirror.baseUrl,
-          ALTERAN_RUN_SOURCES: pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href,
+          PATH: hostDenoPathWindows(),
+          ALTERAN_SOURCES: alteranSource,
         },
       },
     );
     assertSuccess(
       output,
-      "Expected mirror-only DENO_SOURCES to be sufficient for bootstrapping local Deno",
+      "Expected legacy ALTERAN_SOURCES alias to bootstrap copied setup.bat",
     );
-  } finally {
-    await mirror.close();
-  }
   },
 });
 
 Deno.test({
-  name: "windows cmd: generated activate.bat is tied to the concrete local runtime path produced by setup",
+  name:
+    "windows cmd: copied setup.bat fails fast when both Alteran source lists are empty",
   ignore: !IS_WINDOWS,
   async fn() {
-  const targetDir = await makeDirWithSpaces(
-    "alteran-win-arm64-",
-    "activation path target with spaces",
-  );
-
-  const repoSetup = await new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
-    cwd: ALTERAN_REPO_DIR,
-    env: Deno.env.toObject(),
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
-
-  const activateBat = await Deno.readTextFile(join(targetDir, "activate.bat"));
-  if (!activateBat.includes(targetDir.replaceAll("/", "\\"))) {
-    throw new Error(
-      "Expected generated activate.bat to embed the concrete project path",
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-empty-sources-",
+      "empty source target",
     );
-  }
-  if (!activateBat.includes("\\.runtime\\deno\\")) {
-    throw new Error(
-      "Expected generated activate.bat to embed a concrete local deno runtime path",
-    );
-  }
+    await copySetupScripts(targetDir);
 
-  const output = await runCmd(
-    cmdScript([
-      cmdCallBatch(join(targetDir, "activate.bat")),
-      "if errorlevel 1 exit /b %ERRORLEVEL%",
-      `if /I not "%ALTERAN_HOME%"==${cmdQuote(join(targetDir, ".runtime"))} exit /b 1`,
-      cmdCallCommand("alteran", "help", ">nul"),
-    ]),
-    {
-      cwd: targetDir,
-      env: {
-        PATH: hostDenoPathWindows(),
+    const output = await runCmd(
+      cmdCallBatch(join(targetDir, "setup.bat")),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+          ALTERAN_RUN_SOURCES: "",
+          ALTERAN_ARCHIVE_SOURCES: "",
+        },
       },
-    },
-  );
+    );
 
-  assertSuccess(
-    output,
-    "Expected generated activate.bat to activate through its concrete local runtime path",
-  );
+    assertFailureContains(
+      output,
+      "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES.",
+      "Expected copied setup.bat to fail fast when both Alteran source lists are empty",
+    );
   },
 });
 
 Deno.test({
-  name: "windows cmd: activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
+  name:
+    "windows powershell: direct & setup.bat initializes target and generates activate.bat",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-ps-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-ps-",
+      "powershell target with spaces",
+    );
+
+    try {
+      const output = await runPowerShell(
+        [
+          `& ${psQuote(join(repoCopy, "setup.bat"))} ${psQuote(targetDir)}`,
+          `if (!(Test-Path ${
+            psQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
+          })) { exit 1 }`,
+          `if (!(Test-Path ${
+            psQuote(join(targetDir, "activate.bat"))
+          })) { exit 1 }`,
+        ].join("; "),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected PowerShell direct invocation to initialize the target",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows powershell: cmd /c call generated activate.bat can activate and run alteran",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-ps-cmd-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-ps-cmd-",
+      "powershell cmd target with spaces",
+    );
+
+    try {
+      const output = await runPowerShell(
+        `cmd /d /c ${
+          psQuote(
+            `${cmdCallBatch(join(repoCopy, "setup.bat"), targetDir)} && ${
+              cmdCallBatch(join(targetDir, "activate.bat"))
+            } && alteran help >nul`,
+          )
+        }`,
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected PowerShell->cmd bridge activation to keep alteran usable",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows cmd: mirror-only DENO_SOURCES can bootstrap local deno without global install",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const arch: "x64" | "arm64" = Deno.build.arch === "aarch64"
+      ? "arm64"
+      : "x64";
+    const mirror = await startLocalDenoMirror(arch);
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-mirror-deno-",
+      "mirror deno target with spaces",
+    );
+    await copySetupScripts(targetDir);
+
+    try {
+      const output = await runCmd(
+        [
+          cmdCallBatch(join(targetDir, "setup.bat")),
+          `if not exist ${
+            cmdQuote(
+              join(
+                targetDir,
+                ".runtime",
+                "deno",
+                windowsPlatformId(arch),
+                "bin",
+                "deno.exe",
+              ),
+            )
+          } exit /b 1`,
+          `if not exist ${
+            cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
+          } exit /b 1`,
+          `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
+        ].join(" && "),
+        {
+          cwd: targetDir,
+          env: {
+            PATH: windowsSystemPath(),
+            DENO_SOURCES: mirror.baseUrl,
+            ALTERAN_RUN_SOURCES:
+              pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href,
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected mirror-only DENO_SOURCES to be sufficient for bootstrapping local Deno",
+      );
+    } finally {
+      await mirror.close();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows cmd: generated activate.bat is tied to the concrete local runtime path produced by setup",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-arm64-",
+      "activation path target with spaces",
+    );
+
+    const repoSetup = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(ALTERAN_REPO_DIR, "alteran.ts"),
+        "setup",
+        targetDir,
+      ],
+      cwd: ALTERAN_REPO_DIR,
+      env: Deno.env.toObject(),
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertSuccess(
+      repoSetup,
+      "Expected direct setup bootstrap to seed runtime material",
+    );
+
+    const activateBat = await Deno.readTextFile(
+      join(targetDir, "activate.bat"),
+    );
+    if (!activateBat.includes(targetDir.replaceAll("/", "\\"))) {
+      throw new Error(
+        "Expected generated activate.bat to embed the concrete project path",
+      );
+    }
+    if (!activateBat.includes("\\.runtime\\deno\\")) {
+      throw new Error(
+        "Expected generated activate.bat to embed a concrete local deno runtime path",
+      );
+    }
+
+    const output = await runCmd(
+      cmdScript([
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        "if errorlevel 1 exit /b %ERRORLEVEL%",
+        `if /I not "%ALTERAN_HOME%"==${
+          cmdQuote(join(targetDir, ".runtime"))
+        } exit /b 1`,
+        cmdCallCommand("alteran", "help", ">nul"),
+      ]),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+        },
+      },
+    );
+
+    assertSuccess(
+      output,
+      "Expected generated activate.bat to activate through its concrete local runtime path",
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "windows cmd: activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
@@ -583,7 +688,13 @@ Deno.test({
     );
 
     const repoSetup = await new Deno.Command(Deno.execPath(), {
-      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      args: [
+        "run",
+        "-A",
+        join(ALTERAN_REPO_DIR, "alteran.ts"),
+        "setup",
+        targetDir,
+      ],
       cwd: ALTERAN_REPO_DIR,
       env: hermeticAlteranEnvWindows({
         PATH: hostDenoPathWindows(),
@@ -591,15 +702,23 @@ Deno.test({
       stdout: "piped",
       stderr: "piped",
     }).output();
-    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+    assertSuccess(
+      repoSetup,
+      "Expected direct setup bootstrap to seed runtime material",
+    );
 
-    await Deno.mkdir(join(targetDir, ".runtime", "legacy-junk"), { recursive: true });
+    await Deno.mkdir(join(targetDir, ".runtime", "legacy-junk"), {
+      recursive: true,
+    });
     await Deno.writeTextFile(
       join(targetDir, ".runtime", "legacy-junk", "marker.txt"),
       "junk",
     );
     await Deno.mkdir(join(targetDir, ".runtime", "logs"), { recursive: true });
-    await Deno.writeTextFile(join(targetDir, ".runtime", "logs", "old.log"), "old");
+    await Deno.writeTextFile(
+      join(targetDir, ".runtime", "logs", "old.log"),
+      "old",
+    );
 
     const output = await runCmd(
       [
@@ -625,7 +744,9 @@ Deno.test({
 
     try {
       await Deno.stat(join(targetDir, ".runtime", "legacy-junk"));
-      throw new Error("Expected deferred clean runtime to remove legacy runtime entries");
+      throw new Error(
+        "Expected deferred clean runtime to remove legacy runtime entries",
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -644,7 +765,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "windows cmd: activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
+  name:
+    "windows cmd: activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
@@ -653,7 +775,13 @@ Deno.test({
     );
 
     const repoSetup = await new Deno.Command(Deno.execPath(), {
-      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      args: [
+        "run",
+        "-A",
+        join(ALTERAN_REPO_DIR, "alteran.ts"),
+        "setup",
+        targetDir,
+      ],
       cwd: ALTERAN_REPO_DIR,
       env: hermeticAlteranEnvWindows({
         PATH: hostDenoPathWindows(),
@@ -661,7 +789,10 @@ Deno.test({
       stdout: "piped",
       stderr: "piped",
     }).output();
-    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+    assertSuccess(
+      repoSetup,
+      "Expected direct setup bootstrap to seed runtime material",
+    );
 
     await Deno.mkdir(join(targetDir, "dist", "jsr"), { recursive: true });
     await Deno.writeTextFile(
@@ -695,7 +826,10 @@ Deno.test({
       }
     }
 
-    const logDir = await latestLogDirUnder(join(targetDir, ".runtime", "logs"), "runs");
+    const logDir = await latestLogDirUnder(
+      join(targetDir, ".runtime", "logs"),
+      "runs",
+    );
     const postrunLogPath = join(logDir, "postrun.log");
     const postrunMsgPath = join(logDir, "postrun.msg");
     const postrunLog = await Deno.readTextFile(postrunLogPath);
@@ -716,7 +850,9 @@ Deno.test({
     const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
     try {
       await Deno.stat(join(targetDir, ".runtime", "hooks", sessionDir));
-      throw new Error("Expected successful Windows postrun execution to remove the completed hook dir");
+      throw new Error(
+        "Expected successful Windows postrun execution to remove the completed hook dir",
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -726,7 +862,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "windows cmd: activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
+  name:
+    "windows cmd: activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
@@ -735,7 +872,13 @@ Deno.test({
     );
 
     const repoSetup = await new Deno.Command(Deno.execPath(), {
-      args: ["run", "-A", join(ALTERAN_REPO_DIR, "alteran.ts"), "setup", targetDir],
+      args: [
+        "run",
+        "-A",
+        join(ALTERAN_REPO_DIR, "alteran.ts"),
+        "setup",
+        targetDir,
+      ],
       cwd: ALTERAN_REPO_DIR,
       env: hermeticAlteranEnvWindows({
         PATH: hostDenoPathWindows(),
@@ -743,7 +886,10 @@ Deno.test({
       stdout: "piped",
       stderr: "piped",
     }).output();
-    assertSuccess(repoSetup, "Expected direct setup bootstrap to seed runtime material");
+    assertSuccess(
+      repoSetup,
+      "Expected direct setup bootstrap to seed runtime material",
+    );
 
     await Deno.mkdir(join(targetDir, "apps", "demo", ".runtime"), {
       recursive: true,
