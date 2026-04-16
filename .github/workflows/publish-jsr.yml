@@ -27,11 +27,15 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Refresh local runtime
+        working-directory: .
+        run: deno run -A ./alteran.ts refresh
+
       - name: Verify tag matches Alteran version
         working-directory: .
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          SOURCE_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
+          SOURCE_VERSION="$(deno eval \"import { ALTERAN_VERSION } from './src/alteran/version.ts'; console.log(ALTERAN_VERSION)\")"
           if [ "$TAG_VERSION" != "$SOURCE_VERSION" ]; then
             echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $SOURCE_VERSION" >&2
             exit 1
