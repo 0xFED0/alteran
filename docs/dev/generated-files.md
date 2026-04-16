@@ -6,6 +6,14 @@ Alteran intentionally generates and regenerates several files so users do not ha
 
 - `activate`
 - `activate.bat`
+- `.runtime/alteran/bin/alteran.sh`
+- `.runtime/alteran/bin/alteran.bat`
+- `.runtime/alteran/bin/alt.bat`
+- `.runtime/alteran/bin/arun.bat`
+- `.runtime/alteran/bin/atask.bat`
+- `.runtime/alteran/bin/atest.bat`
+- `.runtime/alteran/bin/ax.bat`
+- `.runtime/alteran/bin/adeno.bat`
 - `alteran.json` defaults
 - synchronized parts of `deno.json`
 - managed `.gitignore` block

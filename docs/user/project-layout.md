@@ -43,6 +43,7 @@ Optional project directories can include `docs/` and `examples/`.
 ```text
 .runtime/
   alteran/
+    bin/
   tools/
   libs/
   logs/
@@ -55,6 +56,7 @@ Optional project directories can include `docs/` and `examples/`.
 Important meaning:
 
 - `.runtime/alteran/` is the local Alteran runtime
+- `.runtime/alteran/bin/` contains generated local Alteran CLI wrappers and shims
 - `.runtime/tools/` and `.runtime/libs/` are runtime helper areas
 - `.runtime/deno/` is platform-specific
 - `.runtime/logs/` is the canonical per-project log root

@@ -69,6 +69,7 @@ export interface ProjectPaths {
   projectDir: string;
   runtimeDir: string;
   alteranDir: string;
+  alteranBinDir: string;
   logsDir: string;
   toolsDir: string;
   libsDir: string;
@@ -90,6 +91,7 @@ export function getProjectPaths(projectDir: string): ProjectPaths {
     projectDir,
     runtimeDir,
     alteranDir: join(runtimeDir, "alteran"),
+    alteranBinDir: join(runtimeDir, "alteran", "bin"),
     logsDir: join(runtimeDir, "logs"),
     toolsDir: join(runtimeDir, "tools"),
     libsDir: join(runtimeDir, "libs"),
@@ -798,6 +800,7 @@ export async function ensureProjectStructure(
   await ensureDir(join(projectDir, "tests"));
   await ensureDir(paths.runtimeDir);
   await ensureDir(paths.alteranDir);
+  await ensureDir(paths.alteranBinDir);
   await ensureDir(paths.logsDir);
   await ensureDir(paths.toolsDir);
   await ensureDir(paths.libsDir);
@@ -855,8 +858,8 @@ async function ensureActivationFiles(projectDir: string): Promise<void> {
 
 async function ensureCliWrappers(projectDir: string): Promise<void> {
   const paths = getProjectPaths(projectDir);
-  const shellWrapperPath = join(paths.alteranDir, "alteran.sh");
-  const batchWrapperPath = join(paths.alteranDir, "alteran.bat");
+  const shellWrapperPath = join(paths.alteranBinDir, "alteran.sh");
+  const batchWrapperPath = join(paths.alteranBinDir, "alteran.bat");
 
   await writeTextFileIfChanged(
     shellWrapperPath,
@@ -892,7 +895,7 @@ async function ensureCliWrappers(projectDir: string): Promise<void> {
   for (const [filename, fixedArgs] of coreBatchShims) {
     const fixedArgSuffix = fixedArgs.length === 0 ? "" : ` ${fixedArgs.join(" ")}`;
     await writeTextFileIfChanged(
-      join(paths.alteranDir, filename),
+      join(paths.alteranBinDir, filename),
       `@echo off
 "%~dp0alteran.bat"${fixedArgSuffix} %*
 `,
@@ -1162,8 +1165,8 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
     cacheDir: relativeExecutable(paths.cacheDir),
     platformDir: relativeExecutable(paths.platformDir),
     denoBinDir: relativeExecutable(paths.denoBinDir),
-    wrapperBinDir: relativeExecutable(paths.alteranDir),
-    shellWrapper: relativeExecutable(join(paths.alteranDir, "alteran.sh")),
+    wrapperBinDir: relativeExecutable(paths.alteranBinDir),
+    shellWrapper: relativeExecutable(join(paths.alteranBinDir, "alteran.sh")),
     appAliases,
     toolAliases,
     shellAliases,
@@ -1173,7 +1176,7 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
 export async function generateBatchEnv(projectDir: string): Promise<string> {
   const config = await readAlteranConfig(projectDir);
   const paths = getProjectPaths(projectDir);
-  const wrapperPath = join(paths.alteranDir, "alteran.bat");
+  const wrapperPath = join(paths.alteranBinDir, "alteran.bat");
   const appAliases = createBatchAliasLines(
     collectBatchAppAliasCommands(config, wrapperPath),
   );
@@ -1189,8 +1192,8 @@ export async function generateBatchEnv(projectDir: string): Promise<string> {
     cacheDir: paths.cacheDir,
     platformDir: paths.platformDir,
     denoBinDir: paths.denoBinDir,
-    wrapperBinDir: paths.alteranDir,
-    shellWrapper: join(paths.alteranDir, "alteran.sh"),
+    wrapperBinDir: paths.alteranBinDir,
+    shellWrapper: join(paths.alteranBinDir, "alteran.sh"),
     appAliases,
     toolAliases,
     shellAliases,

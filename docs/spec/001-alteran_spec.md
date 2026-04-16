@@ -401,6 +401,15 @@ The intent is:
 ```text
 .runtime/
   alteran/
+    bin/
+      alteran.sh
+      alteran.bat
+      alt.bat
+      arun.bat
+      atask.bat
+      atest.bat
+      ax.bat
+      adeno.bat
     mod.ts
     preinit.ts
     logging/
@@ -422,6 +431,7 @@ It is the canonical home of the Alteran system inside a project runtime.
 
 Expected contents include:
 
+- `bin/` — generated local CLI wrappers and command shims
 - `mod.ts` — main internal Alteran runtime entrypoint
 - `preinit.ts` — managed-process preload entrypoint for other scripts (this is prerun hook)
 - `logging/` — logging and LogTape integration files
