@@ -1,4 +1,4 @@
-# ADR 0036: Use a Narrow Cleanup Handoff Instead of Generic Postrun Hooks
+# ADR 0036: Use a Narrow Cleanup Handoff for Deferred Runtime Mutations
 
 ## Status
 
@@ -6,245 +6,181 @@ Accepted
 
 ## Context
 
-Alteran has a small but important Windows-specific cleanup problem.
+Alteran has a Windows-specific teardown problem around cleanup and compact-style commands.
 
-On Unix-like systems, cleanup and compacting can usually remove runtime-local files directly from the running process. Linux and macOS allow unlinking open files and generally do not suffer from the same executable-locking behavior as Windows.
+On Linux and macOS, the current direct cleanup model is acceptable for now. Unix-like systems generally tolerate unlinking open files and do not exhibit the same batch-script and executable-lock behavior that Windows does. As long as the current Unix-like behavior remains correct, Alteran should not introduce extra deferred-cleanup machinery there.
 
 Windows is different:
 
-- the active managed `deno.exe` may keep runtime-local files locked while the current Alteran command is still running;
-- Deno cache files under `.runtime/deno/<platform>/cache` can remain open during managed execution;
-- batch wrappers and activated sessions may still reference files under `.runtime/alteran` while command teardown is happening;
-- removing the current runtime tree from inside the process that depends on it is fragile.
+- the active managed `deno.exe` can keep runtime-local files locked while Alteran command teardown is still in flight;
+- deleting the current runtime tree from inside the process tree that depends on it is fragile;
+- self-deleting batch files produce control-flow edge cases that do not exist on Unix-like shells;
+- `cmd.exe` is especially sensitive to returning into batch files that were deleted while they were still on the batch stack.
 
-A previous design introduced run-scoped generic `postrun` hooks under `.runtime/hooks/{ROOT_RUN_ID}/postrun.sh` or `.runtime/hooks/{ROOT_RUN_ID}/postrun.bat`. That design was more general than the actual need.
+Earlier iterations explored:
 
-The real use cases are narrow:
+- generic run-scoped `postrun` hooks under `.runtime/hooks/...`;
+- project-local cleanup intent files such as `.runtime/CLEANUP`;
+- detached child cleanup via `start`;
+- BusyBox `sh`-based cleanup drivers inside the runtime tree.
 
-- clean Deno-managed cache state;
-- compact the active project by removing `.runtime/` only after the managed Alteran process has exited;
-- avoid deleting the currently running managed Deno executable directly from inside the active process.
+Those experiments clarified the actual shape of the problem:
 
-Alteran does not need a generic deferred shell execution framework for this. A generic postrun system creates extra moving parts:
+- the requirement is narrow, not generic;
+- Windows is the only platform currently needing a special handoff;
+- the cleanup driver itself must live outside the runtime tree being deleted;
+- the wrapper must not return into a deleted batch file;
+- plain `deno clean` should be delegated directly to managed Deno rather than reimplemented by recursive cache deletion.
 
-- generated shell or batch scripts;
-- hook directories inside the runtime tree being deleted;
-- postrun logs and user message files;
-- copy-back behavior into `.runtime/logs`;
-- extra status-routing logic in wrappers;
-- avoidable quoting and batch-control-flow complexity.
-
-That complexity is disproportionate to the cleanup problem and creates its own failure modes.
+Generic `postrun` is therefore removed as the mechanism for deferred runtime mutations. Alteran no longer treats deferred cleanup as a general shell hook framework.
 
 ## Decision
 
-Alteran replaces generic `postrun` hooks with a narrow cleanup handoff file:
+Alteran uses a Windows-only narrow cleanup handoff based on a temporary cleanup batch file located outside the project runtime tree, typically under `%TEMP%`.
 
-```text
-.runtime/CLEANUP
-```
+This handoff is used only for deferred cleanup and compact-related runtime mutations that are unsafe to finish from inside the active Windows Alteran process tree.
 
-This file is only used for top-level cleanup commands that need to finish work after the managed Alteran process exits.
+Linux and macOS do not use this handoff for now. They keep the existing direct cleanup path unless future evidence shows that a Unix-side deferred model is needed.
 
-The cleanup handoff is not a generic command runner. It supports only a small whitelist of cleanup actions.
+## Windows Handoff Model
 
-Initial supported actions are:
-
-```text
-DENO_CLEAN
-COMPACT
-```
-
-`DENO_CLEAN` means that the wrapper should run the managed Deno executable in plain mode:
-
-```text
-deno clean [optional args...]
-```
-
-`COMPACT` means that the wrapper should:
-
-1. run plain `deno clean` for the active managed Deno runtime;
-2. remove the active project runtime directory `.runtime/` after the Alteran process has exited;
-3. retry runtime removal a small number of times on Windows to handle transient file-lock release timing.
-
-The cleanup handoff runs only when the main Alteran command exits successfully. If the main command exits non-zero, the wrapper must not execute `.runtime/CLEANUP`.
-
-The wrapper must remove `.runtime/CLEANUP` before executing the requested cleanup action, so that a stale file is not accidentally reused by a later command.
-
-## File Format
-
-The cleanup file is intentionally simple and line-oriented.
-
-For compact:
-
-```text
-COMPACT
-```
-
-For Deno cache cleanup:
-
-```text
-DENO_CLEAN
-```
-
-If future `DENO_CLEAN` arguments are needed, they are written one argument per line after the action name:
-
-```text
-DENO_CLEAN
---except
-npm
-```
-
-The format deliberately avoids shell quoting. The wrapper interprets each following line as one argument.
-
-No arbitrary shell commands are allowed.
-
-## Ownership and Concurrency
-
-`.runtime/CLEANUP` is project-local and single-use.
-
-When Alteran needs to create it, it must use exclusive creation semantics. In Deno this should be implemented with `createNew: true` or an equivalent atomic operation.
-
-If `.runtime/CLEANUP` already exists, Alteran must fail the current command with a non-zero exit code and report that another cleanup handoff is already pending.
-
-This prevents two cleanup-producing commands from racing over the same runtime directory.
-
-## Wrapper Responsibilities
-
-The generated Alteran wrapper is responsible for the final handoff step.
+On Windows, the generated batch wrapper owns the deferred cleanup handoff.
 
 Conceptually:
 
-1. run the main Alteran command;
-2. capture its exit code;
-3. if the exit code is non-zero, exit with that code;
-4. if `.runtime/CLEANUP` does not exist, exit with the main command code;
-5. read `.runtime/CLEANUP`;
-6. delete `.runtime/CLEANUP` immediately;
-7. execute the whitelisted cleanup action;
-8. return the cleanup action status as the final status when the main command succeeded.
+1. the wrapper computes a unique temp cleanup batch path outside `.runtime/`;
+2. it exposes that path to the Alteran process through environment variables;
+3. the Alteran process may choose to materialize a cleanup batch at that path;
+4. the wrapper runs the main Alteran command;
+5. if the main command exits non-zero, the wrapper exits immediately with that status;
+6. if no temp cleanup batch was written, the wrapper exits with the main command status;
+7. if a temp cleanup batch exists, the wrapper transfers control to it as the final batch step without using `call`;
+8. the temp cleanup batch performs the remaining Windows-only cleanup work and then self-deletes.
 
-On Unix-like systems this path is expected to be simple, because direct cleanup usually works. The cleanup handoff exists primarily for Windows correctness.
+The key point is step 7: the wrapper must hand off to the temp cleanup batch without `call`, so that `cmd.exe` does not return into a batch file inside the runtime tree after that tree may already have been removed.
 
-On Windows, runtime directory removal must use path-level retry behavior. Waiting only for `deno.exe` to become unlockable is not sufficient; a target path may fail the first removal attempt and become removable shortly afterward.
+## Temp Cleanup Batch Responsibilities
+
+The temp cleanup batch is Alteran-generated and narrow in scope. It is not a generic user-extensible shell task runner.
+
+Initial responsibilities are:
+
+- run plain managed `deno clean` directly;
+- for `compact`, retry runtime directory removal a small number of times on Windows;
+- delete itself at the end.
+
+The self-delete tail should use the Windows-safe pattern:
+
+```text
+(goto) 2>nul & del /f /q "%~f0"
+```
+
+This avoids the noisy `The batch file cannot be found.` tail that can appear when a batch file deletes itself using a plain trailing `del "%~f0"`.
 
 ## Command Semantics
 
 ### `alteran deno clean ...` / `adeno clean ...`
 
-When the user explicitly runs Deno's own cleanup command through Alteran, Alteran should route it to a plain managed Deno invocation rather than through a managed logged/preloaded session.
-
-That is, this should behave like ordinary Deno:
+On Windows, the batch wrapper should intercept this route and invoke plain managed Deno cleanup directly:
 
 ```text
 deno clean ...
 ```
 
-with the project-local managed Deno executable and managed `DENO_DIR`, but without Alteran process logging, preload injection, or extra wrapper behavior beyond normal command dispatch.
+This invocation must happen outside `alteran.ts` and outside the normal managed Alteran execution path.
+
+That means:
+
+- no Alteran preload injection;
+- no extra Alteran command logging semantics;
+- no extra wrapper round-trip back through `alteran.ts`;
+- just the managed `deno.exe` with the managed project-local `DENO_DIR`.
+
+After running plain `deno clean`, the wrapper should exit.
 
 ### `alteran clean cache`
 
-`clean cache` should delegate Deno cache cleanup to `deno clean` instead of manually deleting Deno cache internals.
+`clean cache` should delegate cache cleanup to plain managed `deno clean`, not to manual recursive deletion of cache internals.
 
-When a post-exit handoff is needed, Alteran writes:
-
-```text
-DENO_CLEAN
-```
-
-The wrapper then runs plain `deno clean` after the main Alteran command exits.
+On Windows this may be done through the temp cleanup batch handoff if post-exit cleanup is required by the active execution context.
 
 ### `alteran clean runtime`
 
-`clean runtime` should remove recoverable runtime-local state while preserving the currently active managed Deno executable path when that executable belongs to the active project.
+`clean runtime` may remove safe runtime-local artifacts directly, but cache cleanup should still be delegated to plain managed `deno clean`.
 
-It may remove stale sibling files such as old executable backups when safe, for example `deno.exe.old`.
+On Windows, if any part of the remaining cleanup must happen after the main Alteran process exits, Alteran may emit a temp cleanup batch instead of trying to finish inside the active batch/process stack.
 
-Deno cache cleanup should be delegated to `deno clean` rather than implemented by recursive deletion of cache internals from inside the active managed process.
+### `alteran clean all`
+
+`clean all` may remove direct non-runtime targets immediately, but managed cache cleanup should still go through plain managed `deno clean`.
+
+On Windows this may use the temp cleanup batch handoff for the `deno clean` phase.
 
 ### `alteran compact [dir]`
 
 `compact` has two cases.
 
-If the target directory is not the current active project runtime that the command is running from, Alteran may perform direct cleanup. If some paths cannot be removed, Alteran should report a warning or failure according to the command's chosen policy, but it does not need to use the active-runtime handoff mechanism.
+If the target is not the currently active project runtime, Alteran may clean it directly.
 
-If the target directory is the current active project, Alteran must avoid deleting the runtime tree from inside the active managed process. Instead, it should:
+If the target is the currently active project runtime on Windows, Alteran must not try to finish the runtime deletion from inside the active wrapper/process stack. Instead it should:
 
-1. remove all safe non-runtime artifacts directly;
-2. write `.runtime/CLEANUP` containing `COMPACT`;
-3. exit successfully;
-4. let the wrapper run plain `deno clean` and then remove `.runtime/` with retries.
+1. remove safe non-runtime artifacts directly (including removable items inside `.runtime` dir);
+2. write the temp cleanup batch outside the runtime tree;
+3. exit successfully from the main Alteran process;
+4. let the batch wrapper transfer control to that temp cleanup batch without `call`;
+5. let the temp cleanup batch run plain managed `deno clean`;
+6. retry deletion of the active runtime directory;
+7. self-delete.
 
-`COMPACT` must be the last cleanup phase because it removes the runtime directory that contains the cleanup handoff file and the managed Alteran runtime.
+## Why This Is Windows-Specific
 
-## Dry Run
+This ADR intentionally limits the special handoff to Windows.
 
-Cleanup-related commands should support `--dry-run`.
+Current Unix-like behavior is not being changed because:
 
-Recommended coverage:
+- the underlying file-deletion semantics are different;
+- the Windows batch-stack problem does not apply to `sh` in the same way;
+- introducing deferred cleanup where it is not needed would add complexity without current evidence of benefit.
 
-```text
-alteran clean <scope> [<scope> ...] --dry-run
-alteran compact [dir] --dry-run
-alteran compact-copy <destination> [--source=<project-dir>] --dry-run
-```
-
-Dry run must not create `.runtime/CLEANUP` and must not delete files.
-
-It should report the planned direct removals and any planned delegated cleanup actions, for example:
-
-```text
-Would run: deno clean
-Would remove after exit: .runtime/
-```
-
-For `compact-copy`, dry run should report what would be copied and what categories would be omitted.
-
-## Logging
-
-The cleanup handoff does not create `postrun.log`, `postrun.msg`, or any equivalent session artifacts.
-
-Cleanup commands are top-level maintenance commands. In particular, `clean logs` and `compact` may intentionally remove the session log tree, so logging the cleanup into the tree being removed is circular and fragile.
-
-The wrapper may print concise warnings or errors to stderr when a cleanup action fails.
+If future Linux or macOS failures appear, Alteran may introduce a Unix-side adjustment later. That is out of scope for this ADR.
 
 ## Consequences
 
 Positive:
 
-- much smaller Windows cleanup surface;
-- no generated hook scripts inside `.runtime`;
-- no self-destructing `.runtime/hooks` tree;
-- no postrun log copy-back behavior;
-- less batch quoting and label/goto complexity;
-- Deno cache cleanup is delegated to Deno itself;
-- compact becomes a narrow final cleanup handoff instead of a generic deferred execution framework.
+- generic `postrun` is removed from this cleanup path;
+- no cleanup intent file inside `.runtime/`;
+- no cleanup driver stored inside the tree being deleted;
+- no need for BusyBox or other auxiliary shell runtimes for this purpose;
+- direct delegation of cache cleanup to `deno clean`;
+- `compact` can safely hand off the final Windows-only runtime deletion step without returning into a deleted batch file;
+- `alteran deno clean` / `adeno clean` are handled honestly as plain managed Deno cleanup.
 
 Tradeoffs:
 
-- `.runtime/CLEANUP` is intentionally not a general deferred task mechanism;
-- only whitelisted cleanup actions are supported;
-- wrapper logic still needs Windows-specific retry behavior for active runtime removal;
-- if the wrapper process itself is bypassed, a pending cleanup file may remain and must block later cleanup-producing commands until removed or resolved.
+- wrapper logic becomes explicitly Windows-specific;
+- a temp cleanup batch is still another generated artifact, just outside the runtime tree instead of inside it;
+- runtime deletion on Windows may still need small retry windows because file locks do not release deterministically;
+- Unix-like platforms intentionally keep separate behavior for now, which means the cleanup model is not fully uniform across platforms.
 
 ## Rejected Alternatives
 
-### Keep generic run-scoped postrun hooks
+### Keep generic run-scoped `postrun` hooks
 
-Rejected because the generic hook system was larger than the problem. It introduced generated shell and batch scripts, hook directories, logs, message files, and copy-back behavior even though the actual requirement is only cleanup handoff.
+Rejected because the problem is narrower than a generic deferred shell execution framework. Hook directories, hook logs, copy-back behavior, and wrapper status plumbing created more complexity than value.
 
-### Store cleanup scripts under `.runtime/hooks`
+### Store cleanup intent under `.runtime/CLEANUP`
 
-Rejected because `compact` removes `.runtime`. Storing the cleanup mechanism inside the tree being removed creates self-destruction hazards.
+Rejected because the active runtime tree is precisely what `compact` may need to remove. Storing the deferred cleanup contract inside that same tree recreates self-destruction hazards.
+
+### Keep the cleanup driver inside the runtime tree
+
+Rejected because experiments with batch files and BusyBox shell scripts inside the deletable runtime showed that Windows keeps those files awkwardly tied to the active process stack.
 
 ### Manually delete Deno cache internals
 
-Rejected because cache layout and locks are Deno-owned concerns. Alteran should delegate cache cleanup to `deno clean` where possible.
+Rejected because Deno owns its cache layout and locking behavior. Alteran should delegate cache cleanup to plain `deno clean` where possible.
 
-### Use arbitrary shell commands in the cleanup file
+### Change Linux and macOS now to match Windows
 
-Rejected because it reintroduces quoting, injection, and cross-platform shell semantics. The cleanup handoff must remain a small whitelist of structured actions.
-
-### Keep logging cleanup into `.runtime/logs`
-
-Rejected because cleanup may intentionally remove `.runtime/logs`. Logging cleanup into the thing being cleaned creates fragile recursive behavior.
+Rejected because there is no current evidence that Unix-like platforms need the extra indirection. The Windows workaround should stay Windows-specific until Unix-side failures justify broader change.
