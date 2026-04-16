@@ -162,5 +162,5 @@ exit /b 1
 :have_alteran
 "%BOOTSTRAP_DENO%" run -A "%ALTERAN_ENTRY%" setup "%TARGET_DIR%"
 set "STATUS=%ERRORLEVEL%"
-if defined ARCHIVE_TEMP_ROOT powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item -Recurse -Force '%ARCHIVE_TEMP_ROOT%' -ErrorAction SilentlyContinue" >nul 2>nul
+if defined ARCHIVE_TEMP_ROOT if exist "%ARCHIVE_TEMP_ROOT%" rmdir /s /q "%ARCHIVE_TEMP_ROOT%" >nul 2>nul
 exit /b %STATUS%
