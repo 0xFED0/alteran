@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+  checks: write
+  id-token: write
+
 jobs:
   test:
     uses: ./.github/workflows/test.yml
@@ -12,9 +17,6 @@ jobs:
   publish:
     needs: test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - name: Checkout
