@@ -2,9 +2,16 @@
 
 ## Summary
 
-Windows cleanup behavior around `clean`, `compact`, and `refresh` is fragile when Alteran is executed from an activated `cmd` session.
+This document is a historical debugging note.
 
-The core issue is not simple path handling. It is a combination of:
+The specific cleanup model described here is no longer the active Alteran
+design. It records the earlier Windows failures that motivated ADR 0036 and the
+current narrow cleanup handoff implementation.
+
+Earlier Windows cleanup behavior around `clean`, `compact`, and `refresh` was
+fragile when Alteran was executed from an activated `cmd` session.
+
+The core issue was not simple path handling. It was a combination of:
 
 - Windows file locking semantics
 - `cmd`/batch stack behavior around `call`
@@ -12,7 +19,16 @@ The core issue is not simple path handling. It is a combination of:
 - self-mutation of `.runtime` while the current command path still depends on files inside `.runtime`
 - races where files become removable shortly after command completion, but not at the first deletion attempt
 
-At the time of writing:
+Current state:
+
+- Alteran no longer uses generic project-local `postrun` hooks for cleanup;
+- Windows cleanup-sensitive runtime mutations use the narrow temp cleanup batch
+  model described in [ADR 0036](../adr/0036-use-narrow-cleanup-handoff-for-deferred-runtime-mutations.md);
+- current CLI wrappers live under `.runtime/alteran/bin/`;
+- the detailed observations below remain useful as background on why that
+  design was chosen.
+
+At the time these issues were being debugged:
 
 - `compact` can physically remove the intended paths, but the Windows wrapper/postrun route may still return the wrong final status
 - `clean runtime` and `clean builds` still have unresolved Windows race/lock behavior in e2e coverage

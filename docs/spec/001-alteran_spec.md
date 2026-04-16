@@ -1932,7 +1932,7 @@ Because `.runtime/` is Alteran-managed internal space, `alteran clean runtime` m
 
 When `alteran clean runtime` is invoked from an active Alteran shell session that is currently using the project-local Deno binary, it should preserve that active local `bin/deno[.exe]` so subsequent commands such as `alteran refresh` continue to work without requiring immediate re-activation or re-download.
 
-When runtime-sensitive deletions cannot be completed safely from inside the current managed Deno process, Alteran should defer those mutations into a root-session-scoped `postrun` hook rather than weakening the cleanup contract.
+When runtime-sensitive deletions cannot be completed safely from inside the current managed Deno process, Alteran may use a narrow platform-specific deferred cleanup handoff rather than weakening the cleanup contract.
 
 #### `alteran clean env`
 
@@ -1962,8 +1962,6 @@ Removes log files and log-derived artifacts under `.runtime/logs/` according to 
 
 It must not remove source files or project configuration.
 
-Because `clean logs` may remove the current session log tree, any active `postrun` execution must not depend on project-local `postrun.log` or `postrun.msg` files remaining present during hook execution.
-
 #### `alteran clean builds`
 
 Removes reproducible build and publication output such as:
@@ -1976,92 +1974,76 @@ It must not remove source files.
 
 It must not recreate publication-specific subdirectories such as `dist/jsr/` as part of cleanup. The corresponding build or publication tooling is responsible for recreating its own output directories when needed.
 
-### 26.2 Deferred cleanup and compact execution
+### 26.2 Narrow deferred cleanup handoff
 
-For cleanup and compact operations that may conflict with active runtime locks, Alteran should use a deferred `postrun` phase owned by the current root session.
+Unix-like cleanup and compact flows should complete directly in the current
+process unless a future platform-specific issue requires something stronger.
 
-Canonical hook path:
+Windows is different because the active managed Deno process and current batch
+launcher can conflict with deletion of:
 
-```text
-.runtime/hooks/{session-dir}/postrun.sh
-```
+- the current managed Deno cache;
+- the current root `.runtime/` tree during `compact`.
 
-or on Windows:
+Alteran should therefore use a narrow Windows-only deferred cleanup handoff
+rather than a generic project-scoped hook framework.
 
-```text
-.runtime/hooks/{session-dir}/postrun.bat
-```
+This handoff should be based on a temporary cleanup batch file located outside
+the project runtime tree, typically under the system temp directory.
 
-Here `{session-dir}` is the canonical root session directory name and therefore matches `root_run_id`.
+The generated Windows wrapper owns that handoff.
 
-This hook model applies especially to:
+It applies only to current-runtime mutations that are unsafe to complete from
+inside the active Windows Alteran process tree, especially:
 
+- `alteran clean cache`
 - `alteran clean runtime`
 - `alteran clean all`
 - `alteran compact`
 
-Child runs within the same root invocation tree may append deferred actions into that same root-scoped hook.
+It should not be treated as a general deferred hook system for unrelated
+commands.
 
-If no deferred actions were scheduled for the current root session, Alteran must not create a hook directory or hook script.
+Commands such as:
 
-#### `postrun` outputs
-
-`postrun` belongs to the current Alteran session, but its live outputs must not be written only into the project-local session log directory while the hook is running.
-
-This is because commands such as:
-
-- `alteran compact`
+- `alteran clean builds`
 - `alteran clean logs`
+- `alteran clean env`
+- `alteran clean app-runtimes`
 
-may intentionally remove the current session log tree before the hook finishes.
+should continue to complete directly unless a future spec changes that contract.
 
-Alteran should therefore write live hook outputs to a system-temporary location while `postrun` is running, for example:
+#### `alteran deno clean ...` / `adeno clean ...`
 
-```text
-{system-temp}/alteran-postrun/{session-dir}/postrun.log
-{system-temp}/alteran-postrun/{session-dir}/postrun.msg
-```
+On Windows, the generated batch wrapper should intercept this route and invoke
+plain managed `deno clean ...` directly rather than routing it back through
+Alteran TypeScript cleanup orchestration.
 
-After the hook finishes, the launcher or wrapper should:
+After plain managed `deno clean` finishes, the wrapper should exit.
 
-1. print `postrun.msg` to user stdout when it exists;
-2. best-effort copy `postrun.log` and `postrun.msg` back into the canonical session log directory if that directory still exists;
-3. clean up the temporary `postrun` output files.
+#### Exit semantics
 
-Canonical long-term locations remain:
-
-```text
-.runtime/logs/{run-type}/{session-dir}/postrun.log
-.runtime/logs/{run-type}/{session-dir}/postrun.msg
-```
-
-#### `postrun` exit semantics
-
-The final user-visible command result for cleanup-sensitive commands must include the `postrun` result, not only the in-process TypeScript phase.
+The final user-visible command result for cleanup-sensitive commands must
+include the deferred cleanup result when the Windows handoff path was used.
 
 This means:
 
-- `alteran clean ...` may return success only if its deferred cleanup phase also succeeded when one was required;
-- `alteran compact` may return success only if its deferred compacting phase also succeeded when one was required.
+- `alteran clean ...` may return success only if the deferred cleanup batch
+  also succeeded when one was required;
+- `alteran compact` may return success only if the deferred runtime removal
+  also succeeded when one was required.
 
-If `postrun` fails:
+#### Verification
 
-- Alteran should return a non-zero final exit code;
-- Alteran should leave `.runtime/hooks/{session-dir}` in place for debugging;
-- `postrun.log` should contain the hook intent, the generated hook path, the generated shell commands, and the execution trace.
+For Windows deferred cleanup actions, the generated temp cleanup batch must:
 
-If `postrun` succeeds:
+- run the required plain managed `deno clean` step when queued;
+- attempt the deferred runtime deletion when queued;
+- verify that the deferred target is actually gone afterward;
+- return non-zero if a required deferred mutation did not complete.
 
-- Alteran may remove `.runtime/hooks/{session-dir}` as part of normal hook finalization.
-
-#### Deferred deletion verification
-
-For cleanup-oriented deferred actions, generated `postrun` commands must:
-
-- attempt the deletion;
-- verify that the target is actually gone afterward;
-- record failure details into `postrun.msg` if verification fails;
-- aggregate such failures and exit non-zero when one or more deferred deletions did not complete.
+Alteran must not create or depend on a generic `.runtime/hooks/...` tree,
+`postrun.log`, or `postrun.msg` as part of this cleanup contract.
 
 ### 26.3 Safety rules
 
@@ -2927,7 +2909,7 @@ Recommended additional metadata:
 
 These identifiers should be available in structured events and, where useful, via environment variables.
 
-For root-scoped hook and logging purposes, `root_run_id` is also the canonical session directory name.
+For root-scoped logging purposes, `root_run_id` is also the canonical session directory name.
 
 ### 36.8 Environment variables for logging context
 

@@ -165,7 +165,7 @@ These tests cover:
 - Unix launcher execution semantics
 - node bridge scenarios validated from Unix hosts
 - copied `setup` bootstrap flows that are exercised through Unix shells
-- Unix `postrun` behavior for `clean` and `compact`
+- Unix direct cleanup and compact behavior without Windows-specific handoff
 
 Current file:
 
@@ -422,23 +422,19 @@ When a test needs to exercise an example through `setup`, `activate`, `refresh`,
 `compact`, or launcher flows, it should prefer a hermetic temp directory derived
 from that example rather than mutating the committed example directory itself.
 
-### 7.6 Deferred postrun behavior must be tested as part of final command semantics
+### 7.6 Deferred cleanup handoff must be tested as part of final command semantics
 
-When `clean`, `compact`, or future runtime-sensitive commands rely on deferred
-`postrun` hooks, tests must treat the entire launcher cycle as the user-visible
-command boundary.
+When Windows `clean`, `compact`, or direct `alteran deno clean` flows rely on the narrow temp cleanup batch handoff, tests must treat the entire launcher cycle as the user-visible command boundary.
 
 This means tests should verify:
 
-- the final exit code after any `postrun` phase;
-- the actual resulting filesystem state after the hook completed;
-- hook-directory cleanup on success;
-- hook-directory retention on failure when that behavior is part of the
-  contract;
-- `postrun.msg` visibility and `postrun.log` persistence rules where applicable.
+- the final exit code after the wrapper and any deferred cleanup batch;
+- the actual resulting filesystem state after the full command cycle;
+- direct interception of `alteran deno clean` / `adeno clean` where relevant;
+- use of deferred handoff only for the runtime-sensitive Windows cases that require it;
+- absence of that handoff for direct-scope cleanup such as `builds`, `logs`, `env`, and `app-runtimes`.
 
-Tests must not treat an in-process TypeScript success return as sufficient if
-deferred hook behavior is part of the command contract.
+Tests must not treat an in-process TypeScript success return as sufficient if a deferred Windows cleanup batch is part of the command contract.
 
 ### 7.7 External harness tracing should be structured and selective
 

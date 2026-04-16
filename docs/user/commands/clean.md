@@ -13,12 +13,14 @@ alteran compact-copy <destination> [--source=<project-dir>]
 ## Clean Scopes
 
 - `cache`: remove `.runtime/deno/<platform>/cache`
-- `runtime`: remove generated runtime state under `.runtime/`
+- `runtime`: remove generated runtime state under `.runtime/` while preserving the current managed Deno binary when needed
 - `env`: remove generated `activate` and `activate.bat`
 - `app-runtimes`: remove nested `apps/*/.runtime/`
 - `logs`: remove `.runtime/logs/`
 - `builds`: remove `dist/`
 - `all`: safe cleanup of regenerable runtime-related state
+
+On Windows, cleanup routes that conflict with the active managed runtime may use a narrow temporary cleanup batch outside the project runtime tree. This is an implementation detail of `cache`, `runtime`, `all`, and `compact`, not a general hook framework for every cleanup scope.
 
 ## Compact
 
@@ -36,6 +38,8 @@ After compact, the project should be recoverable by running `setup` again.
 Without `[dir]`, `compact` targets the current active project.
 
 With `[dir]`, it explicitly compacts another Alteran project directory.
+
+On Windows, `compact` may use the same narrow temporary cleanup batch model for the final `.runtime/` removal step.
 
 ## Compact Copy
 

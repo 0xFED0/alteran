@@ -44,7 +44,7 @@ Linux and macOS do not use this handoff for now. They keep the existing direct c
 
 ## Windows Handoff Model
 
-On Windows, the generated batch wrapper owns the deferred cleanup handoff.
+On Windows, the generated batch wrapper under `.runtime/alteran/bin/` owns the deferred cleanup handoff.
 
 Conceptually:
 

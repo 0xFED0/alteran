@@ -259,14 +259,14 @@ The canonical root log tree belongs under:
 
 External or custom log destinations may mirror or copy logs, but they must not replace the canonical project-local root log identity unless the product spec explicitly changes.
 
-### 5.8 Treat deferred postrun mutations as part of command truth
+### 5.8 Treat deferred cleanup handoff as part of command truth
 
-If a command relies on a root-session-scoped `postrun` hook for cleanup or compacting, contributors must treat that hook as part of the command contract, not as a disposable implementation detail.
+If a command relies on the Windows narrow deferred cleanup handoff for cleanup or compacting, contributors must treat that handoff as part of the command contract, not as a disposable implementation detail.
 
 In particular, contributors must not:
 
-- declare cleanup or compact behavior successful before required `postrun` actions have completed;
-- write `postrun` logic that depends on project-local log files surviving commands that intentionally remove them;
+- declare cleanup or compact behavior successful before required deferred cleanup batch actions have completed;
+- silently expand a narrow runtime-cleanup handoff into a generic hook framework without an explicit spec and ADR change;
 - silently weaken deletion verification on platforms with stricter file locking.
 
 ### 5.9 Messages are part of the interface

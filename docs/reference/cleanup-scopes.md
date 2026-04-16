@@ -5,12 +5,15 @@
 | Scope | Effect |
 | --- | --- |
 | `cache` | Remove `.runtime/deno/<platform>/cache` |
-| `runtime` | Remove generated runtime state under `.runtime/` and rebuild expected structure |
+| `runtime` | Remove generated runtime state under `.runtime/`, preserve the active managed Deno binary when needed, and rebuild expected structure |
 | `env` | Remove generated `activate` and `activate.bat` |
 | `app-runtimes` | Remove nested `apps/*/.runtime/` |
 | `logs` | Remove `.runtime/logs/` and recreate the log root |
 | `builds` | Remove `dist/` without recreating publication-specific subdirectories |
 | `all` | Run the safe cleanup set for regenerable runtime state |
+
+Windows may use a narrow temporary cleanup batch for `cache`, `runtime`, `all`,
+and `compact` when the active managed runtime would otherwise conflict with the deletion. Other cleanup scopes remain direct.
 
 ## `alteran compact [dir]`
 
