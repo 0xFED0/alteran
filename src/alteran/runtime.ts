@@ -22,12 +22,14 @@ import {
   updateAlteranConfig,
 } from "./config.ts";
 import {
+  cleanCurrentDenoCache,
   copyDirectory,
   ensureDir,
   exists,
   listDirectSubdirectories,
   listFiles,
   readTextIfExists,
+  removeCurrentRuntime,
   removeIfExists,
   resolveProjectPath,
   slugify,
@@ -113,317 +115,6 @@ export function tryGetBundleRoot(): string | null {
   } catch {
     return null;
   }
-}
-
-interface PostrunPlan {
-  sessionDir: string;
-  hookDir: string;
-  hookPath: string;
-  logDir: string;
-  intent: string;
-}
-
-function createAuxiliarySessionId(name: string): string {
-  const iso = new Date().toISOString().replaceAll(/[-:]/g, "").replace(
-    ".000",
-    "",
-  );
-  return `${iso}_${slugify(name)}`;
-}
-
-function activePostrunSessionFile(): string | null {
-  const configured = Deno.env.get("ALTERAN_POSTRUN_SESSION_FILE")?.trim();
-  return configured ? configured : null;
-}
-
-function sessionFileContents(plan: PostrunPlan): string {
-  if (Deno.build.os === "windows") {
-    return [
-      `@echo off`,
-      `set "ALTERAN_POSTRUN_HOOK_PATH=${plan.hookPath.replaceAll("/", "\\").replaceAll('"', '""')}"`,
-      `set "ALTERAN_POSTRUN_HOOK_DIR=${plan.hookDir.replaceAll("/", "\\").replaceAll('"', '""')}"`,
-      `set "ALTERAN_POSTRUN_SESSION_DIR=${plan.sessionDir.replaceAll('"', '""')}"`,
-      `set "ALTERAN_POSTRUN_LOG_DIR=${plan.logDir.replaceAll("/", "\\").replaceAll('"', '""')}"`,
-      `set "ALTERAN_POSTRUN_INTENT=${plan.intent.replaceAll('"', '""')}"`,
-      ``,
-    ].join("\r\n");
-  }
-
-  const shellEscape = (value: string): string =>
-    `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("$", "\\$").replaceAll("`", "\\`")}"`;
-
-  return [
-    `ALTERAN_POSTRUN_HOOK_PATH=${shellEscape(plan.hookPath)}`,
-    `ALTERAN_POSTRUN_HOOK_DIR=${shellEscape(plan.hookDir)}`,
-    `ALTERAN_POSTRUN_SESSION_DIR=${shellEscape(plan.sessionDir)}`,
-    `ALTERAN_POSTRUN_LOG_DIR=${shellEscape(plan.logDir)}`,
-    `ALTERAN_POSTRUN_INTENT=${shellEscape(plan.intent)}`,
-    ``,
-  ].join("\n");
-}
-
-function shellPostrunBaseScript(): string {
-  return `#!/usr/bin/env sh
-set -u
-set -x
-ERRORS=0
-: > "$ALTERAN_POSTRUN_MSG"
-
-postrun_error() {
-  printf '%s\n' "$1" >> "$ALTERAN_POSTRUN_MSG"
-  ERRORS=1
-}
-
-remove_path_checked() {
-  target=$1
-  if [ -e "$target" ] || [ -L "$target" ]; then
-    rm -rf -- "$target" 2>/dev/null || true
-  fi
-  if [ -e "$target" ] || [ -L "$target" ]; then
-    postrun_error "Failed to remove $target"
-  fi
-}
-
-# __ALTERAN_POSTRUN_BODY__
-if [ "$ERRORS" -ne 0 ]; then
-  exit 1
-fi
-exit 0
-`;
-}
-
-function batchPostrunBaseScript(): string {
-  return `@echo on
-setlocal EnableExtensions EnableDelayedExpansion
-set "ERRORS=0"
-break > "%ALTERAN_POSTRUN_MSG%"
-goto :postrun_main
-
-:postrun_error
->> "%ALTERAN_POSTRUN_MSG%" echo %*
-set "ERRORS=1"
-exit /b 0
-
-:remove_path_checked
-set "TARGET=%~1"
-set "REMOVE_ATTEMPTS=50"
-:remove_path_retry
-if exist "%TARGET%" rmdir /s /q "%TARGET%" >nul 2>nul
-if exist "%TARGET%" del /f /q "%TARGET%" >nul 2>nul
-if not exist "%TARGET%" exit /b 0
-if "!REMOVE_ATTEMPTS!"=="0" goto :remove_path_failed
-set /a REMOVE_ATTEMPTS-=1
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 100" >nul 2>nul
-goto :remove_path_retry
-:remove_path_failed
-if exist "%TARGET%" call :postrun_error Failed to remove %TARGET%
-exit /b 0
-
-:postrun_main
-rem __ALTERAN_POSTRUN_BODY__
-if not "%ERRORS%"=="0" exit /b 1
-exit /b 0
-`;
-}
-
-async function ensurePostrunPlan(
-  projectDir: string,
-  intent: string,
-): Promise<PostrunPlan | null> {
-  const sessionFile = activePostrunSessionFile();
-  if (!sessionFile) {
-    return null;
-  }
-
-  const sessionDir = Deno.env.get("ALTERAN_ROOT_RUN_ID")?.trim() ||
-    createAuxiliarySessionId(intent);
-  const hookDir = join(projectDir, ".runtime", "hooks", sessionDir);
-  const hookPath = join(
-    hookDir,
-    Deno.build.os === "windows" ? "postrun.bat" : "postrun.sh",
-  );
-  const logDir = Deno.env.get("ALTERAN_ROOT_LOG_DIR")?.trim() ||
-    join(projectDir, ".runtime", "logs", "runs", sessionDir);
-
-  Deno.env.set("ALTERAN_ROOT_RUN_ID", sessionDir);
-  if (!Deno.env.get("ALTERAN_RUN_ID")) {
-    Deno.env.set("ALTERAN_RUN_ID", sessionDir);
-  }
-  Deno.env.set("ALTERAN_ROOT_LOG_DIR", logDir);
-
-  await ensureDir(hookDir);
-  await ensureDir(logDir);
-
-  if (!(await exists(hookPath))) {
-    await writeTextFileIfChanged(
-      hookPath,
-      Deno.build.os === "windows"
-        ? batchPostrunBaseScript()
-        : shellPostrunBaseScript(),
-    );
-    if (Deno.build.os !== "windows") {
-      await Deno.chmod(hookPath, 0o755);
-    }
-  }
-
-  const plan: PostrunPlan = {
-    sessionDir,
-    hookDir,
-    hookPath,
-    logDir,
-    intent,
-  };
-  await Deno.writeTextFile(sessionFile, sessionFileContents(plan));
-  return plan;
-}
-
-async function appendPostrunLines(
-  projectDir: string,
-  intent: string,
-  lines: string[],
-): Promise<boolean> {
-  const plan = await ensurePostrunPlan(projectDir, intent);
-  if (!plan || lines.length === 0) {
-    return false;
-  }
-
-  const marker = Deno.build.os === "windows"
-    ? "rem __ALTERAN_POSTRUN_BODY__"
-    : "# __ALTERAN_POSTRUN_BODY__";
-  const current = await Deno.readTextFile(plan.hookPath);
-  const injected = current.replace(
-    marker,
-    `${lines.join(Deno.build.os === "windows" ? "\r\n" : "\n")}\n${marker}`,
-  );
-  await writeTextFileIfChanged(plan.hookPath, injected);
-  if (Deno.build.os !== "windows") {
-    await Deno.chmod(plan.hookPath, 0o755);
-  }
-  return true;
-}
-
-async function schedulePostrunRemovePaths(
-  projectDir: string,
-  intent: string,
-  paths: string[],
-): Promise<boolean> {
-  const uniquePaths = [...new Set(paths.map((path) => resolve(path)))];
-  const lines = Deno.build.os === "windows"
-    ? uniquePaths.map((path) =>
-      `call :remove_path_checked "${path.replaceAll("/", "\\").replaceAll('"', '""')}"`
-    )
-    : uniquePaths.map((path) =>
-      `remove_path_checked "${
-        path.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("$", "\\$").replaceAll("`", "\\`")
-      }"`
-    );
-  return await appendPostrunLines(projectDir, intent, lines);
-}
-
-async function deferredRuntimeRemovalPaths(
-  projectDir: string,
-  sessionDir: string,
-  activeDenoPath = resolve(Deno.execPath()),
-): Promise<string[]> {
-  const paths = getProjectPaths(projectDir);
-  const removals: string[] = [];
-  const currentDenoPath = resolve(activeDenoPath);
-  const currentPlatformRoot = resolve(paths.platformDir);
-  const currentPlatformRelative = relative(currentPlatformRoot, currentDenoPath);
-  const isCurrentManagedDeno = currentPlatformRelative !== "" &&
-    !currentPlatformRelative.startsWith("..") &&
-    !isAbsolute(currentPlatformRelative);
-
-  if (await exists(paths.denoRootDir)) {
-    for await (const entry of Deno.readDir(paths.denoRootDir)) {
-      if (!isCurrentManagedDeno || entry.name !== detectPlatform().id) {
-        removals.push(join(paths.denoRootDir, entry.name));
-      }
-    }
-  }
-
-  if (isCurrentManagedDeno && await exists(paths.platformDir)) {
-    for await (const entry of Deno.readDir(paths.platformDir)) {
-      if (entry.name !== "bin") {
-        removals.push(join(paths.platformDir, entry.name));
-      }
-    }
-  }
-
-  if (isCurrentManagedDeno && await exists(paths.denoBinDir)) {
-    for (const fileName of await listFiles(paths.denoBinDir)) {
-      const candidate = resolve(join(paths.denoBinDir, fileName));
-      if (candidate !== currentDenoPath) {
-        removals.push(candidate);
-      }
-    }
-  }
-
-  const allowedRuntimeEntries = new Set([
-    "alteran",
-    "deno",
-    "libs",
-    "logs",
-    "tools",
-    "hooks",
-  ]);
-
-  if (await exists(paths.runtimeDir)) {
-    for await (const entry of Deno.readDir(paths.runtimeDir)) {
-      if (!allowedRuntimeEntries.has(entry.name)) {
-        removals.push(join(paths.runtimeDir, entry.name));
-      }
-    }
-  }
-
-  removals.push(paths.logsDir);
-
-  const hooksRoot = join(paths.runtimeDir, "hooks");
-  if (await exists(hooksRoot)) {
-    for await (const entry of Deno.readDir(hooksRoot)) {
-      if (entry.name !== sessionDir) {
-        removals.push(join(hooksRoot, entry.name));
-      }
-    }
-  }
-
-  return removals;
-}
-
-async function deferredCompactRemovalPaths(
-  projectDir: string,
-  sessionDir: string,
-): Promise<string[]> {
-  const paths = getProjectPaths(projectDir);
-  const removals = [
-    join(projectDir, "activate"),
-    join(projectDir, "activate.bat"),
-    join(projectDir, "dist"),
-  ];
-
-  const appsDir = join(projectDir, "apps");
-  if (await exists(appsDir)) {
-    for (const appName of await listDirectSubdirectories(appsDir)) {
-      removals.push(join(appsDir, appName, ".runtime"));
-    }
-  }
-
-  if (await exists(paths.runtimeDir)) {
-    for await (const entry of Deno.readDir(paths.runtimeDir)) {
-      if (entry.name === "hooks") {
-        const hooksRoot = join(paths.runtimeDir, "hooks");
-        for await (const hookEntry of Deno.readDir(hooksRoot)) {
-          if (hookEntry.name !== sessionDir) {
-            removals.push(join(hooksRoot, hookEntry.name));
-          }
-        }
-        continue;
-      }
-      removals.push(join(paths.runtimeDir, entry.name));
-    }
-  }
-
-  return removals;
 }
 
 async function loadDotEnvFile(dotEnvPath: string): Promise<void> {
@@ -559,6 +250,15 @@ export function getConfiguredAlteranArchiveSources(): string[] {
 
 function normalizeDenoVersion(version: string): string {
   return version.startsWith("v") ? version : `v${version}`;
+}
+
+function sameResolvedPath(left: string, right: string): boolean {
+  const resolvedLeft = resolve(left).replaceAll("/", "\\");
+  const resolvedRight = resolve(right).replaceAll("/", "\\");
+  if (Deno.build.os === "windows") {
+    return resolvedLeft.toLowerCase() === resolvedRight.toLowerCase();
+  }
+  return resolvedLeft === resolvedRight;
 }
 
 function stripVersionPrefix(version: string): string {
@@ -1194,8 +894,7 @@ async function ensureCliWrappers(projectDir: string): Promise<void> {
     await writeTextFileIfChanged(
       join(paths.alteranDir, filename),
       `@echo off
-call "%~dp0alteran.bat"${fixedArgSuffix} %*
-exit /b %ERRORLEVEL%
+"%~dp0alteran.bat"${fixedArgSuffix} %*
 `,
     );
   }
@@ -1465,7 +1164,6 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
     denoBinDir: relativeExecutable(paths.denoBinDir),
     wrapperBinDir: relativeExecutable(paths.alteranDir),
     shellWrapper: relativeExecutable(join(paths.alteranDir, "alteran.sh")),
-    batchWrapper: relativeExecutable(join(paths.alteranDir, "alteran.bat")),
     appAliases,
     toolAliases,
     shellAliases,
@@ -1493,7 +1191,6 @@ export async function generateBatchEnv(projectDir: string): Promise<string> {
     denoBinDir: paths.denoBinDir,
     wrapperBinDir: paths.alteranDir,
     shellWrapper: join(paths.alteranDir, "alteran.sh"),
-    batchWrapper: join(paths.alteranDir, "alteran.bat"),
     appAliases,
     toolAliases,
     shellAliases,
@@ -1764,25 +1461,34 @@ export async function reimportCategory(
   return await refreshProject(projectDir);
 }
 
-export async function cleanProject(
+function directManagedDenoEnv(projectDir: string): Record<string, string> {
+  const paths = getProjectPaths(projectDir);
+  return {
+    ALTERAN_HOME: paths.runtimeDir,
+    DENO_DIR: paths.cacheDir,
+    DENO_INSTALL_ROOT: paths.platformDir,
+  };
+}
+
+async function cleanProjectInternal(
   projectDir: string,
   scope: string,
 ): Promise<void> {
-  if (await scheduleCleanScopeIfNeeded(projectDir, scope)) {
-    return;
-  }
-
   const paths = getProjectPaths(projectDir);
 
   switch (scope) {
     case "cache":
-      await removeIfExists(paths.cacheDir);
-      await ensureDir(paths.cacheDir);
+      await cleanCurrentDenoCache({
+        projectDir,
+        denoPath: paths.denoPath,
+        env: directManagedDenoEnv(projectDir),
+      });
       break;
     case "runtime":
       await removeIfExists(paths.logsDir);
-      await cleanDenoRuntime(projectDir);
+      await ensureDir(paths.logsDir);
       await removeUnexpectedRuntimeEntries(projectDir);
+      await cleanDenoRuntime(projectDir, resolve(Deno.execPath()));
       await ensureProjectStructure(projectDir);
       break;
     case "env":
@@ -1806,14 +1512,21 @@ export async function cleanProject(
       await removeIfExists(join(projectDir, "dist"));
       break;
     case "all":
-      await cleanProject(projectDir, "runtime");
-      await cleanProject(projectDir, "env");
-      await cleanProject(projectDir, "app-runtimes");
-      await cleanProject(projectDir, "builds");
+      await cleanProjectInternal(projectDir, "runtime");
+      await cleanProjectInternal(projectDir, "env");
+      await cleanProjectInternal(projectDir, "app-runtimes");
+      await cleanProjectInternal(projectDir, "builds");
       break;
     default:
       throw new Error(`Unknown clean scope: ${scope}`);
   }
+}
+
+export async function cleanProject(
+  projectDir: string,
+  scope: string,
+): Promise<void> {
+  await cleanProjectInternal(projectDir, scope);
 }
 
 export async function cleanDenoRuntime(
@@ -1834,8 +1547,9 @@ export async function cleanDenoRuntime(
   }
 
   if (await exists(paths.denoRootDir)) {
+    const platform_id = detectPlatform().id;
     for await (const entry of Deno.readDir(paths.denoRootDir)) {
-      if (entry.name !== detectPlatform().id) {
+      if (entry.name !== platform_id) {
         await removeIfExists(join(paths.denoRootDir, entry.name));
       }
     }
@@ -1843,7 +1557,7 @@ export async function cleanDenoRuntime(
 
   if (await exists(paths.platformDir)) {
     for await (const entry of Deno.readDir(paths.platformDir)) {
-      if (entry.name === "bin") {
+      if (entry.name === "bin" || entry.name === "cache") {
         continue;
       }
       await removeIfExists(join(paths.platformDir, entry.name));
@@ -1852,14 +1566,18 @@ export async function cleanDenoRuntime(
 
   if (await exists(paths.denoBinDir)) {
     for await (const entry of Deno.readDir(paths.denoBinDir)) {
-      if (resolve(join(paths.denoBinDir, entry.name)) === currentDenoPath) {
+      if (sameResolvedPath(join(paths.denoBinDir, entry.name), currentDenoPath)) {
         continue;
       }
       await removeIfExists(join(paths.denoBinDir, entry.name));
     }
   }
 
-  await ensureDir(paths.cacheDir);
+  await cleanCurrentDenoCache({
+    projectDir,
+    denoPath: paths.denoPath,
+    env: directManagedDenoEnv(projectDir),
+  });
 }
 
 async function removeUnexpectedRuntimeEntries(
@@ -1890,72 +1608,7 @@ export async function cleanProjectScopes(
   scopes: string[],
 ): Promise<void> {
   for (const scope of scopes) {
-    await cleanProject(projectDir, scope);
-  }
-}
-
-async function scheduleCleanScopeIfNeeded(
-  projectDir: string,
-  scope: string,
-): Promise<boolean> {
-  if (!activePostrunSessionFile()) {
-    return false;
-  }
-
-  switch (scope) {
-    case "env":
-      return await schedulePostrunRemovePaths(projectDir, "clean-env", [
-        join(projectDir, "activate"),
-        join(projectDir, "activate.bat"),
-      ]);
-    case "app-runtimes": {
-      const removals: string[] = [];
-      for (const appName of await listDirectSubdirectories(join(projectDir, "apps"))) {
-        removals.push(join(projectDir, "apps", appName, ".runtime"));
-      }
-      return await schedulePostrunRemovePaths(
-        projectDir,
-        "clean-app-runtimes",
-        removals,
-      );
-    }
-    case "logs":
-      return await schedulePostrunRemovePaths(projectDir, "clean-logs", [
-        join(projectDir, ".runtime", "logs"),
-      ]);
-    case "builds":
-      return await schedulePostrunRemovePaths(projectDir, "clean-builds", [
-        join(projectDir, "dist"),
-      ]);
-    case "runtime": {
-      const plan = await ensurePostrunPlan(projectDir, "clean-runtime");
-      if (!plan) {
-        return false;
-      }
-      return await schedulePostrunRemovePaths(
-        projectDir,
-        "clean-runtime",
-        await deferredRuntimeRemovalPaths(projectDir, plan.sessionDir),
-      );
-    }
-    case "all": {
-      const plan = await ensurePostrunPlan(projectDir, "clean-all");
-      if (!plan) {
-        return false;
-      }
-      const removals = [
-        ...await deferredRuntimeRemovalPaths(projectDir, plan.sessionDir),
-        join(projectDir, "activate"),
-        join(projectDir, "activate.bat"),
-        join(projectDir, "dist"),
-      ];
-      for (const appName of await listDirectSubdirectories(join(projectDir, "apps"))) {
-        removals.push(join(projectDir, "apps", appName, ".runtime"));
-      }
-      return await schedulePostrunRemovePaths(projectDir, "clean-all", removals);
-    }
-    default:
-      return false;
+    await cleanProjectInternal(projectDir, scope);
   }
 }
 
@@ -1989,29 +1642,16 @@ function shouldOmitFromCompactCopy(
 }
 
 export async function compactProject(projectDir: string): Promise<void> {
-  const plan = await ensurePostrunPlan(projectDir, "compact");
-  if (plan) {
-    await schedulePostrunRemovePaths(
-      projectDir,
-      "compact",
-      await deferredCompactRemovalPaths(projectDir, plan.sessionDir),
-    );
-    return;
-  }
+  await cleanProjectInternal(projectDir, "env");
+  await cleanProjectInternal(projectDir, "app-runtimes");
+  await cleanProjectInternal(projectDir, "builds");
 
-  await cleanProjectScopes(projectDir, ["all", "app-runtimes", "builds"]);
-
-  await removeIfExists(join(projectDir, ".runtime"));
-  await removeIfExists(join(projectDir, "dist"));
-  await removeIfExists(join(projectDir, "activate"));
-  await removeIfExists(join(projectDir, "activate.bat"));
-
-  const appsDir = join(projectDir, "apps");
-  if (await exists(appsDir)) {
-    for (const appName of await listDirectSubdirectories(appsDir)) {
-      await removeIfExists(join(appsDir, appName, ".runtime"));
-    }
-  }
+  await cleanCurrentDenoCache({
+    projectDir,
+    denoPath: getProjectPaths(projectDir).denoPath,
+    env: directManagedDenoEnv(projectDir),
+  });
+  await removeCurrentRuntime(join(projectDir, ".runtime"), { projectDir });
 }
 
 export async function compactCopyProject(

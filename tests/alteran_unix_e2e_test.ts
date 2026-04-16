@@ -633,11 +633,11 @@ Deno.test({
 
 Deno.test({
   name:
-    "activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
+    "activated alteran clean runtime preserves the active managed deno binary without deferred cleanup",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
-      prefix: "alteran-runtime-clean-postrun-",
+      prefix: "alteran-runtime-clean-",
     });
     await setupProject(projectDir);
 
@@ -690,18 +690,17 @@ Deno.test({
 
     try {
       await Deno.stat(join(projectDir, ".runtime", "legacy-junk"));
-      throw new Error(
-        "Expected deferred clean runtime to remove legacy runtime entries",
-      );
+      throw new Error("Expected clean runtime to remove legacy runtime entries");
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
       }
     }
 
+    await Deno.stat(join(projectDir, ".runtime", "logs"));
     try {
-      await Deno.stat(join(projectDir, ".runtime", "logs"));
-      throw new Error("Expected deferred clean runtime to remove logs");
+      await Deno.stat(join(projectDir, ".runtime", "logs", "old.log"));
+      throw new Error("Expected clean runtime to remove stale log files");
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -712,11 +711,11 @@ Deno.test({
 
 Deno.test({
   name:
-    "activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
+    "activated alteran clean builds removes dist without deferred cleanup",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
-      prefix: "alteran-clean-builds-postrun-",
+      prefix: "alteran-clean-builds-",
     });
     await setupProject(projectDir);
 
@@ -747,34 +746,7 @@ Deno.test({
 
     try {
       await Deno.stat(join(projectDir, "dist"));
-      throw new Error("Expected deferred clean builds to remove dist");
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        throw error;
-      }
-    }
-
-    const logDir = await latestProjectLogDir(projectDir, "runs");
-    const postrunLog = await Deno.readTextFile(join(logDir, "postrun.log"));
-    if (
-      !(
-        postrunLog.includes("intent: clean-builds") &&
-        postrunLog.includes("--- begin postrun script ---") &&
-        postrunLog.includes("remove_path_checked")
-      )
-    ) {
-      throw new Error(
-        "Expected postrun.log to capture the clean-builds intent, script body, and execution trace",
-      );
-    }
-    await Deno.stat(join(logDir, "postrun.msg"));
-
-    const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
-    try {
-      await Deno.stat(join(projectDir, ".runtime", "hooks", sessionDir));
-      throw new Error(
-        "Expected successful postrun execution to remove the completed hook dir",
-      );
+      throw new Error("Expected clean builds to remove dist");
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -785,11 +757,11 @@ Deno.test({
 
 Deno.test({
   name:
-    "activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
+    "activated alteran compact -y leaves the project compacted before returning",
   ignore: IS_WINDOWS,
   async fn() {
     const projectDir = await Deno.makeTempDir({
-      prefix: "alteran-compact-postrun-",
+      prefix: "alteran-compact-",
     });
     await setupProject(projectDir);
 
@@ -835,7 +807,7 @@ Deno.test({
       try {
         await Deno.stat(removedPath);
         throw new Error(
-          `Expected ${removedPath} to be absent after deferred compact completed`,
+          `Expected ${removedPath} to be absent after compact completed`,
         );
       } catch (error) {
         if (!(error instanceof Deno.errors.NotFound)) {

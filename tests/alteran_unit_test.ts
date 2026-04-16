@@ -31,7 +31,11 @@ import {
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
 import { runCli } from "../src/alteran/mod.ts";
-import { renderBatchEnv, renderShellEnv } from "../src/alteran/templates/env.ts";
+import {
+  renderBatchCliWrapper,
+  renderBatchEnv,
+  renderShellEnv,
+} from "../src/alteran/templates/env.ts";
 import { ALTERAN_VERSION } from "../src/alteran/version.ts";
 import {
   ALTERAN_JSR_PACKAGE_NAME,
@@ -1035,7 +1039,6 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     denoBinDir: "/tmp/project/.runtime/deno/linux-x64/bin",
     wrapperBinDir: "/tmp/project/.runtime/alteran",
     shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
-    batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
     appAliases: ["alias app-hello='alteran app run hello'"],
     toolAliases: ["alias tool-seed='alteran tool run seed'"],
     shellAliases: ["alias myrun='alt run scripts/demo.ts'"],
@@ -1047,7 +1050,6 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     denoBinDir: "C:\\project\\.runtime\\deno\\windows-x64\\bin",
     wrapperBinDir: "C:\\project\\.runtime\\alteran",
     shellWrapper: "/tmp/project/.runtime/alteran/alteran.sh",
-    batchWrapper: "C:\\project\\.runtime\\alteran\\alteran.bat",
     appAliases: ['doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*'],
     toolAliases: ['doskey tool-seed=call "C:\\project\\.runtime\\alteran\\alteran.bat" tool run seed $*'],
     shellAliases: ['doskey myrun=alt run scripts/demo.ts $*'],
@@ -1078,18 +1080,40 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     "Expected batch env to prepend the wrapper dir and managed deno dir to PATH",
   );
   expect(
-    batch.includes('set "ALTERAN_SESSION_WRAPPER=%TEMP%\\alteran-wrapper-%RANDOM%%RANDOM%%RANDOM%.bat"') &&
-      batch.includes('copy /y "C:\\project\\.runtime\\alteran\\alteran.bat" "%ALTERAN_SESSION_WRAPPER%" >nul 2>nul') &&
-      batch.includes('if errorlevel 1 set "ALTERAN_SESSION_WRAPPER=C:\\project\\.runtime\\alteran\\alteran.bat"') &&
-      batch.includes('doskey alteran=call "%ALTERAN_SESSION_WRAPPER%" $*'),
-    "Expected batch env to expose the alteran doskey shim",
-  );
-  expect(
-    batch.includes('doskey atest=call "%ALTERAN_SESSION_WRAPPER%" test $*') &&
+    !batch.includes("ALTERAN_SESSION_WRAPPER") &&
+      batch.includes("doskey alteran=") &&
+      batch.includes("doskey alt=") &&
+      batch.includes("doskey atest=") &&
       batch.includes('doskey app-hello=call "C:\\project\\.runtime\\alteran\\alteran.bat" app run hello $*') &&
       batch.includes('doskey tool-seed=call "C:\\project\\.runtime\\alteran\\alteran.bat" tool run seed $*') &&
       batch.includes("doskey myrun=alt run scripts/demo.ts $*"),
-    "Expected batch env to contain core and registry-derived doskey shortcuts",
+    "Expected batch env to clear stale core doskey aliases, rely on PATH for core commands, and keep registry-derived doskey shortcuts",
+  );
+});
+
+Deno.test("batch cli wrapper uses direct managed deno clean and deferred cleanup batch only for clean/compact", () => {
+  const wrapper = renderBatchCliWrapper({
+    projectDir: "C:\\project",
+    runtimeDir: "C:\\project\\.runtime",
+    denoExe: "C:\\project\\.runtime\\deno\\windows-x64\\bin\\deno.exe",
+    alteranEntry: "C:\\project\\.runtime\\alteran\\mod.ts",
+  });
+
+  expect(
+    wrapper.includes('if /I "%COMMAND_NAME%"=="deno" if /I "%~2"=="clean" goto :direct_deno_clean'),
+    "Expected batch cli wrapper to intercept alteran deno clean directly",
+  );
+  expect(
+    wrapper.includes('if /I "%COMMAND_NAME%"=="clean" goto :with_cleanup_batch') &&
+      wrapper.includes('if /I "%COMMAND_NAME%"=="compact" goto :with_cleanup_batch'),
+    "Expected batch cli wrapper to use deferred cleanup batch only for clean and compact",
+  );
+  expect(
+    wrapper.includes('set "ALTERAN_TMP_CLEANUP_BAT=%TMP_CLEANUP_ROOT%\\cleanup-%RANDOM%%RANDOM%%RANDOM%.bat"') &&
+      wrapper.includes('set "ALTERAN_WRAPPER_PROJECT_DIR=%PROJECT_DIR%"') &&
+      wrapper.includes('if not exist "%ALTERAN_TMP_CLEANUP_BAT%" exit /b 0') &&
+      wrapper.includes('"%ALTERAN_TMP_CLEANUP_BAT%"'),
+    "Expected batch cli wrapper to materialize and execute a deferred cleanup batch",
   );
 });
 

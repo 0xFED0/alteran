@@ -1610,7 +1610,7 @@ Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () 
   );
 
   await Deno.mkdir(binDir, { recursive: true });
-  await Deno.writeTextFile(activeDenoPath, "managed deno");
+  await Deno.stat(activeDenoPath);
   await Deno.writeTextFile(extraBinPath, "extra");
   await Deno.mkdir(join(platformDir, "cache"), { recursive: true });
   await Deno.writeTextFile(cacheMarker, "cache");
@@ -1638,7 +1638,14 @@ Deno.test("cleanDenoRuntime preserves the active managed deno binary", async () 
     }
   }
 
-  await Deno.stat(join(platformDir, "cache"));
+  try {
+    await Deno.stat(join(platformDir, "cache"));
+    throw new Error("Expected cleanDenoRuntime to remove the managed cache");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
 });
 
 Deno.test("alteran compact removes generated runtime artifacts but keeps bootstrap files", async () => {

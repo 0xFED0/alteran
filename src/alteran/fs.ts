@@ -1,5 +1,7 @@
 import { basename, dirname, join, relative, resolve } from "node:path";
 
+const IS_WINDOWS = Deno.build.os === "windows";
+
 export async function exists(path: string): Promise<boolean> {
   try {
     await Deno.lstat(path);
@@ -54,6 +56,233 @@ export async function removeIfExists(path: string): Promise<void> {
   if (await exists(path)) {
     await Deno.remove(path, { recursive: true });
   }
+}
+
+function batchLiteral(value: string): string {
+  return `"${value.replaceAll(`"`, `""`)}"`;
+}
+
+function normalizeWindowsPathForComparison(path: string): string {
+  return resolve(path).replaceAll("/", "\\").toLowerCase();
+}
+
+interface WindowsCleanupContext {
+  batchPath: string;
+}
+
+let activeWindowsCleanupBatchPath: string | null = null;
+let queuedDenoClean:
+  | {
+    args: string[];
+    denoPath: string;
+    env?: Record<string, string>;
+  }
+  | null = null;
+let queuedRuntimeDir: string | null = null;
+
+const WINDOWS_DEFERRED_DENO_CLEAN_RETRIES = 10;
+const WINDOWS_DEFERRED_DENO_CLEAN_DELAY_MS = 500;
+const WINDOWS_DEFERRED_RUNTIME_DELETE_RETRIES = 10;
+const WINDOWS_DEFERRED_RUNTIME_DELETE_DELAY_MS = 1000;
+
+function resolveWindowsCleanupContext(
+  projectDir?: string,
+): WindowsCleanupContext | null {
+  if (!IS_WINDOWS) {
+    return null;
+  }
+  const batchPath = Deno.env.get("ALTERAN_TMP_CLEANUP_BAT")?.trim();
+  const wrapperProjectDir = Deno.env.get("ALTERAN_WRAPPER_PROJECT_DIR")?.trim();
+  if (!batchPath || !wrapperProjectDir) {
+    return null;
+  }
+  if (
+    projectDir &&
+    normalizeWindowsPathForComparison(wrapperProjectDir) !==
+      normalizeWindowsPathForComparison(projectDir)
+  ) {
+    return null;
+  }
+  const resolvedBatchPath = resolve(batchPath);
+  return { batchPath: resolvedBatchPath };
+}
+
+function resetWindowsCleanupStateIfNeeded(
+  context: WindowsCleanupContext,
+): void {
+  if (activeWindowsCleanupBatchPath === context.batchPath) {
+    return;
+  }
+  activeWindowsCleanupBatchPath = context.batchPath;
+  queuedDenoClean = null;
+  queuedRuntimeDir = null;
+}
+
+function renderWindowsCleanupBatch(
+): string {
+  const lines = [
+    "@echo off",
+    "setlocal EnableExtensions",
+    `cd /d "%TEMP%" >nul 2>nul`,
+  ];
+
+  if (queuedDenoClean) {
+    const args = queuedDenoClean.args;
+    const envLines = Object.entries(queuedDenoClean.env ?? {}).map((
+      [key, value],
+    ) => `set "${key}=${value.replaceAll('"', '""')}"`);
+    lines.push(...envLines);
+    lines.push(
+      `for /L %%N in (1,1,${WINDOWS_DEFERRED_DENO_CLEAN_RETRIES}) do (`,
+      `  ${batchLiteral(queuedDenoClean.denoPath)} clean${
+        args.length ? ` ${args.map((arg) => batchLiteral(arg)).join(" ")}` : ""
+      }`,
+      `  if errorlevel 1 ${
+        windowsBatchSleepLine(WINDOWS_DEFERRED_DENO_CLEAN_DELAY_MS)
+      }`,
+      `)`,
+    );
+  }
+
+  if (queuedRuntimeDir) {
+    lines.push(
+      `for /L %%N in (1,1,${WINDOWS_DEFERRED_RUNTIME_DELETE_RETRIES}) do (`,
+      `  if exist ${batchLiteral(queuedRuntimeDir)} rmdir /s /q ${
+        batchLiteral(queuedRuntimeDir)
+      } >nul 2>nul`,
+      `  if exist ${batchLiteral(queuedRuntimeDir)} ${
+        windowsBatchSleepLine(WINDOWS_DEFERRED_RUNTIME_DELETE_DELAY_MS)
+      }`,
+      `)`,
+    );
+  }
+
+  lines.push(
+    `(goto) 2>nul & del /f /q "%~f0"`,
+    "",
+  );
+  return lines.join("\r\n");
+}
+
+async function writeWindowsCleanupBatch(
+  context: WindowsCleanupContext,
+): Promise<void> {
+  if (!queuedDenoClean && !queuedRuntimeDir) {
+    await removeIfExists(context.batchPath);
+    return;
+  }
+  await ensureDir(dirname(context.batchPath));
+  await Deno.writeTextFile(
+    context.batchPath,
+    renderWindowsCleanupBatch(),
+  );
+}
+
+function windowsBatchSleepLine(ms: number): string {
+  return `ping 127.0.0.1 -n 1 -w ${Math.max(1, ms)} >nul`;
+}
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+}
+
+export interface CurrentRuntimeDenoCleanOptions {
+  projectDir?: string;
+  denoPath: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+async function cleanCurrentDenoCacheWindowsImpl(
+  options: CurrentRuntimeDenoCleanOptions,
+): Promise<void> {
+  const context = resolveWindowsCleanupContext(options.projectDir);
+  if (!context) {
+    await cleanCurrentDenoCacheUnixImpl(options);
+    return;
+  }
+  resetWindowsCleanupStateIfNeeded(context);
+  if (!queuedRuntimeDir) {
+    queuedDenoClean = {
+      args: [...(options.args ?? [])],
+      denoPath: options.denoPath,
+      env: options.env ? { ...options.env } : undefined,
+    };
+  }
+  await writeWindowsCleanupBatch(context);
+}
+
+async function cleanCurrentDenoCacheUnixImpl(
+  options: CurrentRuntimeDenoCleanOptions,
+): Promise<void> {
+  const args = options.args ?? [];
+  const status = await new Deno.Command(options.denoPath, {
+    args: ["clean", ...args],
+    env: options.env,
+    stdout: "inherit",
+    stderr: "inherit",
+  }).spawn().status;
+
+  if (!status.success) {
+    throw new Error(`deno clean failed with exit code ${status.code}`);
+  }
+}
+
+export async function cleanCurrentDenoCache(
+  options: CurrentRuntimeDenoCleanOptions,
+): Promise<void> {
+  if (IS_WINDOWS) {
+    await cleanCurrentDenoCacheWindowsImpl(options);
+    return;
+  }
+  await cleanCurrentDenoCacheUnixImpl(options);
+}
+
+export interface RemoveCurrentRuntimeOptions {
+  projectDir?: string;
+}
+
+async function removeCurrentRuntimeWindowsImpl(
+  runtimeDir: string,
+  options: RemoveCurrentRuntimeOptions,
+): Promise<void> {
+  const context = resolveWindowsCleanupContext(options.projectDir);
+  if (!context) {
+    await removeCurrentRuntimeUnixImpl(runtimeDir, options);
+    return;
+  }
+  resetWindowsCleanupStateIfNeeded(context);
+  queuedRuntimeDir = runtimeDir;
+  queuedDenoClean = null;
+  await writeWindowsCleanupBatch(context);
+}
+
+async function removeCurrentRuntimeUnixImpl(
+  runtimeDir: string,
+  options: RemoveCurrentRuntimeOptions,
+): Promise<void> {
+  for (let attempt = 0; attempt < WINDOWS_DEFERRED_RUNTIME_DELETE_RETRIES; attempt++) {
+    await removeIfExists(runtimeDir);
+    if (!(await exists(runtimeDir))) {
+      return;
+    }
+    await delay(WINDOWS_DEFERRED_RUNTIME_DELETE_DELAY_MS);
+  }
+
+  if (await exists(runtimeDir)) {
+    throw new Error(`Failed to remove runtime: ${runtimeDir}`);
+  }
+}
+
+export async function removeCurrentRuntime(
+  runtimeDir: string,
+  options: RemoveCurrentRuntimeOptions = {},
+): Promise<void> {
+  if (IS_WINDOWS) {
+    await removeCurrentRuntimeWindowsImpl(runtimeDir, options);
+    return;
+  }
+  await removeCurrentRuntimeUnixImpl(runtimeDir, options);
 }
 
 export function toPortablePath(path: string): string {

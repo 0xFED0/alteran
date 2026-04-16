@@ -405,6 +405,59 @@ Deno.test({
 
 Deno.test({
   name:
+    "windows cmd: activated alt remains usable after running tests in the same session",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-test-reuse-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-test-reuse-",
+      "target test reuse with spaces",
+    );
+
+    try {
+      const setupOutput = await runCmd(
+        cmdCallBatch(join(repoCopy, "setup.bat"), targetDir),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
+        },
+      );
+      assertSuccess(
+        setupOutput,
+        "Expected setup.bat to initialize the test-reuse target",
+      );
+      await Deno.mkdir(join(targetDir, "tests"), { recursive: true });
+      await Deno.writeTextFile(
+        join(targetDir, "tests", "sample_test.ts"),
+        'Deno.test("sample", () => {});\n',
+      );
+
+      const output = await runCmd(
+        [
+          cmdCallBatch(join(targetDir, "activate.bat")),
+          cmdCallCommand("alt", "test", "-A", "tests/sample_test.ts", ">nul"),
+          cmdCallCommand("alt", "help", ">nul"),
+          cmdCallCommand("atest", "--help", ">nul"),
+        ].join(" && "),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected activated alt and atest to remain usable after running tests in the same cmd session",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
+  },
+});
+
+Deno.test({
+  name:
     "windows cmd: copied setup.bat supports legacy ALTERAN_SOURCES alias and generates local activation",
   ignore: !IS_WINDOWS,
   async fn() {
@@ -670,12 +723,12 @@ Deno.test({
 
 Deno.test({
   name:
-    "windows cmd: activated alteran clean runtime uses deferred postrun and preserves the active managed deno binary",
+    "windows cmd: activated alteran clean runtime uses deferred cleanup batch and preserves the active managed deno binary",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
-      "alteran-win-postrun-clean-runtime-",
-      "postrun clean runtime target with spaces",
+      "alteran-win-clean-runtime-",
+      "clean runtime target with spaces",
     );
     const arch = currentWindowsArch();
     const managedDenoPath = join(
@@ -736,6 +789,14 @@ Deno.test({
       output,
       "Expected activated Windows alteran clean runtime to succeed",
     );
+    const combined = `${decode(output.stdout)}\n${decode(output.stderr)}`;
+    if (!combined.includes("[handoff]")) {
+      throw new Error(
+        `Expected Windows clean runtime to use deferred cleanup batch. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
+      );
+    }
 
     await Deno.stat(managedDenoPath);
     await Deno.stat(join(targetDir, ".runtime", "alteran", "mod.ts"));
@@ -753,9 +814,10 @@ Deno.test({
       }
     }
 
+    await Deno.stat(join(targetDir, ".runtime", "logs"));
     try {
-      await Deno.stat(join(targetDir, ".runtime", "logs"));
-      throw new Error("Expected deferred clean runtime to remove logs");
+      await Deno.stat(join(targetDir, ".runtime", "logs", "old.log"));
+      throw new Error("Expected clean runtime to remove stale log files");
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -766,12 +828,12 @@ Deno.test({
 
 Deno.test({
   name:
-    "windows cmd: activated alteran clean builds persists postrun artifacts and removes the completed hook dir",
+    "windows cmd: activated alteran clean builds removes dist without deferred cleanup batch artifacts",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
-      "alteran-win-postrun-clean-builds-",
-      "postrun clean builds target with spaces",
+      "alteran-win-clean-builds-",
+      "clean builds target with spaces",
     );
 
     const repoSetup = await new Deno.Command(Deno.execPath(), {
@@ -816,43 +878,18 @@ Deno.test({
       output,
       "Expected activated Windows alteran clean builds to succeed",
     );
+    const combined = `${decode(output.stdout)}\n${decode(output.stderr)}`;
+    if (combined.includes("[handoff]")) {
+      throw new Error(
+        `Expected Windows clean builds not to use deferred cleanup batch. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
+      );
+    }
 
     try {
       await Deno.stat(join(targetDir, "dist"));
-      throw new Error("Expected deferred clean builds to remove dist");
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        throw error;
-      }
-    }
-
-    const logDir = await latestLogDirUnder(
-      join(targetDir, ".runtime", "logs"),
-      "runs",
-    );
-    const postrunLogPath = join(logDir, "postrun.log");
-    const postrunMsgPath = join(logDir, "postrun.msg");
-    const postrunLog = await Deno.readTextFile(postrunLogPath);
-
-    if (
-      !(
-        postrunLog.includes("intent: clean-builds") &&
-        postrunLog.includes("--- begin postrun script ---") &&
-        postrunLog.includes("remove_path_checked")
-      )
-    ) {
-      throw new Error(
-        "Expected Windows postrun.log to capture the clean-builds intent, script body, and execution trace",
-      );
-    }
-    await Deno.stat(postrunMsgPath);
-
-    const sessionDir = logDir.split(/[/\\]/u).at(-1)!;
-    try {
-      await Deno.stat(join(targetDir, ".runtime", "hooks", sessionDir));
-      throw new Error(
-        "Expected successful Windows postrun execution to remove the completed hook dir",
-      );
+      throw new Error("Expected clean builds to remove dist");
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -863,12 +900,12 @@ Deno.test({
 
 Deno.test({
   name:
-    "windows cmd: activated alteran compact -y uses deferred postrun and leaves the project compacted before returning",
+    "windows cmd: activated alteran compact -y uses deferred cleanup batch and leaves the project compacted before returning",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
-      "alteran-win-postrun-compact-",
-      "postrun compact target with spaces",
+      "alteran-win-compact-",
+      "compact target with spaces",
     );
 
     const repoSetup = await new Deno.Command(Deno.execPath(), {
@@ -920,6 +957,14 @@ Deno.test({
       output,
       "Expected activated Windows alteran compact -y to succeed",
     );
+    const combined = `${decode(output.stdout)}\n${decode(output.stderr)}`;
+    if (!combined.includes("[handoff]")) {
+      throw new Error(
+        `Expected Windows compact to use deferred cleanup batch. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
+      );
+    }
 
     for (
       const removedPath of [
@@ -931,7 +976,7 @@ Deno.test({
       try {
         await Deno.stat(removedPath);
         throw new Error(
-          `Expected ${removedPath} to be absent after deferred Windows compact completed`,
+          `Expected ${removedPath} to be absent after Windows compact completed`,
         );
       } catch (error) {
         if (!(error instanceof Deno.errors.NotFound)) {
@@ -954,6 +999,76 @@ Deno.test({
       ]
     ) {
       await Deno.stat(preservedPath);
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows cmd: activated alt compact -y leaves no batch tail after runtime removal",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-alt-compact-",
+      "alt compact target with spaces",
+    );
+
+    const repoSetup = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        join(ALTERAN_REPO_DIR, "alteran.ts"),
+        "setup",
+        targetDir,
+      ],
+      cwd: ALTERAN_REPO_DIR,
+      env: hermeticAlteranEnvWindows({
+        PATH: hostDenoPathWindows(),
+      }),
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertSuccess(
+      repoSetup,
+      "Expected direct setup bootstrap to seed runtime material for alt compact",
+    );
+
+    await Deno.mkdir(join(targetDir, "apps", "demo", ".runtime"), {
+      recursive: true,
+    });
+    await Deno.writeTextFile(
+      join(targetDir, "apps", "demo", ".runtime", "marker.txt"),
+      "demo",
+    );
+    await Deno.mkdir(join(targetDir, "dist", "jsr"), { recursive: true });
+    await Deno.writeTextFile(
+      join(targetDir, "dist", "jsr", "artifact.txt"),
+      "dist",
+    );
+
+    const output = await runCmd(
+      [
+        cmdCallBatch(join(targetDir, "activate.bat")),
+        cmdCallCommand("alt", "compact", "-y"),
+      ].join(" && "),
+      {
+        cwd: targetDir,
+        env: {
+          PATH: hostDenoPathWindows(),
+        },
+      },
+    );
+    assertSuccess(
+      output,
+      "Expected activated Windows alt compact -y to succeed without batch tail errors",
+    );
+    const combined = `${decode(output.stdout)}\n${decode(output.stderr)}`;
+    if (combined.includes("Системе не удается найти указанный путь.")) {
+      throw new Error(
+        `Expected alt compact not to emit a trailing cmd path error. stdout=${
+          decode(output.stdout)
+        } stderr=${decode(output.stderr)}`,
+      );
     }
   },
 });
