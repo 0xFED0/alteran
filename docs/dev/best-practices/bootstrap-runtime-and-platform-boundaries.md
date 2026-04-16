@@ -44,6 +44,22 @@ Prefer this materialization order:
 
 Use `ALTERAN_RUN_SOURCES` only for obtaining a runnable Alteran process, not as the canonical installation source.
 
+## Do Not Treat Authored Source Bootstrap As An Activated Project
+
+- Repository-root `alteran.ts` is a public/bootstrap surface.
+- It is not the preferred maintainer surface for CI, publication, or other
+  steady-state managed execution.
+- If a workflow needs normal Alteran behavior, prepare the project explicitly
+  through `setup` or `refresh` first.
+- Then run commands through the prepared local project runtime and generated
+  entry surfaces.
+
+The smell to avoid is:
+
+- a pipeline runs `deno run -A ./alteran.ts tool run ...` directly from a bare
+  checkout and silently relies on authored source as if that were equivalent to
+  an initialized project runtime.
+
 ## Avoid Recursive Bootstrap Designs
 
 The classic failure mode is:

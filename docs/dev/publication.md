@@ -34,10 +34,16 @@ Publication helpers live under `tools/`:
 Typical repository flow:
 
 ```sh
+alteran refresh
 alteran tool run prepare_jsr
 alteran tool run prepare_zip
 alteran tool run publish_jsr
 ```
+
+For repository maintainers and CI, this explicit preparation step matters.
+Publication should run from an initialized local Alteran project, not by
+treating bare-checkout authored source as if it were already the normal managed
+runtime surface.
 
 `publish_jsr` supports:
 
@@ -82,6 +88,7 @@ The intended flow is:
 
 - create a version tag such as `v0.1.0`
 - run the shared repository test workflow first
+- prepare the repository-local runtime explicitly through `refresh`
 - verify the tag matches `ALTERAN_VERSION`
 - run `publish_jsr --version current`
 - authenticate with repository secret `JSR_TOKEN`

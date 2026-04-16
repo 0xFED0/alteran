@@ -816,18 +816,6 @@ async function copyBundledRuntime(projectDir: string): Promise<void> {
   await ensureAlteranRuntimeMaterial(projectDir);
 }
 
-async function ensureManagedRuntimeReady(projectDir: string): Promise<void> {
-  const paths = getProjectPaths(projectDir);
-  if (
-    await exists(join(paths.alteranDir, "mod.ts")) &&
-    await exists(join(paths.alteranDir, "preinit.ts"))
-  ) {
-    return;
-  }
-  await ensureProjectStructure(projectDir);
-  await copyBundledRuntime(projectDir);
-}
-
 async function ensureBootstrapFiles(projectDir: string): Promise<void> {
   const setupTarget = join(projectDir, "setup");
   const setupBatTarget = join(projectDir, "setup.bat");
@@ -1725,7 +1713,6 @@ export async function runManagedDeno(
   options: { cwd?: string } = {},
 ): Promise<number> {
   await loadProjectDotEnv(projectDir);
-  await ensureManagedRuntimeReady(projectDir);
   const config = await readAlteranConfig(projectDir);
   const session = await startLogSession(projectDir, config, type, name, args);
   const denoExecutable = await resolveDenoExecutable(projectDir, config);
@@ -1820,7 +1807,6 @@ export async function runTask(
 ): Promise<number> {
   await maybeAutoRefresh(projectDir);
   await loadProjectDotEnv(projectDir);
-  await ensureManagedRuntimeReady(projectDir);
   const config = await readAlteranConfig(projectDir);
   const session = await startLogSession(projectDir, config, "task", name, [
     "task",

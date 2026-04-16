@@ -599,66 +599,6 @@ Deno.test("tool run examples exposes maintainer help through the registered repo
   }
 });
 
-Deno.test("tool run works on a fresh repository copy without pre-existing .runtime", async () => {
-  const repoCopy = await Deno.makeTempDir({
-    prefix: "alteran-fresh-tool-run-",
-  });
-
-  try {
-    await copyDirectory(ALTERAN_REPO_DIR, repoCopy, {
-      filter: (absolutePath) => {
-        const relativePath = relative(ALTERAN_REPO_DIR, absolutePath)
-          .replaceAll("\\", "/");
-        return relativePath !== ".git" &&
-          !relativePath.startsWith(".git/") &&
-          relativePath !== ".runtime" &&
-          !relativePath.startsWith(".runtime/") &&
-          relativePath !== "dist" &&
-          !relativePath.startsWith("dist/");
-      },
-    });
-
-    const output = await new Deno.Command(Deno.execPath(), {
-      args: [
-        "run",
-        "-A",
-        join(repoCopy, "alteran.ts"),
-        "tool",
-        "run",
-        "publish_jsr",
-        "--help",
-      ],
-      cwd: repoCopy,
-      env: Deno.env.toObject(),
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
-
-    if (!output.success) {
-      throw new Error(
-        `Expected tool run on a fresh repository copy to succeed, got ${output.code}\nstdout:\n${
-          decode(output.stdout)
-        }\nstderr:\n${decode(output.stderr)}`,
-      );
-    }
-
-    const stdout = decode(output.stdout);
-    if (!stdout.includes("alteran tool run publish_jsr")) {
-      throw new Error(
-        "Expected fresh repository tool run help output from publish_jsr",
-      );
-    }
-
-    if (!(await exists(join(repoCopy, ".runtime", "alteran", "preinit.ts")))) {
-      throw new Error(
-        "Expected fresh repository tool run to materialize .runtime/alteran/preinit.ts",
-      );
-    }
-  } finally {
-    await removeIfExists(repoCopy);
-  }
-});
-
 Deno.test("external rejects deno.json as a context anchor", async () => {
   const projectDir = await Deno.makeTempDir({
     prefix: "alteran-external-deno-json-",

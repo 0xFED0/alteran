@@ -126,6 +126,17 @@ instead of writing directly into a reused global location like:
 Repository automation should cover the main supported test surfaces rather than
 only a single smoke suite.
 
+Repository CI and release workflows should also keep entry-surface discipline:
+
+- do not treat `deno run -A ./alteran.ts ...` from a bare checkout as a normal
+  replacement for an initialized project runtime;
+- if the workflow needs managed Alteran routes such as `tool run`, `task`,
+  preinit, logging, or generated wrappers, prepare the repository first through
+  `setup` or `refresh`;
+- after that, execute through the prepared local project runtime / generated
+  project surfaces rather than pretending authored source alone is the steady
+  execution contract.
+
 At minimum, CI should include:
 
 - `deno check` for Alteran source, tools, and test files

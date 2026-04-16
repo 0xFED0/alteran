@@ -14,6 +14,24 @@ Runnable bootstrap sources can launch Alteran, but they are not the canonical ma
 
 This separation is intentional: execution bootstrap and installation source are different responsibilities.
 
+## Repository CI Boundary
+
+Maintainer automation must not treat repository-root authored entrypoints as a
+substitute for a materialized local project runtime.
+
+In particular:
+
+- `deno run -A ./alteran.ts ...` from a bare repository checkout is a bootstrap
+  surface, not the normal maintainer execution surface;
+- CI, publish, and release workflows should first make the repository an
+  initialized local Alteran project through `setup` or `refresh`;
+- after that, commands should run through the prepared local project runtime and
+  generated entry surfaces rather than assuming authored source alone is an
+  acceptable steady-state execution model.
+
+If a workflow needs managed execution semantics such as `tool run`, `task`,
+logging, or preinit, it should prepare the local runtime explicitly first.
+
 ## What Gets Materialized
 
 ```text
