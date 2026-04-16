@@ -52,17 +52,16 @@ async function createZipArchive(
   zipPath: string,
 ): Promise<void> {
   if (Deno.build.os === "windows") {
-    const output = await new Deno.Command("powershell", {
+    const output = await new Deno.Command("tar.exe", {
       args: [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        `Compress-Archive -Path '${basename(sourceDir)}' -DestinationPath '${
-          zipPath.replaceAll("'", "''")
-        }' -Force`,
+        "-a",
+        "-c",
+        "-f",
+        zipPath,
+        "-C",
+        resolve(sourceDir, ".."),
+        basename(sourceDir),
       ],
-      cwd: resolve(sourceDir, ".."),
       stdout: "piped",
       stderr: "piped",
     }).output();

@@ -29,17 +29,16 @@ async function createZipArchive(
   archivePath: string,
 ): Promise<void> {
   const output = Deno.build.os === "windows"
-    ? await new Deno.Command("powershell", {
+    ? await new Deno.Command("tar.exe", {
       args: [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        `Get-ChildItem -Force | Compress-Archive -Force -DestinationPath '${
-          archivePath.replaceAll("'", "''")
-        }'`,
+        "-a",
+        "-c",
+        "-f",
+        archivePath,
+        "-C",
+        sourceDir,
+        ".",
       ],
-      cwd: sourceDir,
       stdout: "piped",
       stderr: "piped",
     }).output()
