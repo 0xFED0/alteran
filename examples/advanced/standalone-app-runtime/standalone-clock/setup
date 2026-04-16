@@ -1,82 +1,35 @@
 #!/usr/bin/env sh
+set -eu
 
-resolve_env_path() {
-  base_dir=$1
-  value=$2
-  case "$value" in
-    "~") printf '%s\n' "$HOME" ;;
-    "~/"*) printf '%s/%s\n' "$HOME" "${value#~/}" ;;
-    /*) printf '%s\n' "$value" ;;
-    *)
-      normalized_base=$(CDPATH= cd -- "$base_dir" && pwd)
-      if resolved=$(CDPATH= cd -- "$normalized_base/$value" 2>/dev/null && pwd); then
-        printf '%s\n' "$resolved"
-      else
-        printf '%s/%s\n' "$normalized_base" "$value"
-      fi
-      ;;
-  esac
+SCRIPT_PATH=$0
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)
+APP_ID="standalone-clock"
+cd "$APP_DIR"
+
+[ -f "./deno.json" ] || { printf '%s\n' "Standalone app setup requires ./deno.json" >&2; exit 1; }
+[ -f "./app.json" ] || { printf '%s\n' "Standalone app setup requires ./app.json" >&2; exit 1; }
+grep -Eq '"id"[[:space:]]*:[[:space:]]*"'$APP_ID'"' "./app.json" || {
+  printf '%s\n' "Standalone app setup requires app.json id '$APP_ID'" >&2
+  exit 1
 }
 
-load_dotenv_file() {
-  dot_env=$1
-  [ -f "$dot_env" ] || return 0
-  dot_env_dir=$(CDPATH= cd -- "$(dirname -- "$dot_env")" && pwd)
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      ''|'#'*) continue ;;
-    esac
-    key=${line%%=*}
-    value=${line#*=}
-    key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    value=$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    [ -n "$key" ] || continue
-    case "$key" in
-      *[!A-Za-z0-9_]*) continue ;;
-    esac
-    case "$key" in
-      ALTERAN_SRC)
-        [ -z "$value" ] || value=$(resolve_env_path "$dot_env_dir" "$value")
-        ;;
-    esac
-    eval "existing=\${$key+x}"
-    [ "$existing" = "x" ] || export "$key=$value"
-  done < "$dot_env"
+cat > "./app" <<'ALTERAN_STANDALONE_APP'
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_PATH=$0
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)
+APP_ID="standalone-clock"
+cd "$APP_DIR"
+
+LAUNCHER_NAME=$(basename -- "$SCRIPT_PATH")
+[ -f "./$LAUNCHER_NAME" ] || { printf '%s\n' "Unable to confirm app launcher location." >&2; exit 1; }
+[ -f "./deno.json" ] || { printf '%s\n' "Standalone app launcher requires ./deno.json" >&2; exit 1; }
+[ -f "./app.json" ] || { printf '%s\n' "Standalone app launcher requires ./app.json" >&2; exit 1; }
+grep -Eq '"id"[[:space:]]*:[[:space:]]*"'$APP_ID'"' "./app.json" || {
+  printf '%s\n' "Standalone app launcher requires app.json id '$APP_ID'" >&2
+  exit 1
 }
-
-is_var_defined() {
-  eval "case \${$1+__alteran_set__} in __alteran_set__) return 0 ;; *) return 1 ;; esac"
-}
-
-abspath() {
-  path=${1:-.}
-  case "$path" in
-    "~") printf '%s\n' "$HOME" ;;
-    "~/"*) printf '%s/%s\n' "$HOME" "${path#~/}" ;;
-    /*) printf '%s\n' "$path" ;;
-    *) printf '%s/%s\n' "$PWD" "$path" ;;
-  esac
-}
-
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-TARGET_DIR=$(abspath "${1:-$SCRIPT_DIR}")
-mkdir -p "$TARGET_DIR" >/dev/null 2>&1 || true
-
-load_dotenv_file "$TARGET_DIR/.env"
-load_dotenv_file "$SCRIPT_DIR/.env"
-
-if ! is_var_defined DENO_SOURCES; then
-  DENO_SOURCES="https://dl.deno.land/release"
-  export DENO_SOURCES
-fi
-if ! is_var_defined ALTERAN_RUN_SOURCES; then
-  ALTERAN_RUN_SOURCES=${ALTERAN_SOURCES-}
-  export ALTERAN_RUN_SOURCES
-fi
-if ! is_var_defined ALTERAN_ARCHIVE_SOURCES; then
-  ALTERAN_ARCHIVE_SOURCES=""
-  export ALTERAN_ARCHIVE_SOURCES
-fi
 
 UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
 UNAME_M=$(uname -m)
@@ -94,26 +47,82 @@ case "$UNAME_M" in
   *) ALTERAN_ARCH="$UNAME_M" ;;
 esac
 
-SCRIPT_DENO="$SCRIPT_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
-TARGET_DENO="$TARGET_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
-DENO_RUNTIME_ROOT="$TARGET_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH"
-BOOTSTRAP_DENO=""
-ALTERAN_ENTRY=""
-ARCHIVE_TEMP_ROOT=""
+LOCAL_DENO="$APP_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/bin/deno"
 
-cleanup() {
-  [ -z "$ARCHIVE_TEMP_ROOT" ] || rm -rf "$ARCHIVE_TEMP_ROOT"
+if [ ! -x "$LOCAL_DENO" ]; then
+  sh "./setup" >&2
+fi
+
+[ -x "$LOCAL_DENO" ] || {
+  printf '%s\n' "Standalone app launcher requires local Deno. Setup did not produce $LOCAL_DENO" >&2
+  exit 1
 }
 
-trap cleanup EXIT INT TERM
+export DENO_DIR="$APP_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH/cache"
+exec "$LOCAL_DENO" task --config "./deno.json" app -- "$@"
+ALTERAN_STANDALONE_APP
+chmod +x "./app"
 
-is_blank() {
-  [ -z "$(printf '%s' "${1:-}" | tr -d '[:space:]')" ]
-}
+cat > "./app.bat" <<'ALTERAN_STANDALONE_APP_BAT'
+@echo off
+setlocal
+set "APP_DIR=%~dp0"
+cd /d "%APP_DIR%"
+set "APP_ID=standalone-clock"
 
-split_sources() {
-  printf '%s\n' "${1:-}" | tr ';' ' '
-}
+if not exist ".\app.bat" (
+  echo Unable to confirm app launcher location. 1>&2
+  exit /b 1
+)
+if not exist ".\deno.json" (
+  echo Standalone app launcher requires .\deno.json 1>&2
+  exit /b 1
+)
+if not exist ".\app.json" (
+  echo Standalone app launcher requires .\app.json 1>&2
+  exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\app.json'));" ^
+  "if ($content -notmatch '"id"\s*:\s*"%APP_ID%"') { exit 1 }" >nul 2>nul
+if errorlevel 1 (
+  echo Standalone app launcher requires app.json id "%APP_ID%" 1>&2
+  exit /b 1
+)
+
+set "ALTERAN_ARCH=x64"
+if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ALTERAN_ARCH=arm64"
+set "LOCAL_DENO=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%\bin\deno.exe"
+
+if not exist "%LOCAL_DENO%" call ".\setup.bat"
+if not exist "%LOCAL_DENO%" (
+  echo Standalone app launcher requires local Deno. Setup did not produce %LOCAL_DENO% 1>&2
+  exit /b 1
+)
+
+set "DENO_DIR=%APP_DIR%\.runtime\deno\windows-%ALTERAN_ARCH%\cache"
+"%LOCAL_DENO%" task --config ".\deno.json" app -- %*
+exit /b %ERRORLEVEL%
+ALTERAN_STANDALONE_APP_BAT
+
+UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
+UNAME_M=$(uname -m)
+
+case "$UNAME_S" in
+  darwin*) ALTERAN_OS="macos" ;;
+  linux*) ALTERAN_OS="linux" ;;
+  msys*|mingw*|cygwin*) ALTERAN_OS="windows" ;;
+  *) ALTERAN_OS="$UNAME_S" ;;
+esac
+
+case "$UNAME_M" in
+  x86_64|amd64) ALTERAN_ARCH="x64" ;;
+  arm64|aarch64) ALTERAN_ARCH="arm64" ;;
+  *) ALTERAN_ARCH="$UNAME_M" ;;
+esac
+
+DENO_RUNTIME_ROOT="$APP_DIR/.runtime/deno/$ALTERAN_OS-$ALTERAN_ARCH"
+LOCAL_DENO="$DENO_RUNTIME_ROOT/bin/deno"
 
 resolve_deno_target() {
   case "$ALTERAN_OS-$ALTERAN_ARCH" in
@@ -127,160 +136,60 @@ resolve_deno_target() {
   esac
 }
 
-latest_metadata_urls_for_source() {
-  source=$1
-  normalized=${source%/}
-  printf '%s\n' "$normalized/release-latest.txt"
-  case "$normalized" in
-    */release) printf '%s\n' "${normalized%/release}/release-latest.txt" ;;
-  esac
+if [ -z "${DENO_SOURCES:-}" ]; then
+  DENO_SOURCES="https://dl.deno.land/release"
+fi
+
+split_sources() {
+  printf '%s\n' "$1" | tr ';' ' '
 }
 
-resolve_latest_deno_version() {
-  if is_blank "$DENO_SOURCES"; then
-    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running setup." >&2
-    return 1
-  fi
-  for source in $(split_sources "$DENO_SOURCES"); do
-    for latest_url in $(latest_metadata_urls_for_source "$source"); do
-      if DENO_VERSION=$(curl -fsSL "$latest_url" 2>/dev/null); then
-        printf '%s' "$DENO_VERSION"
-        return 0
-      fi
-    done
-  done
-  printf '%s\n' "Failed to resolve the latest Deno version from all configured sources. Check your internet connection or extend DENO_SOURCES." >&2
-  return 1
+if [ -x "$LOCAL_DENO" ]; then
+  exit 0
+fi
+
+if command -v deno >/dev/null 2>&1; then
+  mkdir -p "$DENO_RUNTIME_ROOT/bin" "$DENO_RUNTIME_ROOT/cache"
+  cp "$(command -v deno)" "$LOCAL_DENO"
+  chmod +x "$LOCAL_DENO"
+  exit 0
+fi
+
+if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
+  printf '%s\n' "Standalone app setup requires curl and unzip to materialize local Deno." >&2
+  exit 1
+fi
+
+DENO_TARGET=$(resolve_deno_target) || {
+  printf '%s\n' "Unsupported platform for standalone app setup: $ALTERAN_OS-$ALTERAN_ARCH" >&2
+  exit 1
 }
 
-download_local_deno() {
-  if is_blank "$DENO_SOURCES"; then
-    printf '%s\n' "Cannot download Deno because DENO_SOURCES is empty. Set DENO_SOURCES before running setup." >&2
-    return 1
+DENO_VERSION=""
+for source in $(split_sources "$DENO_SOURCES"); do
+  if DENO_VERSION=$(curl -fsSL "${source%/}/release-latest.txt" 2>/dev/null); then
+    break
   fi
-  if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-    printf '%s\n' "Alteran setup requires either a global deno or local curl+unzip to download a project-local runtime." >&2
-    return 1
-  fi
-  DENO_TARGET=$(resolve_deno_target) || {
-    printf '%s\n' "Unsupported platform for local Deno bootstrap: $ALTERAN_OS-$ALTERAN_ARCH" >&2
-    return 1
-  }
-  DENO_VERSION=$(resolve_latest_deno_version) || return 1
-  DENO_ARCHIVE_NAME="deno-$DENO_TARGET.zip"
-  DENO_ARCHIVE="$DENO_RUNTIME_ROOT/$DENO_ARCHIVE_NAME"
-  mkdir -p "$DENO_RUNTIME_ROOT/bin"
-  for source in $(split_sources "$DENO_SOURCES"); do
-    DENO_URL="${source%/}/$DENO_VERSION/$DENO_ARCHIVE_NAME"
-    if curl -fsSL "$DENO_URL" -o "$DENO_ARCHIVE" && unzip -oq "$DENO_ARCHIVE" -d "$DENO_RUNTIME_ROOT/bin"; then
-      rm -f "$DENO_ARCHIVE"
-      chmod +x "$TARGET_DENO"
-      return 0
-    fi
-    rm -f "$DENO_ARCHIVE"
-  done
-  printf '%s\n' "Failed to download Deno from all configured sources. Check your internet connection or extend DENO_SOURCES." >&2
-  return 1
+done
+
+[ -n "$DENO_VERSION" ] || {
+  printf '%s\n' "Failed to resolve latest Deno version from DENO_SOURCES." >&2
+  exit 1
 }
 
-bootstrap_alteran_from_run_sources() {
-  if is_blank "$ALTERAN_RUN_SOURCES"; then
-    printf '%s\n' "Cannot bootstrap Alteran from runnable sources because ALTERAN_RUN_SOURCES is empty. Set ALTERAN_RUN_SOURCES before running setup." >&2
-    return 1
-  fi
-  for source in $(split_sources "$ALTERAN_RUN_SOURCES"); do
-    if "$BOOTSTRAP_DENO" run -A "$source" help >/dev/null 2>&1; then
-      ALTERAN_ENTRY="$source"
-      return 0
-    fi
-  done
-  printf '%s\n' "Failed to bootstrap Alteran from all configured runnable sources. Check your internet connection or extend ALTERAN_RUN_SOURCES." >&2
-  return 1
-}
+mkdir -p "$DENO_RUNTIME_ROOT/bin"
+ARCHIVE_NAME="deno-$DENO_TARGET.zip"
+ARCHIVE_PATH="$DENO_RUNTIME_ROOT/$ARCHIVE_NAME"
 
-find_archive_alteran_entry() {
-  extract_dir=$1
-  if [ -f "$extract_dir/alteran.ts" ] && [ -f "$extract_dir/src/alteran/mod.ts" ]; then
-    printf '%s' "$extract_dir/alteran.ts"
-    return 0
+for source in $(split_sources "$DENO_SOURCES"); do
+  if curl -fsSL "${source%/}/$DENO_VERSION/$ARCHIVE_NAME" -o "$ARCHIVE_PATH" && unzip -oq "$ARCHIVE_PATH" -d "$DENO_RUNTIME_ROOT/bin"; then
+    rm -f "$ARCHIVE_PATH"
+    chmod +x "$LOCAL_DENO"
+    mkdir -p "$DENO_RUNTIME_ROOT/cache"
+    exit 0
   fi
-  mod_path=$(find "$extract_dir" -type f -path '*/src/alteran/mod.ts' ! -path '*/dist/*' 2>/dev/null | head -n 1 || true)
-  [ -n "$mod_path" ] || return 1
-  archive_root=$(dirname "$(dirname "$(dirname "$mod_path")")")
-  entry_path="$archive_root/alteran.ts"
-  [ -f "$entry_path" ] || return 1
-  printf '%s' "$entry_path"
-}
+  rm -f "$ARCHIVE_PATH"
+done
 
-resolve_local_alteran_entry_from_source() {
-  source_root=${1:-}
-  [ -n "$source_root" ] || return 1
-  [ -f "$source_root/alteran/mod.ts" ] || return 1
-  source_entry="$(dirname "$source_root")/alteran.ts"
-  if [ -f "$source_entry" ]; then
-    printf '%s' "$source_entry"
-    return 0
-  fi
-  printf '%s' "$source_root/alteran/mod.ts"
-}
-
-bootstrap_alteran_from_archive_sources() {
-  if is_blank "$ALTERAN_ARCHIVE_SOURCES"; then
-    printf '%s\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES is empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
-    return 1
-  fi
-  if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-    printf '%s\n' "Archive-based Alteran bootstrap requires curl and unzip." >&2
-    return 1
-  fi
-  for source in $(split_sources "$ALTERAN_ARCHIVE_SOURCES"); do
-    temp_root=$(mktemp -d "${TMPDIR:-/tmp}/alteran-archive.XXXXXX") || return 1
-    archive_path="$temp_root/alteran.zip"
-    extract_dir="$temp_root/extract"
-    mkdir -p "$extract_dir"
-    if curl -fsSL "$source" -o "$archive_path" && unzip -oq "$archive_path" -d "$extract_dir"; then
-      archive_entry=$(find_archive_alteran_entry "$extract_dir" || true)
-      if [ -n "$archive_entry" ]; then
-        ARCHIVE_TEMP_ROOT="$temp_root"
-        ALTERAN_ENTRY="$archive_entry"
-        return 0
-      fi
-    fi
-    rm -rf "$temp_root"
-  done
-  printf '%s\n' "Failed to download Alteran from all configured archive sources. Check your internet connection or extend ALTERAN_ARCHIVE_SOURCES." >&2
-  return 1
-}
-
-main() {
-  if [ -x "$SCRIPT_DENO" ]; then
-    BOOTSTRAP_DENO="$SCRIPT_DENO"
-  elif [ -x "$TARGET_DENO" ]; then
-    BOOTSTRAP_DENO="$TARGET_DENO"
-  elif command -v deno >/dev/null 2>&1; then
-    BOOTSTRAP_DENO=$(command -v deno)
-  else
-    mkdir -p "$DENO_RUNTIME_ROOT"
-    download_local_deno || return 1
-    BOOTSTRAP_DENO="$TARGET_DENO"
-  fi
-
-  if [ -f "$SCRIPT_DIR/alteran.ts" ] && [ -f "$SCRIPT_DIR/src/alteran/mod.ts" ]; then
-    ALTERAN_ENTRY="$SCRIPT_DIR/alteran.ts"
-  elif [ -f "$SCRIPT_DIR/.runtime/alteran/mod.ts" ]; then
-    ALTERAN_ENTRY="$SCRIPT_DIR/.runtime/alteran/mod.ts"
-  elif [ -f "$TARGET_DIR/.runtime/alteran/mod.ts" ]; then
-    ALTERAN_ENTRY="$TARGET_DIR/.runtime/alteran/mod.ts"
-  elif ALTERAN_SOURCE_ENTRY=$(resolve_local_alteran_entry_from_source "${ALTERAN_SRC-}" || true) && [ -n "$ALTERAN_SOURCE_ENTRY" ]; then
-    ALTERAN_ENTRY="$ALTERAN_SOURCE_ENTRY"
-  else
-    bootstrap_alteran_from_run_sources || bootstrap_alteran_from_archive_sources || {
-      printf '%s\n' "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES." >&2
-      return 1
-    }
-  fi
-
-  "$BOOTSTRAP_DENO" run -A "$ALTERAN_ENTRY" setup "$TARGET_DIR"
-}
-
-main "$@"
+printf '%s\n' "Failed to download local Deno for standalone app setup." >&2
+exit 1
