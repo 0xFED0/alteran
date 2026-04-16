@@ -92,10 +92,11 @@ jobs:
         shell: pwsh
         run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/windows-e2e.junit.xml ./tests/alteran_windows_e2e_test.ts
 
-      - name: Publish Windows test report
+      - name: Upload Windows test report artifact
         if: success() || failure()
         continue-on-error: true
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: actions/upload-artifact@v4
         with:
-          check_name: Windows Test Report
-          files: .ci/test-results/windows-*.junit.xml
+          name: windows-test-results
+          path: .ci/test-results/windows-*.junit.xml
+          if-no-files-found: ignore
