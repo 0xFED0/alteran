@@ -35,7 +35,7 @@ jobs:
         working-directory: .
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          SOURCE_VERSION="$(deno eval \"import { ALTERAN_VERSION } from './src/alteran/version.ts'; console.log(ALTERAN_VERSION)\")"
+          SOURCE_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
           if [ "$TAG_VERSION" != "$SOURCE_VERSION" ]; then
             echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $SOURCE_VERSION" >&2
             exit 1

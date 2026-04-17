@@ -33,7 +33,7 @@ jobs:
       - name: Resolve Alteran version
         working-directory: .
         run: |
-          echo "ALTERAN_VERSION=$(deno eval \"import { ALTERAN_VERSION } from './src/alteran/version.ts'; console.log(ALTERAN_VERSION)\")" >> "$GITHUB_ENV"
+          echo "ALTERAN_VERSION=$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')" >> "$GITHUB_ENV"
 
       - name: Verify tag matches Alteran version
         working-directory: .
