@@ -28,6 +28,7 @@ For repository-maintainer orchestration, prefer:
 alteran tool run examples --help
 alteran tool run examples test
 alteran tool run examples reset 01-bootstrap-empty-folder
+alteran tool run examples sync-bootstrap
 ```
 
 That tool provides the shared path-based workflow for resetting, setting up, compacting, and validating the committed example gallery.

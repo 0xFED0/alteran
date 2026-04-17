@@ -1,3 +1,52 @@
+import { ALTERAN_VERSION } from "../version.ts";
+
+const DEFAULT_GITHUB_RELEASE_ARCHIVE_TEMPLATE =
+  "https://github.com/0xFED0/alteran/releases/download/v{ALTERAN_VERSION}/alteran-v{ALTERAN_VERSION}.zip";
+const DEFAULT_RUN_SOURCE = "jsr:@alteran/alteran";
+
+export function renderArchiveSourceTemplate(
+  template: string,
+  version = ALTERAN_VERSION,
+): string {
+  return template.replaceAll("{ALTERAN_VERSION}", version);
+}
+
+export function getDefaultAlteranArchiveSourceTemplates(): string[] {
+  return [DEFAULT_GITHUB_RELEASE_ARCHIVE_TEMPLATE];
+}
+
+export function getDefaultAlteranArchiveSources(
+  version = ALTERAN_VERSION,
+): string[] {
+  return getDefaultAlteranArchiveSourceTemplates().map((template) =>
+    renderArchiveSourceTemplate(template, version)
+  );
+}
+
+export function getDefaultBootstrapArchiveSources(
+  version = ALTERAN_VERSION,
+): string[] {
+  return getDefaultAlteranArchiveSources(version);
+}
+
+function renderShellSourceList(values: string[]): string {
+  return values.map((value) =>
+    value
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', '\\"')
+      .replaceAll("$", "\\$")
+      .replaceAll("`", "\\`")
+  ).join(";");
+}
+
+function renderBatchSourceList(values: string[]): string {
+  return values.map((value) =>
+    value
+      .replaceAll("%", "%%")
+      .replaceAll('"', '""')
+  ).join(";");
+}
+
 const SETUP_TEMPLATE = `#!/usr/bin/env sh
 
 resolve_env_path() {
@@ -70,12 +119,16 @@ if ! is_var_defined DENO_SOURCES; then
   export DENO_SOURCES
 fi
 if ! is_var_defined ALTERAN_RUN_SOURCES; then
-  ALTERAN_RUN_SOURCES=\${ALTERAN_SOURCES-}
+  if is_var_defined ALTERAN_SOURCES; then
+    ALTERAN_RUN_SOURCES=\${ALTERAN_SOURCES-}
+  else
+    ALTERAN_RUN_SOURCES="__DEFAULT_RUN_SOURCE__"
+  fi
   export ALTERAN_RUN_SOURCES
 fi
-if ! is_var_defined ALTERAN_ARCHIVE_SOURCES; then
-  ALTERAN_ARCHIVE_SOURCES=""
-  export ALTERAN_ARCHIVE_SOURCES
+if ! is_var_defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES; then
+  ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="__DEFAULT_BOOTSTRAP_ARCHIVE_SOURCES__"
+  export ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES
 fi
 
 UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -225,15 +278,23 @@ resolve_local_alteran_entry_from_source() {
 }
 
 bootstrap_alteran_from_archive_sources() {
-  if is_blank "$ALTERAN_ARCHIVE_SOURCES"; then
-    printf '%s\\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES is empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
+  combined_archive_sources="$ALTERAN_ARCHIVE_SOURCES"
+  if ! is_blank "$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"; then
+    if is_blank "$combined_archive_sources"; then
+      combined_archive_sources="$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"
+    else
+      combined_archive_sources="$combined_archive_sources;$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"
+    fi
+  fi
+  if is_blank "$combined_archive_sources"; then
+    printf '%s\\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES and ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES are empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
     return 1
   fi
   if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
     printf '%s\\n' "Archive-based Alteran bootstrap requires curl and unzip." >&2
     return 1
   fi
-  for source in $(split_sources "$ALTERAN_ARCHIVE_SOURCES"); do
+  for source in $(split_sources "$combined_archive_sources"); do
     temp_root=$(mktemp -d "\${TMPDIR:-/tmp}/alteran-archive.XXXXXX") || return 1
     archive_path="$temp_root/alteran.zip"
     extract_dir="$temp_root/extract"
@@ -360,13 +421,14 @@ if not defined ALTERAN_RUN_SOURCES (
   if defined ALTERAN_SOURCES (
     set "ALTERAN_RUN_SOURCES=%ALTERAN_SOURCES%"
   ) else (
-    set "ALTERAN_RUN_SOURCES="
+    set "ALTERAN_RUN_SOURCES=__DEFAULT_RUN_SOURCE_BAT__"
   )
 )
-if not defined ALTERAN_ARCHIVE_SOURCES set "ALTERAN_ARCHIVE_SOURCES="
+if not defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES=__DEFAULT_BOOTSTRAP_ARCHIVE_SOURCES_BAT__"
 set "DENO_SOURCES_LIST=%DENO_SOURCES:;= %"
 set "ALTERAN_RUN_SOURCES_LIST=%ALTERAN_RUN_SOURCES:;= %"
 set "ALTERAN_ARCHIVE_SOURCES_LIST=%ALTERAN_ARCHIVE_SOURCES:;= %"
+set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST=%ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES:;= %"
 
 set "ALTERAN_OS=windows"
 set "ALTERAN_ARCH=x64"
@@ -452,8 +514,17 @@ if not "%ALTERAN_RUN_SOURCES_LIST: =%"=="" (
   )
 )
 
-if not "%ALTERAN_ARCHIVE_SOURCES_LIST: =%"=="" (
-  for %%S in (%ALTERAN_ARCHIVE_SOURCES_LIST%) do (
+set "ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST=%ALTERAN_ARCHIVE_SOURCES_LIST%"
+if not "%ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST: =%"=="" (
+  if "%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST: =%"=="" (
+    set "ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST=%ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST%"
+  ) else (
+    set "ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST=%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST% %ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST%"
+  )
+)
+
+if not "%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST: =%"=="" (
+  for %%S in (%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST%) do (
     set "ARCHIVE_ENTRY="
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
       "$ErrorActionPreference='Stop';" ^
@@ -523,12 +594,28 @@ del /q "%ALTERAN_ENV_FILE%" >nul 2>nul
 exit /b %STATUS%
 `;
 
-export function readSetupTemplate(): Promise<string> {
-  return Promise.resolve(SETUP_TEMPLATE);
+export function readSetupTemplate(version = ALTERAN_VERSION): Promise<string> {
+  return Promise.resolve(
+    SETUP_TEMPLATE
+      .replace("__DEFAULT_RUN_SOURCE__", renderShellSourceList([DEFAULT_RUN_SOURCE]))
+      .replace(
+        "__DEFAULT_BOOTSTRAP_ARCHIVE_SOURCES__",
+        renderShellSourceList(getDefaultBootstrapArchiveSources(version)),
+      ),
+  );
 }
 
-export function readSetupBatTemplate(): Promise<string> {
-  return Promise.resolve(SETUP_BAT_TEMPLATE);
+export function readSetupBatTemplate(
+  version = ALTERAN_VERSION,
+): Promise<string> {
+  return Promise.resolve(
+    SETUP_BAT_TEMPLATE
+      .replace("__DEFAULT_RUN_SOURCE_BAT__", renderBatchSourceList([DEFAULT_RUN_SOURCE]))
+      .replace(
+        "__DEFAULT_BOOTSTRAP_ARCHIVE_SOURCES_BAT__",
+        renderBatchSourceList(getDefaultBootstrapArchiveSources(version)),
+      ),
+  );
 }
 
 export interface ActivateTemplateInput {

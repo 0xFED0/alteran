@@ -83,6 +83,18 @@ The staged JSR package intentionally stays lean and does not copy the full `docs
 
 `prepare_zip` builds a release bundle from the staged JSR payload and then adds the repository `docs/` tree before archiving. It also strips publish-only metadata such as the staged `deno.json` workspace file and `jsr.json`, because release zips are meant to act as runtime/bootstrap artifacts rather than as JSR publish workspaces.
 
+Versioned GitHub Releases may also attach standalone bootstrap scripts beside
+the archive asset, for example:
+
+- `alteran-v<version>.zip`
+- `setup-v<version>`
+- `setup-v<version>.bat`
+
+This is intentional. Versioned asset names make it much easier to confirm which
+archive or bootstrap script was actually downloaded, copied, or executed during
+debugging, while the script contents themselves still represent the normal
+`setup` / `setup.bat` bootstrap surface for that Alteran version.
+
 ## Automated Publication
 
 The repository may also publish through a tag-triggered GitHub Actions workflow.
@@ -100,6 +112,8 @@ The intended flow is:
   JSR package has been linked to the repository in JSR settings
 - optionally fall back to repository secret `JSR_TOKEN` for token-based auth
 - prepare a release zip from the same staged publication payload
+- attach versioned standalone bootstrap scripts such as `setup-v<version>` and
+  `setup-v<version>.bat` to the same release
 - attach that zip to the GitHub release created from the version tag
 
 For maintainer workflow debugging, the publish workflows also support manual
@@ -115,7 +129,8 @@ That dry-run mode should:
   real `deno publish` preflight path rather than only checking package staging;
 - upload the prepared staged output as a workflow artifact instead:
   - `publish-jsr` uploads `dist/jsr/<version>/`
-  - `publish-release` uploads `dist/zips/<version>/alteran-v<version>.zip`
+  - `publish-release` uploads `dist/zips/<version>/`, including the zip and
+    versioned standalone `setup` assets
 
 The dry-run path is intended for validating workflow mechanics without burning a
 real version bump or creating a real release asset.

@@ -6,7 +6,12 @@ import {
   ensureDir,
   exists,
   removeIfExists,
+  writeTextFileIfChanged,
 } from "../../src/alteran/fs.ts";
+import {
+  readSetupBatTemplate,
+  readSetupTemplate,
+} from "../../src/alteran/templates/bootstrap.ts";
 import { ALTERAN_VERSION } from "../../src/alteran/version.ts";
 import { getVersionedJsrDistDir } from "../prepare_jsr/mod.ts";
 
@@ -24,6 +29,26 @@ export function getReleaseZipPath(
   return join(
     getVersionedZipDistDir(repoRoot, version),
     `alteran-v${version}.zip`,
+  );
+}
+
+export function getReleaseSetupPath(
+  repoRoot: string,
+  version = ALTERAN_VERSION,
+): string {
+  return join(
+    getVersionedZipDistDir(repoRoot, version),
+    `setup-v${version}`,
+  );
+}
+
+export function getReleaseSetupBatPath(
+  repoRoot: string,
+  version = ALTERAN_VERSION,
+): string {
+  return join(
+    getVersionedZipDistDir(repoRoot, version),
+    `setup-v${version}.bat`,
   );
 }
 
@@ -45,6 +70,26 @@ export async function prepareReleaseZipStagingAt(
   await removeIfExists(join(stagingDir, "deno.json"));
   await removeIfExists(join(stagingDir, "jsr.json"));
   await copyDirectory(join(repoRoot, "docs"), join(stagingDir, "docs"));
+}
+
+export async function prepareReleaseScriptAssetsAt(
+  outputDir: string,
+  version = ALTERAN_VERSION,
+): Promise<void> {
+  await ensureDir(outputDir);
+  const setupPath = join(outputDir, `setup-v${version}`);
+  const setupBatPath = join(outputDir, `setup-v${version}.bat`);
+  await writeTextFileIfChanged(
+    setupPath,
+    await readSetupTemplate(version),
+  );
+  await writeTextFileIfChanged(
+    setupBatPath,
+    await readSetupBatTemplate(version),
+  );
+  if (Deno.build.os !== "windows") {
+    await Deno.chmod(setupPath, 0o755);
+  }
 }
 
 async function createZipArchive(
@@ -100,6 +145,7 @@ export async function main(_args: string[]): Promise<void> {
   await ensureDir(zipDir);
   await removeIfExists(zipPath);
   try {
+    await prepareReleaseScriptAssetsAt(zipDir);
     await prepareReleaseZipStagingAt(repoRoot, stagingDir);
     await createZipArchive(stagingDir, zipPath);
   } finally {

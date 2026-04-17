@@ -58,9 +58,21 @@ Alteran manages one effective Deno version per runtime. The managed Deno lives u
 ## Remote Acquisition Boundary
 
 - `ALTERAN_RUN_SOURCES`: bootstrap/execution sources
-- `ALTERAN_ARCHIVE_SOURCES`: install/materialization sources
+- `ALTERAN_ARCHIVE_SOURCES`: public user-preferred install/materialization sources
+- `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`: internal version-pinned bootstrap handoff sources
 
 This split avoids recursive or incomplete runtime reconstruction from runnable URLs alone.
+
+When remote archive acquisition is needed, the intended priority is:
+
+1. user-configured `ALTERAN_ARCHIVE_SOURCES`
+2. internal bootstrap handoff sources such as `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`
+3. built-in default archive source templates for the current Alteran version
+
+Built-in archive defaults are intended for the "no explicit archive env was
+provided" case. If a caller explicitly defines archive-source variables, even
+to an empty list, that explicit archive-source state should remain visible to
+the runtime instead of being silently replaced by invented defaults.
 
 If a design starts solving missing local material by recursively re-entering a runnable remote bootstrap path, treat that as a smell and redesign the boundary.
 

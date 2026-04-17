@@ -76,11 +76,11 @@ export async function prepareJsrPackageAt(
   );
   await writeTextFileIfChanged(
     join(distDir, "setup"),
-    await readSetupTemplate(),
+    await readSetupTemplate(version),
   );
   await writeTextFileIfChanged(
     join(distDir, "setup.bat"),
-    await readSetupBatTemplate(),
+    await readSetupBatTemplate(version),
   );
   if (Deno.build.os !== "windows") {
     await Deno.chmod(join(distDir, "setup"), 0o755);

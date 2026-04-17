@@ -53,6 +53,8 @@ import {
 import {
   readActivateBatTemplate,
   readActivateTemplate,
+  getDefaultAlteranArchiveSources,
+  renderArchiveSourceTemplate,
   readSetupBatTemplate,
   readSetupTemplate,
 } from "./templates/bootstrap.ts";
@@ -64,6 +66,7 @@ import {
 } from "./templates/env.ts";
 import type { AlteranConfig, RegistryEntry } from "./types.ts";
 import { parseJsonc } from "./jsonc.ts";
+import { ALTERAN_VERSION } from "./version.ts";
 
 export interface ProjectPaths {
   projectDir: string;
@@ -200,8 +203,7 @@ export async function resolveAlteranSourceRoot(
 }
 
 const DEFAULT_DENO_SOURCES = ["https://dl.deno.land/release"];
-const DEFAULT_ALTERAN_RUN_SOURCES: string[] = [];
-const DEFAULT_ALTERAN_ARCHIVE_SOURCES: string[] = [];
+const DEFAULT_ALTERAN_RUN_SOURCES = ["jsr:@alteran/alteran"];
 const GITIGNORE_BEGIN = "# --- alteran managed: begin ---";
 const GITIGNORE_END = "# --- alteran managed: end ---";
 
@@ -228,6 +230,13 @@ function parseConfiguredSources(value: string): string[] {
     .filter(Boolean);
 }
 
+function expandAlteranArchiveSources(
+  sources: string[],
+  version = ALTERAN_VERSION,
+): string[] {
+  return sources.map((source) => renderArchiveSourceTemplate(source, version));
+}
+
 export function getConfiguredDenoSources(): string[] {
   const configured = Deno.env.get("DENO_SOURCES");
   return configured === undefined
@@ -245,9 +254,19 @@ export function getConfiguredAlteranRunSources(): string[] {
 
 export function getConfiguredAlteranArchiveSources(): string[] {
   const configured = Deno.env.get("ALTERAN_ARCHIVE_SOURCES");
-  return configured === undefined
-    ? [...DEFAULT_ALTERAN_ARCHIVE_SOURCES]
-    : parseConfiguredSources(configured);
+  const bootstrapConfigured = Deno.env.get("ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES");
+
+  if (configured !== undefined || bootstrapConfigured !== undefined) {
+    const userSources = configured === undefined
+      ? []
+      : expandAlteranArchiveSources(parseConfiguredSources(configured));
+    const bootstrapSources = bootstrapConfigured === undefined
+      ? []
+      : expandAlteranArchiveSources(parseConfiguredSources(bootstrapConfigured));
+    return [...userSources, ...bootstrapSources];
+  }
+
+  return getDefaultAlteranArchiveSources();
 }
 
 function normalizeDenoVersion(version: string): string {
@@ -381,7 +400,10 @@ async function seedLocalDenoFromExecutable(
     );
     return await exists(siblingCacheDir) ? siblingCacheDir : null;
   })();
-  if (sourceCacheDir !== null) {
+  if (
+    sourceCacheDir !== null &&
+    resolve(sourceCacheDir) !== resolve(paths.cacheDir)
+  ) {
     await copyDirectory(sourceCacheDir, paths.cacheDir);
   }
   if (Deno.build.os !== "windows") {

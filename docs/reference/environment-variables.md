@@ -6,12 +6,23 @@
 | --- | --- |
 | `DENO_SOURCES` | Source list for Deno release metadata and archives |
 | `ALTERAN_RUN_SOURCES` | Runnable Alteran bootstrap sources |
-| `ALTERAN_ARCHIVE_SOURCES` | Alteran archive installation/materialization sources |
+| `ALTERAN_ARCHIVE_SOURCES` | Public user-facing Alteran archive installation/materialization sources |
+| `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES` | Internal bootstrap-script handoff archive sources |
 | `ALTERAN_SOURCES` | Legacy fallback alias for `ALTERAN_RUN_SOURCES` |
 | `ALTERAN_SRC` | Local authored Alteran source root override |
 | `ALTERAN_EXTERNAL_CTX` | Default anchor for `alteran external` |
 
 Source-list variables are parsed as lists. In current Alteran behavior they can be separated with spaces or semicolons.
+
+`ALTERAN_ARCHIVE_SOURCES` may contain exact archive URLs or template URLs using
+`{ALTERAN_VERSION}`. `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES` is intended for
+generated `setup` / `setup.bat` handoff and should normally contain exact
+version-pinned URLs rather than user-edited templates.
+
+When neither archive variable is defined, Alteran may fall back to its built-in
+default archive source templates for the current Alteran version. When either
+archive variable is defined, Alteran uses the explicit archive-source lists
+derived from those variables instead of inventing additional defaults.
 
 `ALTERAN_EXTERNAL_CTX` is only for explicit foreign-project execution and should point at `alteran.json` or `app.json`. `deno.json` is not a valid external context anchor.
 

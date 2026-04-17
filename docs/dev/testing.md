@@ -73,6 +73,7 @@ For day-to-day repository maintenance, prefer the orchestrated surface:
 
 - `alteran tool run examples test`
 - `alteran tool run examples reset ...`
+- `alteran tool run examples sync-bootstrap`
 
 instead of ad hoc loops over `examples/`.
 

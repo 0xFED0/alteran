@@ -569,6 +569,7 @@ Environment variables:
 - **`DENO_SOURCES`**
 - **`ALTERAN_RUN_SOURCES`**
 - **`ALTERAN_ARCHIVE_SOURCES`**
+- **`ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`**
 
 Backward compatibility:
 
@@ -579,7 +580,8 @@ These act as ordered fallback lists.
 Rules:
 
 - if the variable is **unset**, Alteran may use its built-in default source list
-- if the variable is **set**, Alteran must use the provided list as-is
+- if the variable is **set** for `DENO_SOURCES` or `ALTERAN_RUN_SOURCES`, Alteran must use the provided list as-is
+- if the variable is **set** for `ALTERAN_ARCHIVE_SOURCES`, Alteran should treat the provided list as user-preferred archive sources and try them before any internal bootstrap handoff sources or built-in defaults
 - if the provided list is empty, Alteran must fail with an explicit message telling the user that the list is empty and can be configured via the corresponding environment variable
 - when download/bootstrap from one source fails, Alteran must continue to the next source
 - if all configured sources fail, Alteran must emit a clear message such as:
@@ -626,7 +628,25 @@ Until a public Alteran package/source is actually available, the built-in defaul
 
 `ALTERAN_ARCHIVE_SOURCES` is intended for downloadable archive bundles such as GitHub Release zip assets.
 
-Each item is expected to be a direct archive URL.
+It is the public user-facing override/extension mechanism for Alteran archive
+installation/materialization sources.
+
+Each item may be either:
+
+- a direct exact archive URL
+- a template URL containing `{ALTERAN_VERSION}`
+
+Template expansion should substitute the current Alteran runtime version.
+If an item does not contain `{ALTERAN_VERSION}`, Alteran must treat it as an
+exact source and use it as-is. It must not guess or infer extra replacement
+rules from arbitrary URL shapes.
+
+When `ALTERAN_ARCHIVE_SOURCES` is set, Alteran should try those user-provided
+sources first. After exhausting them, it may continue to:
+
+1. internal bootstrap handoff archive sources such as
+   `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`
+2. built-in default archive source templates for the current Alteran version
 
 Alteran should:
 
@@ -638,6 +658,32 @@ Alteran should:
 This allows publication artifacts prepared from `dist/jsr/<version>/` to be reused as bootstrapable archive releases.
 
 Archive sources are the canonical remote source for Alteran runtime materialization/install.
+
+#### `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`
+
+`ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES` is an internal bootstrap handoff variable,
+not a primary user-facing configuration surface.
+
+Its purpose is to let generated public bootstrap scripts such as `setup` /
+`setup.bat` pass their own version-pinned archive fallbacks into the delegated
+`alteran setup` TypeScript flow without redefining the meaning of the public
+`ALTERAN_ARCHIVE_SOURCES` variable.
+
+Rules:
+
+- generated `setup` / `setup.bat` may populate it with exact version-pinned
+  archive URLs derived from the script's own Alteran version
+- ordinary users should normally configure `ALTERAN_ARCHIVE_SOURCES` instead
+- shell/batch bootstrap scripts should not be required to expand
+  `{ALTERAN_VERSION}` placeholders from user-provided archive-source lists
+- `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES` should therefore prefer exact URLs rather
+  than template URLs
+- when both are present, `ALTERAN_ARCHIVE_SOURCES` remains the higher-priority
+  public user preference
+
+This keeps generated bootstrap scripts reproducible and version-pinned while
+still allowing a newer `jsr:@alteran/alteran` runtime or explicit user mirrors
+to take priority when that is what the user asked for.
 
 ---
 
@@ -729,6 +775,7 @@ When `setup` / `setup.bat` need to download Deno or obtain Alteran from remote s
 - read `DENO_SOURCES`
 - read `ALTERAN_RUN_SOURCES`, with optional legacy `ALTERAN_SOURCES` aliasing
 - read `ALTERAN_ARCHIVE_SOURCES`
+- optionally read internal bootstrap handoff sources such as `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`
 - try runnable Alteran sources first to obtain a temporary executable Alteran
 - try archive Alteran sources after runnable sources when no local source/runtime is available for materialization
 - iterate over the configured sources in order
@@ -741,8 +788,35 @@ Important semantic rule:
 
 - `ALTERAN_RUN_SOURCES` are execution/bootstrap sources only
 - `ALTERAN_ARCHIVE_SOURCES` are install/materialization sources
+- `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES` are internal version-pinned bootstrap
+  handoff sources, not the main user override surface
 - if Alteran was launched from a remote runnable source and there is no local authored source or existing installed runtime, runtime materialization must come from `ALTERAN_ARCHIVE_SOURCES`
 - a remote runnable source by itself is not sufficient to authoritatively materialize `.runtime/alteran`
+
+#### Version-aware default archive behavior
+
+Alteran may ship built-in default archive source templates for its own current
+version, especially when the public runtime/bootstrap surface is versioned and
+the canonical archive payload is also published per version.
+
+For example, when Alteran uses a versioned GitHub Release zip model, the
+built-in default archive source may be a template such as:
+
+```text
+https://github.com/0xFED0/alteran/releases/download/v{ALTERAN_VERSION}/alteran-v{ALTERAN_VERSION}.zip
+```
+
+Generated `setup` / `setup.bat` scripts may embed the exact version-resolved
+archive URL corresponding to the Alteran version that generated them.
+
+This is intentional:
+
+- a checked-in or copied historical `setup` script should remain able to
+  bootstrap its own version reproducibly
+- a newer runnable Alteran entry such as `jsr:@alteran/alteran` may still use
+  its own current-version defaults when no stronger user preference is given
+- explicit user archive-source configuration remains higher priority than either
+  built-in defaults or bootstrap-script handoff sources
 
 ### 7.3 Stable bootstrap entry
 
@@ -2179,6 +2253,8 @@ Typical responsibilities may include:
 - copying required files
 - generating `jsr.json`
 - generating archive artifacts such as zip releases
+- generating standalone bootstrap-script release assets such as versioned
+  `setup` / `setup.bat`
 - validating package completeness
 - running dry-run publication checks
 - publishing the final package
@@ -2282,6 +2358,31 @@ package page itself.
 Release zip artifacts should not include publication-only metadata such as the
 publish workspace `deno.json` or `jsr.json`, because those files exist for JSR
 publication mechanics rather than for runtime bootstrap from downloaded archives.
+
+Versioned GitHub Release publication may also attach standalone bootstrap
+scripts next to the archive asset itself, for example:
+
+- `alteran-v<version>.zip`
+- `setup-v<version>`
+- `setup-v<version>.bat`
+
+These assets should live on the same release as the matching version tag.
+
+The versioned filenames are intentional:
+
+- they make downloaded assets self-describing during debugging and support work
+- they make it obvious which bootstrap script or archive was actually executed
+  after copying files around
+- they reduce ambiguity when multiple release assets from different versions are
+  present in the same local download directory
+
+The non-versioned canonical script names inside prepared project roots remain:
+
+- `setup`
+- `setup.bat`
+
+But standalone release assets may use versioned filenames for clarity while
+still containing the normal bootstrap script payload for that version.
 
 ### 29.9 Dedicated JSR publish flow
 

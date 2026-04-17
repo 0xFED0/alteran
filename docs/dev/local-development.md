@@ -39,6 +39,7 @@ alteran tool run prepare_zip
 alteran tool run publish_jsr
 alteran tool run examples --help
 alteran tool run examples test
+alteran tool run examples sync-bootstrap
 deno run -A ./examples/reset.ts
 ```
 

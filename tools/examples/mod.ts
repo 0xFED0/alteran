@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { copyDirectory, exists, removeIfExists } from "../../src/alteran/fs.ts";
 import { runCli } from "../../src/alteran/mod.ts";
-import { resetExamples } from "../../examples/reset.ts";
+import { resetExamples, syncExampleBootstrap } from "../../examples/reset.ts";
 
 export interface ExampleCatalogEntry {
   selector: string;
@@ -369,6 +369,7 @@ export function renderHelp(): string {
     "  refresh",
     "  clean",
     "  compact",
+    "  sync-bootstrap",
     "  test",
     "",
     "Selectors:",
@@ -419,6 +420,10 @@ export async function runExamplesTool(
           console.error(`Compacting example: ${entry.selector}`);
           await compactExampleEntry(entry, repoRoot);
         }
+        return 0;
+      case "sync-bootstrap":
+        console.error(`Syncing example bootstrap: ${entries.map((entry) => entry.selector).join(", ")}`);
+        await syncExampleBootstrap(repoRoot, entries.map((entry) => entry.selector));
         return 0;
       case "test":
         console.error(`Testing examples: ${entries.map((entry) => entry.selector).join(", ")}`);

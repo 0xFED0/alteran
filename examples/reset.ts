@@ -210,6 +210,22 @@ async function syncRepositoryBootstrap(targetDir: string): Promise<void> {
   }
 }
 
+export async function syncExampleBootstrap(
+  repoRoot: string = REPO_ROOT,
+  selectors: string[] = [],
+): Promise<void> {
+  const examplesRoot = join(repoRoot, "examples");
+  const targets = resolveTargets(selectors).filter((target) =>
+    target.syncRepositoryBootstrap
+  );
+
+  for (const target of targets) {
+    const targetDir = join(examplesRoot, target.root);
+    await ensureDir(targetDir);
+    await syncRepositoryBootstrap(targetDir);
+  }
+}
+
 async function removeGeneratedAppArtifacts(targetDir: string): Promise<void> {
   const appsDir = join(targetDir, "apps");
   if (!(await exists(appsDir))) {

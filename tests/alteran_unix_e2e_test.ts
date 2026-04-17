@@ -1046,6 +1046,7 @@ Deno.test({
             ...Deno.env.toObject(),
             ALTERAN_RUN_SOURCES: `${server.baseUrl}${fixture.runSourceUrlPath}`,
             ALTERAN_ARCHIVE_SOURCES: "",
+            ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES: "",
             PATH: hostDenoPath(),
           }),
         },

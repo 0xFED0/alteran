@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Skip GitHub release publication and upload the prepared release zip as a workflow artifact"
+        description: "Skip GitHub release publication and upload the prepared release assets as a workflow artifact"
         required: false
         default: true
         type: boolean
@@ -95,12 +95,15 @@ jobs:
         if: env.PUBLICATION_MODE == 'publish'
         uses: softprops/action-gh-release@v3
         with:
-          files: ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
+          files: |
+            ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
+            ./dist/zips/${{ env.ALTERAN_VERSION }}/setup-v${{ env.ALTERAN_VERSION }}
+            ./dist/zips/${{ env.ALTERAN_VERSION }}/setup-v${{ env.ALTERAN_VERSION }}.bat
 
-      - name: Upload dry-run release artifact
+      - name: Upload dry-run release assets
         if: env.PUBLICATION_MODE == 'dry-run'
         uses: actions/upload-artifact@v7
         with:
-          name: release-zip-${{ env.ALTERAN_VERSION }}
-          path: ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
+          name: release-assets-${{ env.ALTERAN_VERSION }}
+          path: ./dist/zips/${{ env.ALTERAN_VERSION }}
           if-no-files-found: error

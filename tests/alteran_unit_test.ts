@@ -30,6 +30,11 @@ import {
   loadProjectDotEnv,
   resolveAlteranSourceRoot,
 } from "../src/alteran/runtime.ts";
+import {
+  getDefaultAlteranArchiveSources,
+  getDefaultBootstrapArchiveSources,
+  renderArchiveSourceTemplate,
+} from "../src/alteran/templates/bootstrap.ts";
 import { runCli } from "../src/alteran/mod.ts";
 import {
   renderBatchCliWrapper,
@@ -51,7 +56,10 @@ import {
 } from "../tools/publish_jsr/mod.ts";
 import {
   getReleaseZipPath,
+  getReleaseSetupBatPath,
+  getReleaseSetupPath,
   getVersionedZipDistDir,
+  prepareReleaseScriptAssetsAt,
   prepareReleaseZipStagingAt,
 } from "../tools/prepare_zip/mod.ts";
 import { resetExamples } from "../examples/reset.ts";
@@ -89,16 +97,24 @@ Deno.test("source configuration helpers honor defaults, explicit values, and emp
   const previousRunSources = Deno.env.get("ALTERAN_RUN_SOURCES");
   const previousLegacySources = Deno.env.get("ALTERAN_SOURCES");
   const previousArchiveSources = Deno.env.get("ALTERAN_ARCHIVE_SOURCES");
+  const previousBootstrapArchiveSources = Deno.env.get(
+    "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES",
+  );
 
   try {
     Deno.env.delete("DENO_SOURCES");
     Deno.env.delete("ALTERAN_RUN_SOURCES");
     Deno.env.delete("ALTERAN_SOURCES");
     Deno.env.delete("ALTERAN_ARCHIVE_SOURCES");
+    Deno.env.delete("ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES");
 
     expect(
       getConfiguredDenoSources().join("|") === "https://dl.deno.land/release",
       "Expected default Deno sources when DENO_SOURCES is unset",
+    );
+    expect(
+      getConfiguredAlteranRunSources().join("|") === "jsr:@alteran/alteran",
+      "Expected default runnable Alteran source when ALTERAN_RUN_SOURCES is unset",
     );
 
     Deno.env.set("DENO_SOURCES", "https://mirror-a.example/release; https://mirror-b.example/release");
@@ -134,12 +150,49 @@ Deno.test("source configuration helpers honor defaults, explicit values, and emp
         "https://example.com/a.zip|https://example.com/b.zip",
       "Expected configured archive sources to be parsed in order",
     );
+
+    Deno.env.set(
+      "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES",
+      "https://bootstrap.example.com/a.zip",
+    );
+    expect(
+      getConfiguredAlteranArchiveSources().join("|") ===
+        "https://example.com/a.zip|https://example.com/b.zip|https://bootstrap.example.com/a.zip",
+      "Expected user archive sources to take priority over bootstrap handoff sources",
+    );
+
+    Deno.env.delete("ALTERAN_ARCHIVE_SOURCES");
+    Deno.env.delete("ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES");
+    expect(
+      getConfiguredAlteranArchiveSources().join("|") ===
+        getDefaultAlteranArchiveSources().join("|"),
+      "Expected built-in archive defaults when no archive env vars are defined",
+    );
   } finally {
     restoreEnv("DENO_SOURCES", previousDenoSources);
     restoreEnv("ALTERAN_RUN_SOURCES", previousRunSources);
     restoreEnv("ALTERAN_SOURCES", previousLegacySources);
     restoreEnv("ALTERAN_ARCHIVE_SOURCES", previousArchiveSources);
+    restoreEnv(
+      "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES",
+      previousBootstrapArchiveSources,
+    );
   }
+});
+
+Deno.test("archive source templates resolve against ALTERAN_VERSION", () => {
+  const rendered = renderArchiveSourceTemplate(
+    "https://example.com/v{ALTERAN_VERSION}/alteran-v{ALTERAN_VERSION}.zip",
+  );
+  expect(
+    rendered === `https://example.com/v${ALTERAN_VERSION}/alteran-v${ALTERAN_VERSION}.zip`,
+    "Expected archive template placeholders to resolve using the Alteran version",
+  );
+  expect(
+    getDefaultBootstrapArchiveSources().join("|") ===
+      getDefaultAlteranArchiveSources().join("|"),
+    "Expected bootstrap archive defaults to resolve from the same versioned templates",
+  );
 });
 
 Deno.test("runCli provides help for subcommands instead of treating help as data", async () => {
@@ -448,6 +501,30 @@ Deno.test("ensureLocalDeno can seed a new project runtime from the currently run
   );
 });
 
+Deno.test("ensureLocalDeno does not copy the Deno cache onto itself when DENO_DIR already points at the managed cache", async () => {
+  const projectDir = await Deno.makeTempDir({
+    prefix: "alteran-local-deno-self-cache-",
+  });
+  const previousDenoDir = Deno.env.get("DENO_DIR");
+  const paths = getProjectPaths(projectDir);
+
+  try {
+    Deno.env.set("DENO_DIR", paths.cacheDir);
+    const localDeno = await ensureLocalDeno(projectDir, Deno.version.deno);
+
+    expect(
+      localDeno === paths.denoPath,
+      "Expected ensureLocalDeno to still materialize the managed runtime path",
+    );
+    expect(
+      (await Deno.stat(localDeno)).isFile,
+      "Expected ensureLocalDeno to succeed even when DENO_DIR already points at the managed cache",
+    );
+  } finally {
+    restoreEnv("DENO_DIR", previousDenoDir);
+  }
+});
+
 Deno.test("discoverTools supports both tool.ts and tool/mod.ts runtime-tool layouts", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-discover-tools-" });
   const config = createDefaultAlteranConfig(projectDir);
@@ -616,6 +693,22 @@ Deno.test("release helpers use versioned dist directories", () => {
       ),
     "Expected release zip path to include version",
   );
+  expect(
+    getReleaseSetupPath(repoRoot) ===
+      join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}`),
+    "Expected release setup path to include version",
+  );
+  expect(
+    getReleaseSetupBatPath(repoRoot) ===
+      join(
+        repoRoot,
+        "dist",
+        "zips",
+        ALTERAN_VERSION,
+        `setup-v${ALTERAN_VERSION}.bat`,
+      ),
+    "Expected release setup.bat path to include version",
+  );
 });
 
 Deno.test("prepare_jsr stays lean while release zip staging adds docs", async () => {
@@ -656,6 +749,16 @@ Deno.test("prepare_jsr stays lean while release zip staging adds docs", async ()
   expect(
     !(await exists(join(zipStageDir, "jsr.json"))),
     "Expected release zip staging not to include the publish-only jsr.json metadata file",
+  );
+
+  await prepareReleaseScriptAssetsAt(join(repoRoot, "dist", "zips", ALTERAN_VERSION));
+  expect(
+    await exists(join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}`)),
+    "Expected release assets to include a versioned Unix setup script",
+  );
+  expect(
+    await exists(join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}.bat`)),
+    "Expected release assets to include a versioned Windows setup script",
   );
 });
 

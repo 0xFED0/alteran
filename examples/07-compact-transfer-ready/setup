@@ -70,12 +70,16 @@ if ! is_var_defined DENO_SOURCES; then
   export DENO_SOURCES
 fi
 if ! is_var_defined ALTERAN_RUN_SOURCES; then
-  ALTERAN_RUN_SOURCES=${ALTERAN_SOURCES-}
+  if is_var_defined ALTERAN_SOURCES; then
+    ALTERAN_RUN_SOURCES=${ALTERAN_SOURCES-}
+  else
+    ALTERAN_RUN_SOURCES="jsr:@alteran/alteran"
+  fi
   export ALTERAN_RUN_SOURCES
 fi
-if ! is_var_defined ALTERAN_ARCHIVE_SOURCES; then
-  ALTERAN_ARCHIVE_SOURCES=""
-  export ALTERAN_ARCHIVE_SOURCES
+if ! is_var_defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES; then
+  ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="https://github.com/0xFED0/alteran/releases/download/v0.1.8/alteran-v0.1.8.zip"
+  export ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES
 fi
 
 UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -225,15 +229,23 @@ resolve_local_alteran_entry_from_source() {
 }
 
 bootstrap_alteran_from_archive_sources() {
-  if is_blank "$ALTERAN_ARCHIVE_SOURCES"; then
-    printf '%s\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES is empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
+  combined_archive_sources="$ALTERAN_ARCHIVE_SOURCES"
+  if ! is_blank "$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"; then
+    if is_blank "$combined_archive_sources"; then
+      combined_archive_sources="$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"
+    else
+      combined_archive_sources="$combined_archive_sources;$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"
+    fi
+  fi
+  if is_blank "$combined_archive_sources"; then
+    printf '%s\n' "Cannot download Alteran from archive sources because ALTERAN_ARCHIVE_SOURCES and ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES are empty. Set ALTERAN_ARCHIVE_SOURCES before running setup." >&2
     return 1
   fi
   if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
     printf '%s\n' "Archive-based Alteran bootstrap requires curl and unzip." >&2
     return 1
   fi
-  for source in $(split_sources "$ALTERAN_ARCHIVE_SOURCES"); do
+  for source in $(split_sources "$combined_archive_sources"); do
     temp_root=$(mktemp -d "${TMPDIR:-/tmp}/alteran-archive.XXXXXX") || return 1
     archive_path="$temp_root/alteran.zip"
     extract_dir="$temp_root/extract"
