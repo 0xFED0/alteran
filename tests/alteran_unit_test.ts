@@ -690,6 +690,22 @@ Deno.test("publish_jsr argument parsing supports version, token, and dry-run fla
   }
 });
 
+Deno.test("publish_jsr treats empty token env vars as unset", () => {
+  const previousJsrToken = Deno.env.get("JSR_TOKEN");
+  const previousAlteranJsrToken = Deno.env.get("ALTERAN_JSR_TOKEN");
+
+  try {
+    Deno.env.set("JSR_TOKEN", "");
+    Deno.env.set("ALTERAN_JSR_TOKEN", "");
+
+    const parsed = parsePublishJsrArgs([]);
+    expect(parsed.token === undefined, "Expected empty token env vars to be ignored");
+  } finally {
+    restoreEnv("JSR_TOKEN", previousJsrToken);
+    restoreEnv("ALTERAN_JSR_TOKEN", previousAlteranJsrToken);
+  }
+});
+
 Deno.test("publish_jsr help describes versions and token sources", () => {
   const help = renderPublishJsrHelp();
 

@@ -2295,6 +2295,12 @@ Its normal behavior should be:
 - an explicit semantic version publishes that already-prepared version directory
 - `--dry-run` may be forwarded to the underlying `deno publish` invocation so
   maintainers can validate the real publish path without creating a release
+- empty token environment variables should be treated as unset rather than as an
+  explicit invalid token value
+
+When `publish_jsr` runs in GitHub Actions, it should allow tokenless OIDC-based
+authentication when the JSR package is linked to the repository and the job has
+`id-token: write`.
 
 Because `deno publish` requires the config being published to belong to a workspace,
 each prepared `dist/jsr/<version>/` directory may include a local publish workspace

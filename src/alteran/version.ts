@@ -1,1 +1,1 @@
-export const ALTERAN_VERSION = "0.1.7";
+export const ALTERAN_VERSION = "0.1.8";

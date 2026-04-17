@@ -59,7 +59,11 @@ It also accepts:
 - `JSR_TOKEN`
 - `ALTERAN_JSR_TOKEN`
 
-If no token is provided, the publish flow may fall back to interactive authentication.
+If no token is provided, the publish flow may fall back to:
+
+- interactive browser authentication on a local machine
+- GitHub Actions OIDC authentication in CI when the JSR package is linked to
+  the repository and the job has `id-token: write`
 
 They stage:
 
@@ -92,7 +96,9 @@ The intended flow is:
 - prepare the repository-local runtime explicitly through `refresh`
 - verify the tag matches `ALTERAN_VERSION`
 - run `publish_jsr --version current`
-- authenticate with repository secret `JSR_TOKEN`
+- on GitHub Actions, authenticate through OIDC with `id-token: write` after the
+  JSR package has been linked to the repository in JSR settings
+- optionally fall back to repository secret `JSR_TOKEN` for token-based auth
 - prepare a release zip from the same staged publication payload
 - attach that zip to the GitHub release created from the version tag
 

@@ -15,6 +15,13 @@ interface PublishJsrOptions {
   helpRequested?: boolean;
 }
 
+function normalizeOptionalToken(value: string | undefined): string | undefined {
+  if (value === undefined || value.length === 0) {
+    return undefined;
+  }
+  return value;
+}
+
 export function renderPublishJsrHelp(): string {
   return "Usage:\n  alteran tool run publish_jsr [--version <current|latest|x.y.z>] [--token <jsr-token>] [--dry-run]\n\nOptions:\n  --version current   Prepare and publish the current repository version (default)\n  --version latest    Publish the latest already-prepared dist/jsr/<version> directory\n  --version x.y.z     Publish a specific already-prepared dist/jsr/<version> directory\n  --token <token>     Pass an explicit JSR token instead of interactive auth\n  --dry-run           Run deno publish --dry-run against the prepared package without publishing it\n\nEnvironment:\n  JSR_TOKEN           Preferred publish token environment variable\n  ALTERAN_JSR_TOKEN   Backward-compatible Alteran-specific token environment variable";
 }
@@ -67,7 +74,8 @@ export async function resolveLatestPreparedJsrVersion(
 
 export function parsePublishJsrArgs(args: string[]): PublishJsrOptions {
   let version = "current";
-  let token = Deno.env.get("JSR_TOKEN") ?? Deno.env.get("ALTERAN_JSR_TOKEN") ??
+  let token = normalizeOptionalToken(Deno.env.get("JSR_TOKEN")) ??
+    normalizeOptionalToken(Deno.env.get("ALTERAN_JSR_TOKEN")) ??
     undefined;
   let dryRun = false;
 
@@ -86,12 +94,12 @@ export function parsePublishJsrArgs(args: string[]): PublishJsrOptions {
       continue;
     }
     if (arg === "--token") {
-      token = args[index + 1] ?? "";
+      token = normalizeOptionalToken(args[index + 1] ?? "");
       index++;
       continue;
     }
     if (arg.startsWith("--token=")) {
-      token = arg.slice("--token=".length);
+      token = normalizeOptionalToken(arg.slice("--token=".length));
       continue;
     }
     if (arg === "--dry-run") {
@@ -149,9 +157,18 @@ export async function main(args: string[]): Promise<void> {
     publishArgs.push("--token", options.token);
   }
 
+  const publishEnv = Deno.env.toObject();
+  if (normalizeOptionalToken(publishEnv.JSR_TOKEN) === undefined) {
+    delete publishEnv.JSR_TOKEN;
+  }
+  if (normalizeOptionalToken(publishEnv.ALTERAN_JSR_TOKEN) === undefined) {
+    delete publishEnv.ALTERAN_JSR_TOKEN;
+  }
+
   const output = await new Deno.Command(Deno.execPath(), {
     args: publishArgs,
     cwd: distDir,
+    env: publishEnv,
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",

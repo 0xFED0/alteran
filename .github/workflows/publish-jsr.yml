@@ -90,6 +90,8 @@ jobs:
         if: env.PUBLICATION_MODE == 'publish'
         working-directory: .
         env:
+          # Optional token fallback. When this secret is absent, publish_jsr should
+          # still allow GitHub Actions OIDC auth via `id-token: write`.
           JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
         run: deno run -A ./alteran.ts tool run publish_jsr
 
