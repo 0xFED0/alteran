@@ -659,7 +659,7 @@ Deno.test("prepare_jsr stays lean while release zip staging adds docs", async ()
   );
 });
 
-Deno.test("publish_jsr argument parsing supports version and token flags", () => {
+Deno.test("publish_jsr argument parsing supports version, token, and dry-run flags", () => {
   const previousJsrToken = Deno.env.get("JSR_TOKEN");
   const previousAlteranJsrToken = Deno.env.get("ALTERAN_JSR_TOKEN");
 
@@ -671,13 +671,16 @@ Deno.test("publish_jsr argument parsing supports version and token flags", () =>
       "--version",
       "latest",
       "--token=flag-token",
+      "--dry-run",
     ]);
     expect(parsed.version === "latest", "Expected explicit --version to be parsed");
     expect(parsed.token === "flag-token", "Expected explicit --token to override env token");
+    expect(parsed.dryRun === true, "Expected explicit --dry-run to be parsed");
 
     const envParsed = parsePublishJsrArgs([]);
     expect(envParsed.version === "current", "Expected publish_jsr to default to current version");
     expect(envParsed.token === "env-token", "Expected publish_jsr to accept ALTERAN_JSR_TOKEN from env");
+    expect(envParsed.dryRun === false, "Expected publish_jsr dry-run to default to false");
 
     const helpParsed = parsePublishJsrArgs(["--help"]);
     expect(helpParsed.helpRequested === true, "Expected publish_jsr to recognize --help");
@@ -693,6 +696,10 @@ Deno.test("publish_jsr help describes versions and token sources", () => {
   expect(
     help.includes("--version <current|latest|x.y.z>"),
     "Expected publish_jsr help to describe version selection",
+  );
+  expect(
+    help.includes("--dry-run"),
+    "Expected publish_jsr help to describe dry-run support",
   );
   expect(
     help.includes("JSR_TOKEN") && help.includes("ALTERAN_JSR_TOKEN"),

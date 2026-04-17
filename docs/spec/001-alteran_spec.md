@@ -2293,6 +2293,8 @@ Its normal behavior should be:
 - `current` prepares and publishes the current repository version
 - `latest` publishes the latest already-prepared staged version under `dist/jsr/`
 - an explicit semantic version publishes that already-prepared version directory
+- `--dry-run` may be forwarded to the underlying `deno publish` invocation so
+  maintainers can validate the real publish path without creating a release
 
 Because `deno publish` requires the config being published to belong to a workspace,
 each prepared `dist/jsr/<version>/` directory may include a local publish workspace

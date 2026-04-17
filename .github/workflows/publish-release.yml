@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip GitHub release publication and upload the prepared release zip as a workflow artifact"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -20,28 +27,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
+      - name: Resolve publication context
+        working-directory: .
+        env:
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+        run: |
+          ALTERAN_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
+          echo "ALTERAN_VERSION=$ALTERAN_VERSION" >> "$GITHUB_ENV"
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$DRY_RUN_INPUT" != "true" ]; then
+              echo "Manual publish-release runs only support dry-run mode." >&2
+              exit 1
+            fi
+
+            TARGET_TAG="$(git tag --merged HEAD --list 'v*' --sort=-v:refname | head -n1)"
+            if [ -z "$TARGET_TAG" ]; then
+              echo "Could not resolve a merged v* tag for dry-run." >&2
+              exit 1
+            fi
+
+            echo "PUBLICATION_MODE=dry-run" >> "$GITHUB_ENV"
+            echo "TARGET_TAG=$TARGET_TAG" >> "$GITHUB_ENV"
+          else
+            echo "PUBLICATION_MODE=publish" >> "$GITHUB_ENV"
+            echo "TARGET_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          fi
+
       - name: Refresh local runtime
         working-directory: .
         run: deno run -A ./alteran.ts refresh
 
-      - name: Resolve Alteran version
-        working-directory: .
-        run: |
-          echo "ALTERAN_VERSION=$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')" >> "$GITHUB_ENV"
-
       - name: Verify tag matches Alteran version
         working-directory: .
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${TARGET_TAG#v}"
           if [ "$TAG_VERSION" != "$ALTERAN_VERSION" ]; then
-            echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $ALTERAN_VERSION" >&2
-            exit 1
+            if [ "$PUBLICATION_MODE" = "publish" ]; then
+              echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $ALTERAN_VERSION" >&2
+              exit 1
+            fi
+
+            echo "Dry-run continues with latest reachable tag $TARGET_TAG even though it does not match ALTERAN_VERSION $ALTERAN_VERSION."
           fi
 
       - name: Prepare release artifacts
@@ -51,6 +86,15 @@ jobs:
           deno run -A ./alteran.ts tool run prepare_zip
 
       - name: Publish GitHub release asset
+        if: env.PUBLICATION_MODE == 'publish'
         uses: softprops/action-gh-release@v2
         with:
           files: ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
+
+      - name: Upload dry-run release artifact
+        if: env.PUBLICATION_MODE == 'dry-run'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-zip-${{ env.ALTERAN_VERSION }}
+          path: ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
+          if-no-files-found: error

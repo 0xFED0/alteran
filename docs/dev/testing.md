@@ -137,6 +137,12 @@ Repository CI and release workflows should also keep entry-surface discipline:
   project surfaces rather than pretending authored source alone is the steady
   execution contract.
 
+For publication workflow debugging, repository automation may also expose a
+manual dry-run path that exercises the same preparation and staging logic
+without performing the final external publish or release mutation. In that
+mode, prepared publication outputs should be preserved as workflow artifacts so
+maintainers can inspect the staged payload directly.
+
 At minimum, CI should include:
 
 - `deno check` for Alteran source, tools, and test files

@@ -11,11 +11,12 @@ import {
 interface PublishJsrOptions {
   version: string;
   token?: string;
+  dryRun?: boolean;
   helpRequested?: boolean;
 }
 
 export function renderPublishJsrHelp(): string {
-  return "Usage:\n  alteran tool run publish_jsr [--version <current|latest|x.y.z>] [--token <jsr-token>]\n\nOptions:\n  --version current   Prepare and publish the current repository version (default)\n  --version latest    Publish the latest already-prepared dist/jsr/<version> directory\n  --version x.y.z     Publish a specific already-prepared dist/jsr/<version> directory\n  --token <token>     Pass an explicit JSR token instead of interactive auth\n\nEnvironment:\n  JSR_TOKEN           Preferred publish token environment variable\n  ALTERAN_JSR_TOKEN   Backward-compatible Alteran-specific token environment variable";
+  return "Usage:\n  alteran tool run publish_jsr [--version <current|latest|x.y.z>] [--token <jsr-token>] [--dry-run]\n\nOptions:\n  --version current   Prepare and publish the current repository version (default)\n  --version latest    Publish the latest already-prepared dist/jsr/<version> directory\n  --version x.y.z     Publish a specific already-prepared dist/jsr/<version> directory\n  --token <token>     Pass an explicit JSR token instead of interactive auth\n  --dry-run           Run deno publish --dry-run against the prepared package without publishing it\n\nEnvironment:\n  JSR_TOKEN           Preferred publish token environment variable\n  ALTERAN_JSR_TOKEN   Backward-compatible Alteran-specific token environment variable";
 }
 
 function isVersionDirectoryName(name: string): boolean {
@@ -68,11 +69,12 @@ export function parsePublishJsrArgs(args: string[]): PublishJsrOptions {
   let version = "current";
   let token = Deno.env.get("JSR_TOKEN") ?? Deno.env.get("ALTERAN_JSR_TOKEN") ??
     undefined;
+  let dryRun = false;
 
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--help" || arg === "-h") {
-      return { version, token, helpRequested: true };
+      return { version, token, dryRun, helpRequested: true };
     }
     if (arg === "--version") {
       version = args[index + 1] ?? "";
@@ -92,6 +94,10 @@ export function parsePublishJsrArgs(args: string[]): PublishJsrOptions {
       token = arg.slice("--token=".length);
       continue;
     }
+    if (arg === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
     throw new Error(`Unsupported publish_jsr argument: ${arg}`);
   }
 
@@ -102,7 +108,7 @@ export function parsePublishJsrArgs(args: string[]): PublishJsrOptions {
     throw new Error("publish_jsr requires a non-empty --token value");
   }
 
-  return { version, token };
+  return { version, token, dryRun };
 }
 
 export async function resolvePublishVersion(
@@ -136,6 +142,9 @@ export async function main(args: string[]): Promise<void> {
   }
 
   const publishArgs = ["publish", "--config", "jsr.json"];
+  if (options.dryRun) {
+    publishArgs.push("--dry-run");
+  }
   if (options.token) {
     publishArgs.push("--token", options.token);
   }

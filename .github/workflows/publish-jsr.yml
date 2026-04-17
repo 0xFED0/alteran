@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip external JSR publish and upload the prepared JSR package as a workflow artifact"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -21,11 +28,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Resolve publication context
+        working-directory: .
+        env:
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+        run: |
+          ALTERAN_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
+          echo "ALTERAN_VERSION=$ALTERAN_VERSION" >> "$GITHUB_ENV"
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$DRY_RUN_INPUT" != "true" ]; then
+              echo "Manual publish-jsr runs only support dry-run mode." >&2
+              exit 1
+            fi
+
+            TARGET_TAG="$(git tag --merged HEAD --list 'v*' --sort=-v:refname | head -n1)"
+            if [ -z "$TARGET_TAG" ]; then
+              echo "Could not resolve a merged v* tag for dry-run." >&2
+              exit 1
+            fi
+
+            echo "PUBLICATION_MODE=dry-run" >> "$GITHUB_ENV"
+            echo "TARGET_TAG=$TARGET_TAG" >> "$GITHUB_ENV"
+          else
+            echo "PUBLICATION_MODE=publish" >> "$GITHUB_ENV"
+            echo "TARGET_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          fi
 
       - name: Refresh local runtime
         working-directory: .
@@ -34,15 +70,32 @@ jobs:
       - name: Verify tag matches Alteran version
         working-directory: .
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          SOURCE_VERSION="$(deno eval 'import { ALTERAN_VERSION } from "./src/alteran/version.ts"; console.log(ALTERAN_VERSION)')"
-          if [ "$TAG_VERSION" != "$SOURCE_VERSION" ]; then
-            echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $SOURCE_VERSION" >&2
-            exit 1
+          TAG_VERSION="${TARGET_TAG#v}"
+          if [ "$TAG_VERSION" != "$ALTERAN_VERSION" ]; then
+            if [ "$PUBLICATION_MODE" = "publish" ]; then
+              echo "Tag version $TAG_VERSION does not match ALTERAN_VERSION $ALTERAN_VERSION" >&2
+              exit 1
+            fi
+
+            echo "Dry-run continues with latest reachable tag $TARGET_TAG even though it does not match ALTERAN_VERSION $ALTERAN_VERSION."
           fi
 
       - name: Publish to JSR
+        if: env.PUBLICATION_MODE == 'publish'
         working-directory: .
         env:
           JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
         run: deno run -A ./alteran.ts tool run publish_jsr
+
+      - name: Run JSR dry-run publish check
+        if: env.PUBLICATION_MODE == 'dry-run'
+        working-directory: .
+        run: deno run -A ./alteran.ts tool run publish_jsr --dry-run
+
+      - name: Upload dry-run JSR package
+        if: env.PUBLICATION_MODE == 'dry-run'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsr-package-${{ env.ALTERAN_VERSION }}
+          path: ./dist/jsr/${{ env.ALTERAN_VERSION }}
+          if-no-files-found: error

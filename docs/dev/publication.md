@@ -52,6 +52,7 @@ runtime surface.
 - `--version latest` to publish the latest already-prepared `dist/jsr/<version>/`
 - `--version <x.y.z>` to publish a specific already-prepared version directory
 - `--token <token>` to pass a JSR token explicitly
+- `--dry-run` to run `deno publish --dry-run` against the prepared package without publishing it
 
 It also accepts:
 
@@ -94,6 +95,24 @@ The intended flow is:
 - authenticate with repository secret `JSR_TOKEN`
 - prepare a release zip from the same staged publication payload
 - attach that zip to the GitHub release created from the version tag
+
+For maintainer workflow debugging, the publish workflows also support manual
+`workflow_dispatch` dry-runs.
+
+That dry-run mode should:
+
+- resolve the current `ALTERAN_VERSION` from source;
+- resolve the latest reachable merged `v*` tag from the current branch;
+- run the same test, refresh, and artifact-preparation flow without performing
+  the real external publish step;
+- use `publish_jsr --dry-run` for the JSR path so the workflow validates the
+  real `deno publish` preflight path rather than only checking package staging;
+- upload the prepared staged output as a workflow artifact instead:
+  - `publish-jsr` uploads `dist/jsr/<version>/`
+  - `publish-release` uploads `dist/zips/<version>/alteran-v<version>.zip`
+
+The dry-run path is intended for validating workflow mechanics without burning a
+real version bump or creating a real release asset.
 
 Publication tooling should be treated as product-critical. If the public bootstrap story changes, publication outputs, tests, and docs should change together.
 
