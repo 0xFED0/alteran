@@ -143,6 +143,11 @@ without performing the final external publish or release mutation. In that
 mode, prepared publication outputs should be preserved as workflow artifacts so
 maintainers can inspect the staged payload directly.
 
+When maintainers update GitHub Actions workflow dependencies, they should verify
+the current major version from the action's own upstream README or Marketplace
+page at edit time instead of reusing a memorized version tag. AI assistants
+working on workflow files should follow the same rule.
+
 At minimum, CI should include:
 
 - `deno check` for Alteran source, tools, and test files

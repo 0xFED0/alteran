@@ -24,6 +24,12 @@ jobs:
   publish:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      # Declared here so workflow/schema validation sees these names.
+      # Resolve publication context overwrites them for later steps via GITHUB_ENV.
+      ALTERAN_VERSION: ""
+      TARGET_TAG: ""
+      PUBLICATION_MODE: ""
 
     steps:
       - name: Checkout
@@ -94,7 +100,7 @@ jobs:
 
       - name: Upload dry-run JSR package
         if: env.PUBLICATION_MODE == 'dry-run'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jsr-package-${{ env.ALTERAN_VERSION }}
           path: ./dist/jsr/${{ env.ALTERAN_VERSION }}

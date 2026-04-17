@@ -114,6 +114,11 @@ That dry-run mode should:
 The dry-run path is intended for validating workflow mechanics without burning a
 real version bump or creating a real release asset.
 
+When editing publication workflows, verify GitHub Action major versions against
+the action's official upstream documentation at edit time instead of relying on
+remembered examples. In this repository that especially applies to helpers such
+as checkout, artifact upload, Deno setup, and GitHub release publication.
+
 Publication tooling should be treated as product-critical. If the public bootstrap story changes, publication outputs, tests, and docs should change together.
 
 ## Navigation
