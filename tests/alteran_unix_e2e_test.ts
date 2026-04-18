@@ -1116,6 +1116,51 @@ Deno.test({
 
 Deno.test({
   name:
+    "copied setup can bootstrap from internal bootstrap archive handoff when public archive sources are empty",
+  ignore: IS_WINDOWS,
+  async fn() {
+    const fixture = await prepareBootstrapFixture(ALTERAN_REPO_DIR);
+    const server = await tryStartFixtureServer(fixture.servedDir);
+    if (server === null) {
+      await fixture.cleanup();
+      return;
+    }
+    const projectDir = await Deno.makeTempDir({
+      prefix: "alteran-copy-activate-http-bootstrap-handoff-",
+    });
+
+    try {
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup"),
+        join(projectDir, "setup"),
+      );
+      await Deno.copyFile(
+        join(ALTERAN_REPO_DIR, "setup.bat"),
+        join(projectDir, "setup.bat"),
+      );
+      await Deno.chmod(join(projectDir, "setup"), 0o755);
+
+      await assertSuccessfulShellActivation(
+        `cd ${
+          JSON.stringify(projectDir)
+        } && ./setup >/dev/null && . ./activate`,
+        projectDir,
+        {
+          ALTERAN_RUN_SOURCES: "",
+          ALTERAN_ARCHIVE_SOURCES: "",
+          ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES: `${server.baseUrl}/alteran.zip`,
+          PATH: hostDenoPath(),
+        },
+      );
+    } finally {
+      await server.close();
+      await fixture.cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name:
     "repository setup can initialize an explicit target directory and generated activate can then be sourced",
   ignore: IS_WINDOWS,
   async fn() {

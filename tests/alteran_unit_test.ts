@@ -33,6 +33,8 @@ import {
 import {
   getDefaultAlteranArchiveSources,
   getDefaultBootstrapArchiveSources,
+  readSetupBatTemplate,
+  readSetupTemplate,
   renderArchiveSourceTemplate,
 } from "../src/alteran/templates/bootstrap.ts";
 import { runCli } from "../src/alteran/mod.ts";
@@ -192,6 +194,32 @@ Deno.test("archive source templates resolve against ALTERAN_VERSION", () => {
     getDefaultBootstrapArchiveSources().join("|") ===
       getDefaultAlteranArchiveSources().join("|"),
     "Expected bootstrap archive defaults to resolve from the same versioned templates",
+  );
+});
+
+Deno.test("generated setup templates keep public and bootstrap archive source surfaces distinct", async () => {
+  const setupTemplate = await readSetupTemplate();
+  const setupBatTemplate = await readSetupBatTemplate();
+
+  expect(
+    setupTemplate.includes("ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"),
+    "Expected shell setup template to expose internal bootstrap archive handoff sources",
+  );
+  expect(
+    setupTemplate.includes(
+      'combined_archive_sources="$combined_archive_sources;$ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES"',
+    ),
+    "Expected shell setup template to append bootstrap archive handoff sources after user archive sources",
+  );
+  expect(
+    setupBatTemplate.includes("ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST"),
+    "Expected batch setup template to expand bootstrap archive handoff sources separately from public archive sources",
+  );
+  expect(
+    setupBatTemplate.includes(
+      'set "ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST=%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST% %ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST%"',
+    ),
+    "Expected batch setup template to append bootstrap archive handoff sources after user archive sources",
   );
 });
 
