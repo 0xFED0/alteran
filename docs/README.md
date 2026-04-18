@@ -22,7 +22,8 @@ If you are new to Alteran:
 1. Read [the repository README](../README.md).
 2. Continue with [Getting Started](./user/getting-started.md).
 3. Follow the fuller [Quickstart](./user/quickstart.md).
-4. Use [Concepts](./user/concepts.md) and [Project Layout](./user/project-layout.md) to build the right mental model.
+4. Use [Setup Launch Methods](./user/guides/setup-launch-methods.md) when you need the canonical list of supported bootstrap entry paths.
+5. Use [Concepts](./user/concepts.md) and [Project Layout](./user/project-layout.md) to build the right mental model.
 
 If you are changing Alteran itself:
 

@@ -13,13 +13,14 @@ cd hello-alteran
 
 ## 2. Bootstrap The Project
 
-The intended public package path is:
+The simplest Unix path is the versioned public bootstrap script:
 
 ```sh
-deno run -A jsr:@alteran/alteran setup
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
 ```
 
-That path is great when Deno is already available on the machine.
+This path does not assume a global Deno install. It downloads the public `setup`
+script for Alteran `0.1.9` and runs it against the current directory.
 
 ## 3. Enter The Local Environment
 
@@ -134,14 +135,45 @@ A typical flow looks like this:
 
 That is the main reason Alteran prefers project-local runtime material over assuming one global installation shared by every project on the machine.
 
-## 12. Alternative Bootstrap When Deno Is Not Installed Yet
+## 12. Other Ways To Run `setup`
 
-If the machine does not already have Deno, the checked-in `setup` script is the important fallback.
+The Unix `curl ... | sh -s -- .` path is the shortest one, but it is not the only
+way to bootstrap a project.
 
-Typical options are:
+### Unix: Keep A Local `setup` File In The Project
 
-1. download `setup` from this repository into the target directory and run it there;
-2. use a checked-out Alteran repository copy and bootstrap another directory with `./setup <dir>`.
+```sh
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9
+chmod +x ./setup
+./setup
+source ./activate
+```
+
+This is a good fit when you want the project directory to keep its own committed
+or copyable bootstrap file right away.
+
+### Windows: Download And Run `setup.bat`
+
+```bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9.bat
+call setup.bat
+call activate.bat
+```
+
+This is the direct Windows equivalent of keeping a local checked-in bootstrap
+surface in the project directory.
+
+### Deno: Public Package Entry
+
+If Deno is already installed globally, the public package path is still
+available:
+
+```sh
+deno run -A jsr:@alteran/alteran setup
+source ./activate
+```
+
+### From An Existing Alteran Checkout
 
 Repository-local example:
 
@@ -150,7 +182,8 @@ Repository-local example:
 source ./some-project/activate
 ```
 
-That path is not only for developing the Alteran repository itself. It is also part of the practical bootstrap story for real projects on machines where Deno is not available yet.
+That path is useful when you already have an Alteran checkout and want to
+bootstrap another directory from it without downloading anything else.
 
 ## Next Reading
 

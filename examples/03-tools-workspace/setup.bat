@@ -35,7 +35,7 @@ if not defined ALTERAN_RUN_SOURCES (
     set "ALTERAN_RUN_SOURCES=jsr:@alteran/alteran"
   )
 )
-if not defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES=https://github.com/0xFED0/alteran/releases/download/v0.1.8/alteran-v0.1.8.zip"
+if not defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES=https://github.com/0xFED0/alteran/releases/download/v0.1.9/alteran-v0.1.9.zip"
 if /I "%DENO_SOURCES%"=="__ALTERAN_EMPTY__" set "DENO_SOURCES="
 if /I "%ALTERAN_SOURCES%"=="__ALTERAN_EMPTY__" set "ALTERAN_SOURCES="
 if /I "%ALTERAN_RUN_SOURCES%"=="__ALTERAN_EMPTY__" set "ALTERAN_RUN_SOURCES="

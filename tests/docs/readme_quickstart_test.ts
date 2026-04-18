@@ -12,7 +12,7 @@ import {
 } from "../examples/_example_test_utils.ts";
 
 Deno.test({
-  name: "README quick start stays runnable from a clean repository copy",
+  name: "README quick start repository-local equivalent stays runnable from a clean repository copy",
   ignore: !REQUIRES_LOCAL_DENO_FIXTURE || !REQUIRES_GIT_REPO_COPY,
   async fn() {
     const repoDir = await prepareRepoCopy();
