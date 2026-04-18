@@ -589,6 +589,12 @@ Rules:
   - check internet connection
   - add/fix mirrors in the relevant source-list variable
 
+Windows batch note:
+
+- inherited empty environment values are not a reliable way for `setup.bat` to distinguish "explicitly disabled" from "unset"
+- `setup.bat` should therefore recognize the sentinel value `__ALTERAN_EMPTY__` for source-list variables such as `DENO_SOURCES`, `ALTERAN_RUN_SOURCES`, `ALTERAN_ARCHIVE_SOURCES`, `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`, and legacy `ALTERAN_SOURCES`
+- when `setup.bat` sees `__ALTERAN_EMPTY__`, it must treat that source list as explicitly empty and must not silently restore built-in defaults for that variable
+
 #### `DENO_SOURCES`
 
 `DENO_SOURCES` is intended for Deno runtime archive mirrors.

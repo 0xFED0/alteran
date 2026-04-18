@@ -216,6 +216,14 @@ Deno.test("generated setup templates keep public and bootstrap archive source su
     "Expected batch setup template to expand bootstrap archive handoff sources separately from public archive sources",
   );
   expect(
+    setupBatTemplate.includes('if /I "%ALTERAN_RUN_SOURCES%"=="__ALTERAN_EMPTY__" set "ALTERAN_RUN_SOURCES="'),
+    "Expected batch setup template to support an explicit disable sentinel for runnable source configuration",
+  );
+  expect(
+    setupBatTemplate.includes('if /I "%ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES%"=="__ALTERAN_EMPTY__" set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="'),
+    "Expected batch setup template to support an explicit disable sentinel for bootstrap archive handoff configuration",
+  );
+  expect(
     setupBatTemplate.includes(
       'set "ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST=%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST% %ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST%"',
     ),

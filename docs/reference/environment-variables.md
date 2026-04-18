@@ -24,6 +24,12 @@ default archive source templates for the current Alteran version. When either
 archive variable is defined, Alteran uses the explicit archive-source lists
 derived from those variables instead of inventing additional defaults.
 
+Windows `setup.bat` note:
+
+- inherited empty env values are not a reliable "explicit empty list" signal in plain `cmd`
+- for batch bootstrap only, source-list variables may use the sentinel value `__ALTERAN_EMPTY__` to mean "treat this source list as explicitly empty"
+- this is especially relevant for `DENO_SOURCES`, `ALTERAN_RUN_SOURCES`, `ALTERAN_ARCHIVE_SOURCES`, `ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES`, and legacy `ALTERAN_SOURCES`
+
 `ALTERAN_EXTERNAL_CTX` is only for explicit foreign-project execution and should point at `alteran.json` or `app.json`. `deno.json` is not a valid external context anchor.
 
 ## Activation Variables
