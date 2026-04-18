@@ -291,6 +291,40 @@ Deno.test("runCli provides help for subcommands instead of treating help as data
   }
 });
 
+Deno.test("runCli supports top-level version flags", async () => {
+  const consoleLog = console.log;
+  const consoleError = console.error;
+  const messages: string[] = [];
+  const errors: string[] = [];
+  console.log = (...args: unknown[]) => {
+    messages.push(args.map(String).join(" "));
+  };
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(" "));
+  };
+
+  try {
+    const longExitCode = await runCli(["--version"]);
+    const shortExitCode = await runCli(["-V"]);
+
+    expect(
+      longExitCode === 0 && shortExitCode === 0,
+      "Expected top-level version flags to exit successfully",
+    );
+    expect(
+      messages.join("\n").includes(`Alteran ${ALTERAN_VERSION}`),
+      "Expected top-level version flags to print the Alteran version",
+    );
+    expect(
+      errors.length === 0,
+      "Expected top-level version flags not to print errors",
+    );
+  } finally {
+    console.log = consoleLog;
+    console.error = consoleError;
+  }
+});
+
 Deno.test("project .env can point ALTERAN_SRC to a relative authored source root", async () => {
   const projectDir = await Deno.makeTempDir({ prefix: "alteran-dotenv-" });
   const sourceRoot = join(projectDir, "custom-src");

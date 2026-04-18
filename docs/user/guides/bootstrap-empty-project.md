@@ -9,7 +9,7 @@ It also covers an important part of the product story that is easy to miss at fi
 ```sh
 mkdir hello-alteran
 cd hello-alteran
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
 source ./activate
 ```
 

@@ -28,7 +28,11 @@ cd hello-alteran
 Initialize it from the versioned public bootstrap script:
 
 ```sh
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
+```
+
+Activate env:
+```
 source ./activate
 ```
 
@@ -82,7 +86,7 @@ Other common ways to launch `setup` are:
 Unix, keep a local `setup` file in the project:
 
 ```sh
-curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10
 chmod +x ./setup
 ./setup
 source ./activate
@@ -91,7 +95,7 @@ source ./activate
 Windows, download `setup.bat` into the project and run it:
 
 ```bat
-curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9.bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.bat
 call setup.bat
 call activate.bat
 ```

@@ -31,6 +31,7 @@ import {
 } from "./runtime.ts";
 import { exists } from "./fs.ts";
 import type { AppConfig } from "./types.ts";
+import { ALTERAN_VERSION } from "./version.ts";
 
 export {
   addApp,
@@ -87,6 +88,10 @@ Aliases:
   atest  -> alteran test
   ax     -> alteran x
   adeno  -> alteran deno`);
+}
+
+function printVersion(): void {
+  console.log(`Alteran ${ALTERAN_VERSION}`);
 }
 
 function printAppHelp(): void {
@@ -1078,6 +1083,10 @@ async function runCliInternal(
       case "--help":
       case "-h":
         printHelp();
+        return 0;
+      case "--version":
+      case "-V":
+        printVersion();
         return 0;
       default:
         throw new Error(`Unknown command: ${command}`);

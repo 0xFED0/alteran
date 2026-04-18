@@ -78,7 +78,7 @@ if ! is_var_defined ALTERAN_RUN_SOURCES; then
   export ALTERAN_RUN_SOURCES
 fi
 if ! is_var_defined ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES; then
-  ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="https://github.com/0xFED0/alteran/releases/download/v0.1.9/alteran-v0.1.9.zip"
+  ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="https://github.com/0xFED0/alteran/releases/download/v0.1.10/alteran-v0.1.10.zip"
   export ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES
 fi
 
