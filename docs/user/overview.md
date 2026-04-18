@@ -19,6 +19,7 @@ Alteran is not a desktop framework, not an IPC framework, and not a replacement 
 
 - [Getting Started](./getting-started.md)
 - [Quickstart](./quickstart.md)
+- [Setup Launch Methods](./guides/setup-launch-methods.md)
 - [Concepts](./concepts.md)
 - [Project Layout](./project-layout.md)
 - [Activation](./activation.md)

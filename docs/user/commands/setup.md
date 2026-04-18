@@ -22,13 +22,17 @@ alteran shellenv [dir] [--shell=sh|batch]
 
 If a project was moved, partially cleaned, or entered on a fresh machine, `setup` is the command that restores it to a working state.
 
-The intended public package form is:
+One valid public package form is:
 
 ```sh
 deno run -A jsr:@alteran/alteran setup
 ```
 
 Inside the Alteran source repository itself, the equivalent bootstrap surface is the checked-in `./setup` script.
+
+For the full list of supported launch paths such as versioned `curl ... | sh`,
+downloaded `setup.bat`, and repository-local `./setup
+<dir>`, see [Setup Launch Methods](../guides/setup-launch-methods.md).
 
 ## Target Directory Semantics
 
@@ -61,6 +65,7 @@ If you only want to start using the project, prefer `setup` and then `activate`.
 
 - [Activation](../activation.md)
 - [Bootstrap guide](../guides/bootstrap-empty-project.md)
+- [Setup launch methods](../guides/setup-launch-methods.md)
 - [Reference CLI](../../reference/cli.md)
 
 ## Navigation

@@ -25,10 +25,10 @@ mkdir hello-alteran
 cd hello-alteran
 ```
 
-Initialize it from the intended public package entrypoint:
+Initialize it from the versioned public bootstrap script:
 
 ```sh
-deno run -A jsr:@alteran/alteran setup
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
 source ./activate
 ```
 
@@ -73,23 +73,42 @@ This quick start shows the core Alteran story: bootstrap a project, enter its lo
 
 For a fuller walkthrough, see [docs/user/quickstart.md](./docs/user/quickstart.md).
 
-## No Global Deno Yet?
+## Setup Launch Options
 
-If the target machine does not already have Deno installed, use the checked-in bootstrap script instead of the JSR command.
+The Unix one-liner above is the simplest path because it does not assume a global Deno install.
 
-Two common paths are:
+Other common ways to launch `setup` are:
 
-1. download `setup` from this repository into the target directory and run it there;
-2. if you already have a checkout of this repository, run `./setup <dir>` to bootstrap another directory.
+Unix, keep a local `setup` file in the project:
 
-Repository-local example:
+```sh
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9
+chmod +x ./setup
+./setup
+source ./activate
+```
+
+Windows, download `setup.bat` into the project and run it:
+
+```bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9.bat
+call setup.bat
+call activate.bat
+```
+
+If Deno is already installed globally, use the public package entrypoint:
+
+```sh
+deno run -A jsr:@alteran/alteran setup
+source ./activate
+```
+
+If you already have a checkout of this repository, bootstrap another directory directly:
 
 ```sh
 ./setup ./some-project
 source ./some-project/activate
 ```
-
-This keeps the bootstrap story working even before any global Deno runtime is available on the machine.
 
 ## Portable Project Folders
 
@@ -120,7 +139,7 @@ That same `./setup` pattern is not special to the Alteran repository itself. The
 source ./some-project/activate
 ```
 
-That is the path to use when you want to bootstrap a project on a machine where `deno run -A jsr:@alteran/alteran setup` is not available because Deno is not yet installed globally.
+That is the path to use when you already have an Alteran checkout and want to bootstrap another project directory from it.
 
 In this repository, Alteran authored source lives under `src/alteran/`, `src/tools/`, and `src/libs/`. The local `.runtime/` tree is materialized runtime state.
 

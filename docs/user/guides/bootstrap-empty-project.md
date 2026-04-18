@@ -9,11 +9,16 @@ It also covers an important part of the product story that is easy to miss at fi
 ```sh
 mkdir hello-alteran
 cd hello-alteran
-deno run -A jsr:@alteran/alteran setup
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
 source ./activate
 ```
 
-This is the most convenient path when Deno is already present on the machine.
+This is the shortest public Unix bootstrap path and does not require a global
+Deno install up front.
+
+For the full list of setup launch paths, including Windows `setup.bat`, Deno
+package entry, and repository-local `./setup <dir>`, see
+[Setup Launch Methods](./setup-launch-methods.md).
 
 ## Repository-Local Equivalent
 
@@ -53,4 +58,4 @@ See [01-bootstrap-empty-folder](../../../examples/01-bootstrap-empty-folder/READ
 ## Navigation
 - Home: [Docs Index](../../README.md)
 - Previous: [Update, Upgrade, And Use](../commands/update-upgrade-use.md)
-- Next: [Working With Apps](./working-with-apps.md)
+- Next: [Setup Launch Methods](./setup-launch-methods.md)

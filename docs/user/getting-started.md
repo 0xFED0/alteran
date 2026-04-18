@@ -26,13 +26,15 @@ That usually means the beginner path is:
 3. create an app or tool
 4. run it through `alteran`
 
-If the machine already has Deno, the public package path is convenient:
+The shortest public Unix bootstrap path is:
 
 ```sh
-deno run -A jsr:@alteran/alteran setup
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.9/setup-v0.1.9 | sh -s -- .
 ```
 
-If it does not, the checked-in `setup` script is the fallback that keeps the bootstrap story working.
+If you want the full matrix of launch options such as Windows `setup.bat`,
+downloaded local `setup`, Deno package entry, or
+repository-local `./setup <dir>`, use [Setup Launch Methods](./guides/setup-launch-methods.md).
 
 ## Good Companion Docs
 
@@ -41,6 +43,7 @@ If it does not, the checked-in `setup` script is the fallback that keeps the boo
 - [Activation](./activation.md) for shell entry behavior
 - [Command overview](./commands/overview.md) for the CLI surface
 - [Bootstrap guide](./guides/bootstrap-empty-project.md) for the empty-folder story
+- [Setup launch methods](./guides/setup-launch-methods.md) for all supported bootstrap entry paths
 
 ## Navigation
 - Home: [Docs Index](../README.md)
