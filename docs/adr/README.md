@@ -42,6 +42,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0034: Normalize Committed Examples Through a Non-Destructive `reset` Script](./0034-normalize-committed-examples-through-a-reset-script.md)
 - [ADR 0035: Add an Explicit `from` Command for Context-Rebased Execution](./0035-add-an-explicit-from-command-for-context-rebased-execution.md)
 - [ADR 0036: Use Narrow Cleanup Handoff for Deferred Runtime Mutations](./0036-use-narrow-cleanup-handoff-for-deferred-runtime-mutations.md)
+- [ADR 0037: Extract `apack` as a Separate JSR Package with Portable Core](./0037-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
 
 ## Notes
 
