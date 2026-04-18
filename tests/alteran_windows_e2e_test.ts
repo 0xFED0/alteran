@@ -496,7 +496,7 @@ Deno.test({
 
 Deno.test({
   name:
-    "windows cmd: copied setup.bat fails fast when runnable and archive bootstrap sources are explicitly empty",
+    "windows cmd: copied setup.bat fails fast when all Alteran bootstrap source surfaces are explicitly empty",
   ignore: !IS_WINDOWS,
   async fn() {
     const targetDir = await makeDirWithSpaces(
@@ -506,15 +506,17 @@ Deno.test({
     await copySetupScripts(targetDir);
 
     const output = await runCmd(
-      cmdCallBatch(join(targetDir, "setup.bat")),
+      cmdScript([
+        'set "ALTERAN_SOURCES="',
+        'set "ALTERAN_RUN_SOURCES="',
+        'set "ALTERAN_ARCHIVE_SOURCES="',
+        'set "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES="',
+        cmdCallBatch(join(targetDir, "setup.bat")),
+      ]),
       {
         cwd: targetDir,
         env: {
           PATH: hostDenoPathWindows(),
-          ALTERAN_SOURCES: "",
-          ALTERAN_RUN_SOURCES: "",
-          ALTERAN_ARCHIVE_SOURCES: "",
-          ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES: "",
         },
       },
     );
@@ -522,7 +524,7 @@ Deno.test({
     assertFailureContains(
       output,
       "Failed to bootstrap Alteran. Check your internet connection or extend ALTERAN_RUN_SOURCES / ALTERAN_ARCHIVE_SOURCES.",
-      "Expected copied setup.bat to fail fast when all runnable and archive source surfaces are explicitly empty",
+      "Expected copied setup.bat to fail fast when all Alteran bootstrap source surfaces are explicitly empty",
     );
   },
 });
