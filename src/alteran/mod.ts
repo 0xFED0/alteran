@@ -80,6 +80,8 @@ Commands:
 Help:
   alteran help
   alteran <command> --help
+  alteran --version
+  alteran -V
 
 Aliases:
   alt    -> alteran
