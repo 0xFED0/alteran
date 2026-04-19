@@ -44,6 +44,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0036: Use Narrow Cleanup Handoff for Deferred Runtime Mutations](./0036-use-narrow-cleanup-handoff-for-deferred-runtime-mutations.md)
 - [ADR 0037: Separate Shell Entry Surfaces from Root Bootstrap and Make `enter` the Primary Interactive Entry](./0037-separate-shell-entry-surfaces-and-make-enter-primary.md)
 - [ADR 0038: Extract `apack` as a Separate JSR Package with Portable Core](./0038-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
+- [ADR 0039: Keep `setup.bat` as the Single Windows Bootstrap Implementation and Make `setup.ps1` Release-Only](./0039-keep-setup-bat-as-the-single-windows-bootstrap-implementation-and-make-setup-ps1-release-only.md)
 
 ## Notes
 
