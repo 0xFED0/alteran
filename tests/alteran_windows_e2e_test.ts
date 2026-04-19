@@ -69,8 +69,11 @@ function hermeticAlteranEnvWindows(
   env: Record<string, string> = {},
 ): Record<string, string> {
   return {
-    ...env,
     ALTERAN_SRC: "",
+    ALTERAN_SOURCES: "",
+    ALTERAN_RUN_SOURCES: "",
+    ALTERAN_ARCHIVE_SOURCES: "",
+    ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES: "",
     ALTERAN_HOME: "",
     ALTERAN_RUN_ID: "",
     ALTERAN_ROOT_RUN_ID: "",
@@ -80,6 +83,10 @@ function hermeticAlteranEnvWindows(
     ALTERAN_LOG_CONTEXT_JSON: "",
     ALTERAN_LOGTAPE_ENABLED: "",
     ALTERAN_POSTRUN_SESSION_FILE: "",
+    DENO_SOURCES: "",
+    DENO_DIR: "",
+    DENO_INSTALL_ROOT: "",
+    ...env,
   };
 }
 
