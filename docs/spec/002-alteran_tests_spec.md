@@ -59,7 +59,15 @@ dependencies.
 
 Repository and example test harnesses may rely on a small explicit host-tool
 baseline when building deterministic local fixtures. On Unix-like hosts this
-baseline currently includes `curl`, `unzip`, `zip`, and `git`. CI configuration
+baseline currently includes:
+
+- `curl`
+- `git`
+- `zip`
+- `unzip` on Unix-like hosts
+- `tar.exe` on Windows hosts
+
+CI configuration
 should install these tools explicitly instead of assuming they happen to be
 present on the runner image. Tests that specifically require tracked-file
 repository-copy behavior may be skipped when `git` is unavailable on a local

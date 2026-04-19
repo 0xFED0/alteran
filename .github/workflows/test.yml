@@ -84,12 +84,12 @@ jobs:
 
       - name: Prepare Windows test report directory
         working-directory: .
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path .ci/test-results | Out-Null
+        shell: cmd
+        run: if not exist .ci\test-results mkdir .ci\test-results
 
       - name: Run windows e2e tests
         working-directory: .
-        shell: pwsh
+        shell: cmd
         run: deno run -A ./alteran.ts test -A --junit-path=.ci/test-results/windows-e2e.junit.xml ./tests/alteran_windows_e2e_test.ts
 
       - name: Upload Windows test report artifact

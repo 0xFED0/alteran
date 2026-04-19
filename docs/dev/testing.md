@@ -158,21 +158,27 @@ At minimum, CI should include:
 - docker e2e tests on Linux
 - Windows e2e tests on Windows
 
-On Unix-like hosts, the repository test harness assumes these system tools are
-available:
+The repository test harness assumes these system tools are available:
 
 - `curl`
-- `unzip`
 - `zip`
 - `git`
+- `unzip` on Unix-like hosts
+- `tar.exe` on Windows hosts
 
-`curl` and `unzip` are required for bootstrap paths that materialize a local
-Deno runtime. `zip` is required by local archive-fixture flows used by
-repository e2e and example tests. `git` is required by repository-copy
-documentation scenarios that intentionally operate on tracked files only. Linux
-CI should install these explicitly rather than relying on runner defaults. When
-`git` is unavailable locally, tests that require tracked-file repository copies
-should be skipped rather than rewritten to depend on an ad hoc filesystem copy.
+Bootstrap paths that materialize a local Deno runtime use platform-native
+archive tools:
+
+- Unix-like hosts use `curl` + `unzip`
+- Windows hosts use `curl.exe` + `tar.exe`
+
+`zip` is required by local archive-fixture flows used by repository e2e and
+example tests. `git` is required by repository-copy documentation scenarios
+that intentionally operate on tracked files only. Linux CI should install its
+Unix-side bootstrap tools explicitly rather than relying on runner defaults.
+When `git` is unavailable locally, tests that require tracked-file repository
+copies should be skipped rather than rewritten to depend on an ad hoc
+filesystem copy.
 
 Git-based repository-copy tests also assume that the checkout is considered safe
 by the host `git`. Docker bind mounts with mismatched ownership can trigger

@@ -204,11 +204,21 @@ async function createDenoZipArchive(
   await Deno.copyFile(Deno.execPath(), denoExePath);
 
   try {
-    const output = await runPowerShell(
-      `Compress-Archive -Force -Path ${psQuote(denoExePath)} -DestinationPath ${
-        psQuote(zipPath)
-      }`,
+    await traceCommandStart(
+      TEST_TRACE_CATEGORY.e2eRepoWindows,
+      "tar.exe -a -c -f <zip> -C <dir> deno.exe",
+      {
+        cwd: tempDir,
+      },
     );
+    const output = await new Deno.Command("tar.exe", {
+      args: ["-a", "-c", "-f", zipPath, "-C", tempDir, "deno.exe"],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    await traceCommandResult(TEST_TRACE_CATEGORY.e2eRepoWindows, output, {
+      cwd: tempDir,
+    });
     if (!output.success) {
       throw new Error(
         `Failed to create Deno archive. stdout=${

@@ -481,15 +481,12 @@ async function extractZipArchive(
   destinationDir: string,
 ): Promise<void> {
   const command = Deno.build.os === "windows"
-    ? new Deno.Command("powershell", {
+    ? new Deno.Command("tar.exe", {
       args: [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        `Expand-Archive -Force -Path '${
-          archivePath.replaceAll("'", "''")
-        }' -DestinationPath '${destinationDir.replaceAll("'", "''")}'`,
+        "-xf",
+        archivePath,
+        "-C",
+        destinationDir,
       ],
       stdout: "null",
       stderr: "piped",

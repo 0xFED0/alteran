@@ -31,6 +31,35 @@ function appProjectReference(appDir: string, projectDir: string): string {
     : `./${relativeProjectDir}`;
 }
 
+function batchAppJsonIdCheck(errorMessage: string): string {
+  return `findstr /r /c:"\\"id\\"[ ]*:[ ]*\\"%APP_ID%\\\"" ".\\app.json" >nul 2>nul
+if errorlevel 1 (
+  echo ${errorMessage} "%APP_ID%" 1>&2
+  exit /b 1
+)`;
+}
+
+function escapeBatchEchoContent(value: string): string {
+  return value
+    .replaceAll("^", "^^")
+    .replaceAll("&", "^&")
+    .replaceAll("|", "^|")
+    .replaceAll("<", "^<")
+    .replaceAll(">", "^>")
+    .replaceAll(")", "^)")
+    .replaceAll("%", "%%");
+}
+
+function renderBatchFileWriteBlock(path: string, content: string): string {
+  const lines = content.replaceAll("\r\n", "\n").split("\n");
+  const rendered = lines.map((line) =>
+    line.length === 0 ? "  echo(" : `  echo(${escapeBatchEchoContent(line)}`
+  );
+  return `> "${path}" (
+${rendered.join("\n")}
+)`;
+}
+
 function createDevAppLauncher(
   name: string,
   appDir: string,
@@ -122,13 +151,7 @@ if not exist ".\\app.json" (
   echo Alteran app launcher requires .\\app.json 1>&2
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\\app.json'));" ^
-  "if ($content -notmatch '\"id\"\\s*:\\s*\"%APP_ID%\"') { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-  echo Alteran app launcher requires app.json id "%APP_ID%" 1>&2
-  exit /b 1
-)
+${batchAppJsonIdCheck("echo Alteran app launcher requires app.json id")}
 
 set "PROJECT_DIR=%APP_DIR%${projectRef}"
 for %%I in ("%PROJECT_DIR%") do set "PROJECT_DIR=%%~fI"
@@ -224,13 +247,7 @@ if not exist ".\\app.json" (
   echo Alteran app setup requires .\\app.json 1>&2
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\\app.json'));" ^
-  "if ($content -notmatch '\"id\"\\s*:\\s*\"%APP_ID%\"') { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-  echo Alteran app setup requires app.json id "%APP_ID%" 1>&2
-  exit /b 1
-)
+${batchAppJsonIdCheck("echo Alteran app setup requires app.json id")}
 
 set "PROJECT_DIR=%APP_DIR%${projectRef}"
 for %%I in ("%PROJECT_DIR%") do set "PROJECT_DIR=%%~fI"
@@ -389,9 +406,8 @@ exit 1
 }
 
 function createStandaloneSetupScriptBat(appId: string): string {
-  const launcherBat = createStandaloneAppLauncherBat(appId)
-    .trimEnd()
-    .replaceAll("%", "%%");
+  const launcherBat = createStandaloneAppLauncherBat(appId).trimEnd();
+  const launcherWriteBlock = renderBatchFileWriteBlock("app.bat", launcherBat);
   return `@echo off
 setlocal
 set "APP_DIR=%~dp0"
@@ -406,23 +422,9 @@ if not exist ".\\app.json" (
   echo Standalone app setup requires .\\app.json 1>&2
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\\app.json'));" ^
-  "if ($content -notmatch '\"id\"\\s*:\\s*\"%APP_ID%\"') { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-  echo Standalone app setup requires app.json id "%APP_ID%" 1>&2
-  exit /b 1
-)
+${batchAppJsonIdCheck("echo Standalone app setup requires app.json id")}
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$content = @'
-${launcherBat}
-'@;" ^
-  "[System.IO.File]::WriteAllText((Join-Path (Resolve-Path '.').Path 'app.bat'), ($content -replace \"\`n\", \"\`r\`n\"))" >nul 2>nul
-if errorlevel 1 (
-  echo Standalone app setup could not regenerate app.bat 1>&2
-  exit /b 1
-)
+${launcherWriteBlock}
 
 set "ALTERAN_ARCH=x64"
 if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ALTERAN_ARCH=arm64"
@@ -444,19 +446,31 @@ if %ERRORLEVEL%==0 (
 )
 
 for %%S in (%DENO_SOURCES_LIST%) do (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ErrorActionPreference='Stop';" ^
-    "$source='%%~S'.TrimEnd('/');" ^
-    "$version=(Invoke-RestMethod -UseBasicParsing ($source + '/release-latest.txt')).Trim();" ^
-    "$target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' };" ^
-    "$binDir = Join-Path '%DENO_RUNTIME_ROOT%' 'bin';" ^
-    "$zipPath = Join-Path '%DENO_RUNTIME_ROOT%' 'deno.zip';" ^
-    "New-Item -ItemType Directory -Force -Path $binDir | Out-Null;" ^
-    "New-Item -ItemType Directory -Force -Path (Join-Path '%DENO_RUNTIME_ROOT%' 'cache') | Out-Null;" ^
-    "Invoke-WebRequest -UseBasicParsing -Uri ($source + '/' + $version + '/deno-' + $target + '.zip') -OutFile $zipPath;" ^
-    "Expand-Archive -Force -Path $zipPath -DestinationPath $binDir;" ^
-    "Remove-Item $zipPath -Force;" >nul 2>nul
+  set "DENO_VERSION="
+  for /f "usebackq delims=" %%V in (\`curl.exe -fsSL "%%~S/release-latest.txt" 2^>nul\`) do (
+    set "DENO_VERSION=%%V"
+    goto :standalone_have_version
+  )
+  goto :standalone_next_source
+  :standalone_have_version
+  if not exist "%DENO_RUNTIME_ROOT%\\bin" mkdir "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
+  if not exist "%DENO_RUNTIME_ROOT%\\cache" mkdir "%DENO_RUNTIME_ROOT%\\cache" >nul 2>nul
+  if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    set "DENO_TARGET=aarch64-pc-windows-msvc"
+  ) else (
+    set "DENO_TARGET=x86_64-pc-windows-msvc"
+  )
+  set "DENO_ZIP=%DENO_RUNTIME_ROOT%\\deno.zip"
+  curl.exe -fsSL "%%~S/%DENO_VERSION%/deno-%DENO_TARGET%.zip" -o "%DENO_ZIP%" >nul 2>nul
+  if errorlevel 1 goto :standalone_next_source
+  tar.exe -xf "%DENO_ZIP%" -C "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
+  if errorlevel 1 (
+    del /q "%DENO_ZIP%" >nul 2>nul
+    goto :standalone_next_source
+  )
+  del /q "%DENO_ZIP%" >nul 2>nul
   if exist "%LOCAL_DENO%" exit /b 0
+  :standalone_next_source
 )
 
 echo Failed to download local Deno for standalone app setup. 1>&2
@@ -533,13 +547,7 @@ if not exist ".\\app.json" (
   echo Standalone app launcher requires .\\app.json 1>&2
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$content = [System.IO.File]::ReadAllText((Resolve-Path '.\\app.json'));" ^
-  "if ($content -notmatch '\"id\"\\s*:\\s*\"%APP_ID%\"') { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-  echo Standalone app launcher requires app.json id "%APP_ID%" 1>&2
-  exit /b 1
-)
+${batchAppJsonIdCheck("echo Standalone app launcher requires app.json id")}
 
 set "ALTERAN_ARCH=x64"
 if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ALTERAN_ARCH=arm64"

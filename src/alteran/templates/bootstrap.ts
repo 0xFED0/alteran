@@ -411,11 +411,7 @@ for %%F in ("%TARGET_DIR%\\.env" "%SCRIPT_DIR%\\.env") do (
   )
 )
 
-if defined ALTERAN_SRC if defined ALTERAN_SRC_DOTENV (
-  for /f "usebackq delims=" %%I in (\`powershell -NoProfile -ExecutionPolicy Bypass -Command "$value=$env:ALTERAN_SRC; $baseDir=Split-Path '%ALTERAN_SRC_DOTENV%' -Parent; if ($value -eq '~') { $value=$HOME } elseif ($value.StartsWith('~/') -or $value.StartsWith('~\\')) { $value=Join-Path $HOME $value.Substring(2) } elseif (-not [System.IO.Path]::IsPathRooted($value)) { $value=Join-Path $baseDir $value }; [System.IO.Path]::GetFullPath($value)"\`) do (
-    set "ALTERAN_SRC=%%I"
-  )
-)
+if defined ALTERAN_SRC if defined ALTERAN_SRC_DOTENV call :resolve_alteran_src
 if not defined DENO_SOURCES set "DENO_SOURCES=https://dl.deno.land/release"
 if not defined ALTERAN_RUN_SOURCES (
   if defined ALTERAN_SOURCES (
@@ -444,11 +440,10 @@ set "TARGET_DENO=%TARGET_DIR%\\.runtime\\deno\\%ALTERAN_OS%-%ALTERAN_ARCH%\\bin\
 set "DENO_RUNTIME_ROOT=%TARGET_DIR%\\.runtime\\deno\\%ALTERAN_OS%-%ALTERAN_ARCH%"
 set "ARCHIVE_TEMP_ROOT="
 
-if exist "%SCRIPT_DENO%" (
-  set "BOOTSTRAP_DENO=%SCRIPT_DENO%"
-) else if exist "%TARGET_DENO%" (
-  set "BOOTSTRAP_DENO=%TARGET_DENO%"
-) else (
+set "BOOTSTRAP_DENO="
+if exist "%SCRIPT_DENO%" set "BOOTSTRAP_DENO=%SCRIPT_DENO%"
+if not defined BOOTSTRAP_DENO if exist "%TARGET_DENO%" set "BOOTSTRAP_DENO=%TARGET_DENO%"
+if not defined BOOTSTRAP_DENO (
   where deno >nul 2>nul
   if %ERRORLEVEL%==0 (
     for /f "usebackq delims=" %%I in (\`where deno 2^>nul\`) do (
@@ -462,21 +457,7 @@ if exist "%SCRIPT_DENO%" (
     exit /b 1
   )
   for %%S in (%DENO_SOURCES_LIST%) do (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-      "$ErrorActionPreference='Stop';" ^
-      "$source='%%~S'.TrimEnd('/');" ^
-      "$latestUrls=@($source + '/release-latest.txt');" ^
-      "if ($source.EndsWith('/release')) { $latestUrls += $source.Substring(0, $source.Length - 8).TrimEnd('/') + '/release-latest.txt' };" ^
-      "$version=$null;" ^
-      "foreach ($latest in $latestUrls) { try { $version=(Invoke-RestMethod -UseBasicParsing $latest).Trim(); if ($version) { break } } catch {} }" ^
-      "if (-not $version) { exit 1 };" ^
-      "$target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' };" ^
-      "$binDir = Join-Path '%DENO_RUNTIME_ROOT%' 'bin';" ^
-      "$zipPath = Join-Path '%DENO_RUNTIME_ROOT%' 'deno.zip';" ^
-      "New-Item -ItemType Directory -Force -Path $binDir | Out-Null;" ^
-      "Invoke-WebRequest -UseBasicParsing -Uri ($source + '/' + $version + '/deno-' + $target + '.zip') -OutFile $zipPath;" ^
-      "Expand-Archive -Force -Path $zipPath -DestinationPath $binDir;" ^
-      "Remove-Item $zipPath -Force;" >nul 2>nul
+    call :download_deno_from_source "%%~S"
     if exist "%TARGET_DENO%" (
       set "BOOTSTRAP_DENO=%TARGET_DENO%"
       goto :have_deno
@@ -531,28 +512,7 @@ if not "%ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES_LIST: =%"=="" (
 if not "%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST: =%"=="" (
   for %%S in (%ALTERAN_COMBINED_ARCHIVE_SOURCES_LIST%) do (
     set "ARCHIVE_ENTRY="
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-      "$ErrorActionPreference='Stop';" ^
-      "$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('alteran-archive-' + [Guid]::NewGuid().ToString('N'));" ^
-      "$zipPath = Join-Path $tempRoot 'alteran.zip';" ^
-      "$extractDir = Join-Path $tempRoot 'extract';" ^
-      "New-Item -ItemType Directory -Force -Path $extractDir | Out-Null;" ^
-      "Invoke-WebRequest -UseBasicParsing -Uri '%%~S' -OutFile $zipPath;" ^
-      "Expand-Archive -Force -Path $zipPath -DestinationPath $extractDir;" ^
-      "$mod = Get-ChildItem -Path $extractDir -Recurse -File -Filter mod.ts | Where-Object { $_.FullName -match '[\\\\/]src[\\\\/]alteran[\\\\/]mod\\.ts$' } | Select-Object -First 1;" ^
-      "if ($mod) {" ^
-      "  $root = Split-Path (Split-Path (Split-Path $mod.FullName -Parent) -Parent) -Parent;" ^
-      "  $entry = Join-Path $root 'alteran.ts';" ^
-      "  if (Test-Path $entry) { Write-Output $entry; Write-Output $tempRoot | Out-File -Append -Encoding ascii '%TEMP%\\\\alteran-archive-root.txt' }" ^
-      "}" > "%TEMP%\\alteran-archive-entry.txt" 2>nul
-    if exist "%TEMP%\\alteran-archive-entry.txt" (
-      set /p ARCHIVE_ENTRY=<"%TEMP%\\alteran-archive-entry.txt"
-      del /q "%TEMP%\\alteran-archive-entry.txt" >nul 2>nul
-    )
-    if exist "%TEMP%\\alteran-archive-root.txt" (
-      set /p ARCHIVE_TEMP_ROOT=<"%TEMP%\\alteran-archive-root.txt"
-      del /q "%TEMP%\\alteran-archive-root.txt" >nul 2>nul
-    )
+    call :download_archive_source "%%~S"
     if defined ARCHIVE_ENTRY (
       set "ALTERAN_ENTRY=%ARCHIVE_ENTRY%"
       goto :have_alteran
@@ -568,6 +528,102 @@ exit /b 1
 set "STATUS=%ERRORLEVEL%"
 if defined ARCHIVE_TEMP_ROOT if exist "%ARCHIVE_TEMP_ROOT%" rmdir /s /q "%ARCHIVE_TEMP_ROOT%" >nul 2>nul
 exit /b %STATUS%
+
+:resolve_alteran_src
+set "ALTERAN_SRC_VALUE=%ALTERAN_SRC%"
+for %%I in ("%ALTERAN_SRC_DOTENV%") do set "ALTERAN_SRC_BASE=%%~dpI"
+if "%ALTERAN_SRC_VALUE%"=="~" (
+  set "ALTERAN_SRC=%USERPROFILE%"
+  goto :eof
+)
+if "%ALTERAN_SRC_VALUE:~0,2%"=="~/" (
+  for %%I in ("%USERPROFILE%\\%ALTERAN_SRC_VALUE:~2%") do set "ALTERAN_SRC=%%~fI"
+  goto :eof
+)
+if "%ALTERAN_SRC_VALUE:~0,2%"=="~\\" (
+  for %%I in ("%USERPROFILE%\\%ALTERAN_SRC_VALUE:~2%") do set "ALTERAN_SRC=%%~fI"
+  goto :eof
+)
+call :is_absolute_path "%ALTERAN_SRC_VALUE%" ALTERAN_SRC_IS_ABSOLUTE
+if "%ALTERAN_SRC_IS_ABSOLUTE%"=="1" (
+  for %%I in ("%ALTERAN_SRC_VALUE%") do set "ALTERAN_SRC=%%~fI"
+) else (
+  for %%I in ("%ALTERAN_SRC_BASE%%ALTERAN_SRC_VALUE%") do set "ALTERAN_SRC=%%~fI"
+)
+goto :eof
+
+:is_absolute_path
+set "%~2=0"
+if "%~1"=="" goto :eof
+set "ABSOLUTE_PATH_CANDIDATE=%~1"
+if "%ABSOLUTE_PATH_CANDIDATE:~1,1%"==":" set "%~2=1"
+if "%ABSOLUTE_PATH_CANDIDATE:~0,2%"=="\\\\" set "%~2=1"
+goto :eof
+
+:resolve_latest_deno_version
+set "DENO_SOURCE=%~1"
+set "DENO_VERSION="
+for /f "usebackq delims=" %%V in (\`curl.exe -fsSL "%DENO_SOURCE%/release-latest.txt" 2^>nul\`) do (
+  set "DENO_VERSION=%%V"
+  goto :eof
+)
+if /I "%DENO_SOURCE:~-8%"=="/release" (
+  set "DENO_SOURCE_ALT=%DENO_SOURCE:~0,-8%"
+  for /f "usebackq delims=" %%V in (\`curl.exe -fsSL "%DENO_SOURCE_ALT%/release-latest.txt" 2^>nul\`) do (
+    set "DENO_VERSION=%%V"
+    goto :eof
+  )
+)
+goto :eof
+
+:download_deno_from_source
+set "DENO_SOURCE=%~1"
+call :resolve_latest_deno_version "%DENO_SOURCE%"
+if not defined DENO_VERSION goto :eof
+if not exist "%DENO_RUNTIME_ROOT%\\bin" mkdir "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
+if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+  set "DENO_TARGET=aarch64-pc-windows-msvc"
+) else (
+  set "DENO_TARGET=x86_64-pc-windows-msvc"
+)
+set "DENO_ARCHIVE=%DENO_RUNTIME_ROOT%\\deno.zip"
+curl.exe -fsSL "%DENO_SOURCE%/%DENO_VERSION%/deno-%DENO_TARGET%.zip" -o "%DENO_ARCHIVE%" >nul 2>nul
+if errorlevel 1 goto :download_deno_cleanup
+tar.exe -xf "%DENO_ARCHIVE%" -C "%DENO_RUNTIME_ROOT%\\bin" >nul 2>nul
+:download_deno_cleanup
+if exist "%DENO_ARCHIVE%" del /q "%DENO_ARCHIVE%" >nul 2>nul
+goto :eof
+
+:download_archive_source
+set "ARCHIVE_SOURCE=%~1"
+set "ARCHIVE_TEMP_ROOT="
+set "ARCHIVE_ENTRY="
+set "ARCHIVE_TEMP_ROOT=%TEMP%\\alteran-archive-%RANDOM%%RANDOM%%RANDOM%"
+set "ARCHIVE_ZIP=%ARCHIVE_TEMP_ROOT%\\alteran.zip"
+set "ARCHIVE_EXTRACT_DIR=%ARCHIVE_TEMP_ROOT%\\extract"
+if exist "%ARCHIVE_TEMP_ROOT%" rmdir /s /q "%ARCHIVE_TEMP_ROOT%" >nul 2>nul
+mkdir "%ARCHIVE_EXTRACT_DIR%" >nul 2>nul || goto :archive_source_cleanup
+curl.exe -fsSL "%ARCHIVE_SOURCE%" -o "%ARCHIVE_ZIP%" >nul 2>nul || goto :archive_source_cleanup
+tar.exe -xf "%ARCHIVE_ZIP%" -C "%ARCHIVE_EXTRACT_DIR%" >nul 2>nul || goto :archive_source_cleanup
+if exist "%ARCHIVE_EXTRACT_DIR%\\alteran.ts" if exist "%ARCHIVE_EXTRACT_DIR%\\src\\alteran\\mod.ts" (
+  set "ARCHIVE_ENTRY=%ARCHIVE_EXTRACT_DIR%\\alteran.ts"
+  goto :eof
+)
+for /r "%ARCHIVE_EXTRACT_DIR%" %%F in (mod.ts) do (
+  call :try_archive_entry "%%~fF"
+  if defined ARCHIVE_ENTRY goto :eof
+)
+:archive_source_cleanup
+if defined ARCHIVE_TEMP_ROOT if exist "%ARCHIVE_TEMP_ROOT%" rmdir /s /q "%ARCHIVE_TEMP_ROOT%" >nul 2>nul
+set "ARCHIVE_TEMP_ROOT="
+set "ARCHIVE_ENTRY="
+goto :eof
+
+:try_archive_entry
+echo(%~1| findstr /i /r /c:"[\\\\/]src[\\\\/]alteran[\\\\/]mod\\.ts$" >nul || goto :eof
+for %%R in ("%~1\\..\\..\\..") do set "ARCHIVE_ROOT=%%~fR"
+if exist "%ARCHIVE_ROOT%\\alteran.ts" set "ARCHIVE_ENTRY=%ARCHIVE_ROOT%\\alteran.ts"
+goto :eof
 `;
 
 const ACTIVATE_BAT_TEMPLATE = `@echo off

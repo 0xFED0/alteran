@@ -15,14 +15,25 @@ That materializes the repository-local runtime and local managed Deno under `.ru
 
 ## Local Host Prerequisites
 
-On Unix-like hosts, full Alteran repository development and test flows assume:
+Full Alteran repository development and test flows assume:
 
 - `curl`
-- `unzip`
 - `zip`
 - `git`
+- `unzip` on Unix-like hosts
+- `tar.exe` on Windows hosts
 
-`setup` itself needs either a working global `deno` or local `curl` + `unzip` so it can materialize a project-local Deno runtime. The additional `zip` requirement is specific to this repository's development and test harness, because local fixture archives are created on the host during repository and example tests. `git` is also part of the repository-level test baseline because some documentation tests create clean tracked-file copies of the repository rather than copying untracked local state.
+`setup` itself needs either a working global `deno` or platform-native local
+download tooling so it can materialize a project-local Deno runtime:
+
+- Unix-like hosts use `curl` + `unzip`
+- Windows hosts use `curl.exe` + `tar.exe`
+
+The additional `zip` requirement is specific to this repository's development
+and test harness, because local fixture archives are created on the host during
+repository and example tests. `git` is also part of the repository-level test
+baseline because some documentation tests create clean tracked-file copies of
+the repository rather than copying untracked local state.
 
 ## Common Commands
 
