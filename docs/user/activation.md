@@ -40,6 +40,18 @@ call activate.bat
 
 Batch activation also provides `doskey` aliases such as `alt`, `arun`, `atask`, `atest`, `ax`, and `adeno`.
 
+## Windows PowerShell
+
+Use:
+
+```powershell
+. .\activate.ps1
+```
+
+PowerShell activation is intended to be dot-sourced into the current session so
+that environment variables, functions, and aliases remain available after the
+script finishes.
+
 ## Relation To Setup
 
 - `setup` is the public bootstrap and repair surface

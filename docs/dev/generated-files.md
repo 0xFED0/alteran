@@ -6,6 +6,7 @@ Alteran intentionally generates and regenerates several files so users do not ha
 
 - `activate`
 - `activate.bat`
+- `activate.ps1`
 - `.runtime/alteran/bin/alteran.sh`
 - `.runtime/alteran/bin/alteran.bat`
 - `.runtime/alteran/bin/alt.bat`

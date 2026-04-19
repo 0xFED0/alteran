@@ -10,6 +10,7 @@ project/
   setup.bat
   activate
   activate.bat
+  activate.ps1
   alteran.json
   deno.json
   deno.lock   # optional
@@ -25,7 +26,7 @@ Optional project directories can include `docs/` and `examples/`.
 ## Top-Level Files
 
 - `setup`, `setup.bat`: public bootstrap entrypoints that can regenerate the local environment
-- `activate`, `activate.bat`: generated local activation entrypoints
+- `activate`, `activate.bat`, `activate.ps1`: generated local activation entrypoints
 - `alteran.json`: Alteran project config
 - `deno.json`: Deno config and workspace synchronization target
 - `deno.lock`: optional but recommended lockfile
@@ -66,7 +67,7 @@ Important meaning:
 Generated and recoverable local state should stay out of version control. Typical ignored items include:
 
 - `.runtime/`
-- generated `activate` and `activate.bat`
+- generated `activate`, `activate.bat`, and `activate.ps1`
 - generated app launchers such as `apps/*/app` and `apps/*/app.bat`
 - reproducible build output such as `dist/`
 

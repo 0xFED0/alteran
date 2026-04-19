@@ -52,6 +52,7 @@ import {
 } from "./scaffold.ts";
 import {
   readActivateBatTemplate,
+  readActivatePs1Template,
   readActivateTemplate,
   getDefaultAlteranArchiveSources,
   renderArchiveSourceTemplate,
@@ -61,6 +62,7 @@ import {
 import {
   renderBatchEnv,
   renderBatchCliWrapper,
+  renderPowerShellEnv,
   renderShellCliWrapper,
   renderShellEnv,
 } from "./templates/env.ts";
@@ -214,6 +216,7 @@ function getManagedProjectGitignoreBlock(): string {
     "Thumbs.db",
     "activate",
     "activate.bat",
+    "activate.ps1",
     ".runtime/",
     "apps/*/app",
     "apps/*/app.bat",
@@ -851,6 +854,7 @@ async function ensureBootstrapFiles(projectDir: string): Promise<void> {
 async function ensureActivationFiles(projectDir: string): Promise<void> {
   const activateTarget = join(projectDir, "activate");
   const activateBatTarget = join(projectDir, "activate.bat");
+  const activatePs1Target = join(projectDir, "activate.ps1");
   const paths = getProjectPaths(projectDir);
   const shellInput = {
     projectDir: projectDir.replaceAll("\\", "/"),
@@ -872,6 +876,10 @@ async function ensureActivationFiles(projectDir: string): Promise<void> {
   await writeTextFileIfChanged(
     activateBatTarget,
     await readActivateBatTemplate(batchInput),
+  );
+  await writeTextFileIfChanged(
+    activatePs1Target,
+    await readActivatePs1Template(batchInput),
   );
 }
 
@@ -1173,6 +1181,7 @@ function collectBatchToolAliasCommands(
 export async function generateShellEnv(projectDir: string): Promise<string> {
   const config = await readAlteranConfig(projectDir);
   const paths = getProjectPaths(projectDir);
+  const batchWrapper = relativeExecutable(join(paths.alteranBinDir, "alteran.bat"));
   const appAliases = createShellAliasLines(collectAppAliasCommands(config));
   const toolAliases = createShellAliasLines(collectToolAliasCommands(config));
   const shellAliases = createShellAliasLines(
@@ -1186,6 +1195,7 @@ export async function generateShellEnv(projectDir: string): Promise<string> {
     denoBinDir: relativeExecutable(paths.denoBinDir),
     wrapperBinDir: relativeExecutable(paths.alteranBinDir),
     shellWrapper: relativeExecutable(join(paths.alteranBinDir, "alteran.sh")),
+    batchWrapper,
     appAliases,
     toolAliases,
     shellAliases,
@@ -1213,6 +1223,47 @@ export async function generateBatchEnv(projectDir: string): Promise<string> {
     denoBinDir: paths.denoBinDir,
     wrapperBinDir: paths.alteranBinDir,
     shellWrapper: join(paths.alteranBinDir, "alteran.sh"),
+    batchWrapper: wrapperPath,
+    appAliases,
+    toolAliases,
+    shellAliases,
+  });
+}
+
+function createPowerShellAliasLines(
+  aliases: Map<string, string>,
+): string[] {
+  return [...aliases.entries()].map(([name, command]) =>
+    [
+      `function global:${name} {`,
+      `  __alteran_invoke_alias '${command.replaceAll("'", "''")}' $args`,
+      "}",
+    ].join("\n")
+  );
+}
+
+export async function generatePowerShellEnv(projectDir: string): Promise<string> {
+  const config = await readAlteranConfig(projectDir);
+  const paths = getProjectPaths(projectDir);
+  const wrapperPath = join(paths.alteranBinDir, "alteran.bat");
+  const appAliases = createPowerShellAliasLines(
+    collectAppAliasCommands(config),
+  );
+  const toolAliases = createPowerShellAliasLines(
+    collectToolAliasCommands(config),
+  );
+  const shellAliases = createPowerShellAliasLines(
+    new Map(Object.entries(config.shell_aliases)),
+  );
+
+  return renderPowerShellEnv({
+    runtimeDir: paths.runtimeDir,
+    cacheDir: paths.cacheDir,
+    platformDir: paths.platformDir,
+    denoBinDir: paths.denoBinDir,
+    wrapperBinDir: paths.alteranBinDir,
+    shellWrapper: join(paths.alteranBinDir, "alteran.sh"),
+    batchWrapper: wrapperPath,
     appAliases,
     toolAliases,
     shellAliases,
@@ -1516,6 +1567,7 @@ async function cleanProjectInternal(
     case "env":
       await removeIfExists(join(projectDir, "activate"));
       await removeIfExists(join(projectDir, "activate.bat"));
+      await removeIfExists(join(projectDir, "activate.ps1"));
       break;
     case "app-runtimes":
       for (
@@ -1647,7 +1699,11 @@ function shouldOmitFromCompactCopy(
     return true;
   }
 
-  if (relativePath === "activate" || relativePath === "activate.bat") {
+  if (
+    relativePath === "activate" ||
+    relativePath === "activate.bat" ||
+    relativePath === "activate.ps1"
+  ) {
     return true;
   }
 

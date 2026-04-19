@@ -180,6 +180,7 @@ Deno.test("setupProject creates core Alteran layout", async () => {
       "deno.json",
       "activate",
       "activate.bat",
+      "activate.ps1",
       ".gitignore",
       ".runtime/alteran/mod.ts",
       "apps",
@@ -1335,6 +1336,7 @@ Deno.test("alteran clean accepts multiple scopes", async () => {
       const removedPath of [
         join(projectDir, "activate"),
         join(projectDir, "activate.bat"),
+        join(projectDir, "activate.ps1"),
       ]
     ) {
       try {
@@ -1434,6 +1436,7 @@ Deno.test("alteran clean all matches the safe-cleanup specification", async () =
       const removedPath of [
         join(projectDir, "activate"),
         join(projectDir, "activate.bat"),
+        join(projectDir, "activate.ps1"),
       ]
     ) {
       try {
@@ -1894,6 +1897,7 @@ Deno.test("alteran compact can target an explicit project dir without prior acti
         join(projectDir, "apps", "demo", ".runtime"),
         join(projectDir, "activate"),
         join(projectDir, "activate.bat"),
+        join(projectDir, "activate.ps1"),
       ]
     ) {
       try {
@@ -1955,6 +1959,7 @@ Deno.test("alteran compact-copy creates a transfer-ready copy without mutating t
         join(copyDir, ".runtime"),
         join(copyDir, "activate"),
         join(copyDir, "activate.bat"),
+        join(copyDir, "activate.ps1"),
         join(copyDir, "dist"),
         join(copyDir, "apps", "demo", ".runtime"),
       ]

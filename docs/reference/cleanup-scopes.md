@@ -6,7 +6,7 @@
 | --- | --- |
 | `cache` | Remove `.runtime/deno/<platform>/cache` |
 | `runtime` | Remove generated runtime state under `.runtime/`, preserve the active managed Deno binary when needed, and rebuild expected structure |
-| `env` | Remove generated `activate` and `activate.bat` |
+| `env` | Remove generated `activate`, `activate.bat`, and `activate.ps1` |
 | `app-runtimes` | Remove nested `apps/*/.runtime/` |
 | `logs` | Remove `.runtime/logs/` and recreate the log root |
 | `builds` | Remove `dist/` without recreating publication-specific subdirectories |
@@ -22,7 +22,7 @@ and `compact` when the active managed runtime would otherwise conflict with the 
 - root `.runtime/`
 - nested app runtimes
 - `dist/`
-- generated `activate` and `activate.bat`
+- generated `activate`, `activate.bat`, and `activate.ps1`
 
 while preserving user source, config, and public setup files.
 

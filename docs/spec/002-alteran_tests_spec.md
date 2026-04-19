@@ -188,6 +188,7 @@ Windows behavior is sufficiently different that it must be tested explicitly.
 These tests cover:
 
 - `activate.bat`
+- `activate.ps1`
 - `cmd` session activation behavior
 - `doskey` aliases
 - PowerShell invocation patterns
@@ -344,7 +345,8 @@ surfaces, not as approximations of Unix shell behavior.
 The suite should continue to include:
 
 - `call activate.bat`
-- direct PowerShell `& activate.bat`
+- direct PowerShell `& setup.bat`
+- dot-sourced PowerShell `. .\activate.ps1`
 - PowerShell to `cmd /c call ...`
 - spaces in repository and target paths
 - legacy source env aliases where still supported

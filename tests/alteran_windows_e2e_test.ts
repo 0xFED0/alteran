@@ -160,6 +160,43 @@ async function runPowerShell(
   return output;
 }
 
+async function runPowerShellStdin(
+  script: string,
+  options: {
+    cwd?: string;
+    env?: Record<string, string>;
+  } = {},
+) {
+  await traceCommandStart(
+    TEST_TRACE_CATEGORY.e2eRepoWindows,
+    "powershell -Command - <stdin>",
+    {
+      cwd: options.cwd,
+      env_keys: summarizeEnvKeys(options.env ?? {}),
+    },
+  );
+  const command = new Deno.Command("powershell", {
+    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "-"],
+    cwd: options.cwd,
+    env: {
+      ...Deno.env.toObject(),
+      ...hermeticAlteranEnvWindows(options.env ?? {}),
+    },
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const child = command.spawn();
+  const writer = child.stdin.getWriter();
+  await writer.write(new TextEncoder().encode(script));
+  await writer.close();
+  const output = await child.output();
+  await traceCommandResult(TEST_TRACE_CATEGORY.e2eRepoWindows, output, {
+    cwd: options.cwd,
+  });
+  return output;
+}
+
 async function makeDirWithSpaces(
   prefix: string,
   name: string,
@@ -486,6 +523,7 @@ Deno.test({
           cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
         } exit /b 1`,
         `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
+        `if not exist ${cmdQuote(join(targetDir, "activate.ps1"))} exit /b 1`,
         cmdCallBatch(join(targetDir, "activate.bat")),
         cmdCallCommand("alteran", "help", ">nul"),
       ].join(" && "),
@@ -558,6 +596,9 @@ Deno.test({
           `if (!(Test-Path ${
             psQuote(join(targetDir, "activate.bat"))
           })) { exit 1 }`,
+          `if (!(Test-Path ${
+            psQuote(join(targetDir, "activate.ps1"))
+          })) { exit 1 }`,
         ].join("; "),
         {
           env: {
@@ -568,6 +609,59 @@ Deno.test({
       assertSuccess(
         output,
         "Expected PowerShell direct invocation to initialize the target",
+      );
+    } finally {
+      await removeIfExists(repoCopy);
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows powershell: dot-sourced activate.ps1 preserves env and exposes alteran aliases in the current session",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const repoCopy = await makeRepoCopyWithSpaces("alteran-win-repo-ps1-");
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-ps1-",
+      "powershell activation target with spaces",
+    );
+
+    try {
+      const output = await runPowerShellStdin(
+        [
+          `& ${psQuote(join(repoCopy, "setup.bat"))} ${psQuote(targetDir)}`,
+          `. ${psQuote(join(targetDir, "activate.ps1"))}`,
+          `if ($env:ALTERAN_HOME -ne ${
+            psQuote(join(targetDir, ".runtime"))
+          }) { exit 11 }`,
+          `if ($env:DENO_DIR -ne ${
+            psQuote(
+              join(
+                targetDir,
+                ".runtime",
+                "deno",
+                windowsPlatformId(currentWindowsArch()),
+                "cache",
+              ),
+            )
+          }) { exit 12 }`,
+          "if ((Get-Command alteran -CommandType Function -ErrorAction SilentlyContinue) -eq $null) { exit 13 }",
+          "if ((Get-Command alt -ErrorAction SilentlyContinue) -eq $null) { exit 14 }",
+          "if ((Get-Command atest -CommandType Function -ErrorAction SilentlyContinue) -eq $null) { exit 15 }",
+          "alteran help > $null",
+          "alt help > $null",
+          "atest --help > $null",
+        ].join(";\n"),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected dot-sourced activate.ps1 to preserve env vars and expose Alteran aliases in the same PowerShell session",
       );
     } finally {
       await removeIfExists(repoCopy);
@@ -646,6 +740,7 @@ Deno.test({
             cmdQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
           } exit /b 1`,
           `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
+          `if not exist ${cmdQuote(join(targetDir, "activate.ps1"))} exit /b 1`,
         ].join(" && "),
         {
           cwd: targetDir,

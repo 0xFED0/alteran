@@ -9,6 +9,7 @@ import {
   compactCopyProject,
   compactProject,
   generateBatchEnv,
+  generatePowerShellEnv,
   generateShellEnv,
   listRegistry,
   passthroughDeno,
@@ -40,6 +41,7 @@ export {
   compactCopyProject,
   compactProject,
   generateBatchEnv,
+  generatePowerShellEnv,
   generateShellEnv,
   passthroughDeno,
   refreshProject,
@@ -61,7 +63,7 @@ Commands:
   alteran from app <name> <command> [args...]
   alteran from dir <project-dir> <command> [args...]
   alteran refresh
-  alteran shellenv [dir] [--shell=sh|batch]
+  alteran shellenv [dir] [--shell=sh|batch|powershell]
   alteran app add|rm|purge|ls|run|setup <name>
   alteran tool add|rm|purge|ls|run <name>
   alteran reimport apps|tools <dir>
@@ -167,7 +169,7 @@ Usage:
 Scopes:
   cache         Remove .runtime/deno/{platform}/cache
   runtime       Remove generated runtime state under .runtime/
-  env           Remove generated activate / activate.bat
+  env           Remove generated activate / activate.bat / activate.ps1
   app-runtimes  Remove nested apps/*/.runtime/
   logs          Remove .runtime/logs/
   builds        Remove dist/ output
@@ -200,7 +202,7 @@ Behavior:
   - removes the root .runtime/ directory completely
   - removes nested apps/*/.runtime/ directories
   - removes dist/ output completely
-  - removes generated activate / activate.bat
+  - removes generated activate / activate.bat / activate.ps1
   - preserves user source files, configs, and setup scripts
   - asks for confirmation before making destructive changes unless -y/-f is set
   - cancels immediately when -n is set
@@ -234,7 +236,7 @@ It will remove:
   - .runtime/
   - apps/*/.runtime/
   - dist/
-  - activate / activate.bat
+  - activate / activate.bat / activate.ps1
 
 It will keep:
   - setup / setup.bat
@@ -500,10 +502,10 @@ function parseUpgradeOption(
 
 function parseShellenvArgs(rest: string[]): {
   projectDir: string;
-  format: "shell" | "batch";
+  format: "shell" | "batch" | "powershell";
 } {
   let targetDir: string | undefined;
-  let format: "shell" | "batch" = "shell";
+  let format: "shell" | "batch" | "powershell" = "shell";
 
   for (const arg of rest) {
     if (arg === "--shell=batch" || arg === "--shell=bat" ||
@@ -513,6 +515,13 @@ function parseShellenvArgs(rest: string[]): {
     }
     if (arg === "--shell=sh" || arg === "--shell=shell") {
       format = "shell";
+      continue;
+    }
+    if (
+      arg === "--shell=powershell" || arg === "--shell=pwsh" ||
+      arg === "--shell=ps1"
+    ) {
+      format = "powershell";
       continue;
     }
     if (arg.startsWith("--shell=")) {
@@ -692,9 +701,9 @@ async function runCliInternal(
 
   const parseForcedShellenvArgs = (rest: string[]): {
     projectDir: string;
-    format: "shell" | "batch";
+    format: "shell" | "batch" | "powershell";
   } => {
-    let format: "shell" | "batch" = "shell";
+    let format: "shell" | "batch" | "powershell" = "shell";
     for (const arg of rest) {
       if (arg === "--shell=batch" || arg === "--shell=bat" ||
         arg === "--shell=cmd") {
@@ -703,6 +712,13 @@ async function runCliInternal(
       }
       if (arg === "--shell=sh" || arg === "--shell=shell") {
         format = "shell";
+        continue;
+      }
+      if (
+        arg === "--shell=powershell" || arg === "--shell=pwsh" ||
+        arg === "--shell=ps1"
+      ) {
+        format = "powershell";
         continue;
       }
       if (arg.startsWith("--shell=")) {
@@ -818,7 +834,7 @@ async function runCliInternal(
       }
       case "shellenv": {
         if (rest.some(isHelpToken)) {
-          console.log("Usage:\n  alteran shellenv [dir] [--shell=sh|batch]");
+          console.log("Usage:\n  alteran shellenv [dir] [--shell=sh|batch|powershell]");
           return 0;
         }
         const { projectDir, format } = options.forcedProjectDir
@@ -826,6 +842,8 @@ async function runCliInternal(
           : parseShellenvArgs(rest);
         const output = format === "batch"
           ? await generateBatchEnv(projectDir)
+          : format === "powershell"
+          ? await generatePowerShellEnv(projectDir)
           : await generateShellEnv(projectDir);
         await Deno.stdout.write(new TextEncoder().encode(output));
         return 0;

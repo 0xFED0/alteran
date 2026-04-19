@@ -6,7 +6,7 @@ The command most users should think about here is `setup`.
 
 ```sh
 alteran setup [dir]
-alteran shellenv [dir] [--shell=sh|batch]
+alteran shellenv [dir] [--shell=sh|batch|powershell]
 ```
 
 ## What `setup` Does
@@ -16,7 +16,7 @@ alteran shellenv [dir] [--shell=sh|batch]
 - creates required project directories
 - materializes the Alteran runtime under `.runtime/`
 - ensures a project-local managed Deno runtime
-- generates `setup`, `setup.bat`, `activate`, and `activate.bat`
+- generates `setup`, `setup.bat`, `activate`, `activate.bat`, and `activate.ps1`
 - creates or updates `alteran.json`, `deno.json`, and `.gitignore`
 - synchronizes discovered apps and tools
 
@@ -57,6 +57,12 @@ For Windows batch output:
 
 ```bat
 alteran shellenv --shell=batch
+```
+
+For PowerShell output:
+
+```powershell
+alteran shellenv --shell=powershell
 ```
 
 If you only want to start using the project, prefer `setup` and then `activate`. Reach for `shellenv` when you need explicit shell integration.

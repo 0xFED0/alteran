@@ -36,6 +36,12 @@ On Windows `cmd`:
 call activate.bat
 ```
 
+On Windows PowerShell:
+
+```powershell
+. .\activate.ps1
+```
+
 Activation makes the project-local `deno` and `alteran` available in the current shell session. In other words, after this step you are working inside the project's own managed environment rather than depending on a global setup.
 
 ## 4. Create An App And A Tool

@@ -5,6 +5,7 @@
 Thumbs.db
 activate
 activate.bat
+activate.ps1
 .runtime/
 apps/*/app
 apps/*/app.bat

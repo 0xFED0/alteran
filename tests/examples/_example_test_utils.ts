@@ -31,11 +31,13 @@ const HOST_DENO_BIN_DIR = dirname(Deno.execPath());
 const README_REPO_COPY_EXCLUDES = new Set([
   "activate",
   "activate.bat",
+  "activate.ps1",
 ]);
 const BOOTSTRAP_EMPTY_FOLDER_EXCLUDES = new Set([
   ".runtime",
   "activate",
   "activate.bat",
+  "activate.ps1",
   "alteran.json",
   "apps",
   "deno.json",

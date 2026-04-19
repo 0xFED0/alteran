@@ -19,6 +19,7 @@ Optional or regenerated root items may also exist:
 ```text
 activate
 activate.bat
+activate.ps1
 deno.lock
 ```
 
@@ -39,7 +40,7 @@ deno.lock
 ## Notes
 
 - root `setup` and `setup.bat` are part of the bootstrap contract
-- root `activate` and `activate.bat` are generated local artifacts
+- root `activate`, `activate.bat`, and `activate.ps1` are generated local artifacts
 - `deno.lock` is optional rather than guaranteed
 - `.runtime/` is recoverable local state
 

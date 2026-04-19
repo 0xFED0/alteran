@@ -99,6 +99,7 @@ repo/
   setup.bat
   activate
   activate.bat
+  activate.ps1
   alteran.ts
   alteran.json
   deno.json
@@ -131,6 +132,12 @@ It is a local artifact, not the primary public bootstrap surface.
 ##### `activate.bat`
 
 Generated Windows activation entry for repository development.
+
+It is a local artifact, not the primary public bootstrap surface.
+
+##### `activate.ps1`
+
+Generated PowerShell activation entry for repository development.
 
 It is a local artifact, not the primary public bootstrap surface.
 
@@ -196,7 +203,7 @@ Alteran-owned templates and generator modules for regenerable files such as:
 - `activate.bat`
 - future generated config/bootstrap files
 
-Bootstrap templates such as `setup` / `setup.bat` and generated activation templates such as `activate` / `activate.bat` should be kept as embedded string-based source-of-truth in Alteran-owned TypeScript modules such as:
+Bootstrap templates such as `setup` / `setup.bat` and generated activation templates such as `activate` / `activate.bat` / `activate.ps1` should be kept as embedded string-based source-of-truth in Alteran-owned TypeScript modules such as:
 
 - `src/alteran/templates/bootstrap.ts`
 
@@ -494,7 +501,7 @@ This includes environments that already contain a working global `deno`, because
 
 The target architecture should not require persistent generated env scripts under `.runtime/env/`.
 
-Environment activation should instead be produced dynamically through `alteran shellenv` and consumed by generated root-level `activate` / `activate.bat`.
+Environment activation should instead be produced dynamically through `alteran shellenv` and consumed by generated root-level `activate` / `activate.bat` / `activate.ps1`.
 
 ---
 
@@ -716,7 +723,7 @@ They are responsible for:
    - from local Alteran repository source material such as `src/alteran/`, `src/tools/`, and `src/libs/`, if available
    - or from remote archive/publication sources as fallback
 9. invoking Alteran initialization/setup for the target directory
-10. generating local `activate` / `activate.bat` artifacts for later use
+10. generating local `activate` / `activate.bat` / `activate.ps1` artifacts for later use
 
 Setup scripts must not implement project scaffolding or project synchronization logic themselves.
 
@@ -726,7 +733,7 @@ Running `setup` against a target project is also a hard project-context boundary
 
 If the caller shell already contains Alteran runtime/logging variables from a different project, `setup` must not treat that foreign context as authoritative for the target project.
 
-### 7.2 Responsibility of generated `activate` / `activate.bat`
+### 7.2 Responsibility of generated `activate` / `activate.bat` / `activate.ps1`
 
 These scripts are generated local activation artifacts, not the primary public bootstrap surface.
 
@@ -742,7 +749,7 @@ They are responsible for:
 3. delegating the rest of environment shaping to `alteran shellenv`
 4. avoiding runtime self-location/path discovery where generation-time absolute paths are available
 
-Generated `activate` / `activate.bat` are local materialized artifacts, not portable public bootstrap files.
+Generated `activate` / `activate.bat` / `activate.ps1` are local materialized artifacts, not portable public bootstrap files.
 
 They may assume:
 
@@ -758,7 +765,7 @@ They must not promise to remain valid:
 - after copying the generated activation file into a different location
 - across OS/architecture changes
 
-If the project is moved or opened on a different OS/architecture, the supported recovery flow is to run `setup` again and regenerate `activate` / `activate.bat`.
+If the project is moved or opened on a different OS/architecture, the supported recovery flow is to run `setup` again and regenerate `activate` / `activate.bat` / `activate.ps1`.
 
 For Unix-like shells, generated `activate` should support being sourced:
 
@@ -987,6 +994,7 @@ The `setup` / `refresh` flow must generate:
 
 - `activate`
 - `activate.bat`
+- `activate.ps1`
 
 These generated root-level scripts are responsible for setting up the dev environment.
 
@@ -1026,6 +1034,7 @@ It should:
 
 - Unix: `eval "$(deno ... alteran.ts shellenv)"`
 - Windows: generation/use of activation batch code, then `call` it
+- PowerShell: generation/use of activation PowerShell code, then dot-source it
 
 ### 9.4 Activation model
 
@@ -1053,6 +1062,13 @@ Preferred activation flow:
 1. bootstrap runtime
 2. generate or refresh `activate.bat`
 3. `call` that file
+
+PowerShell activation should be supported through dot-sourcing the generated
+`activate.ps1`:
+
+```powershell
+. .\activate.ps1
+```
 
 Windows should not attempt to emulate Unix-style `eval`.
 
@@ -2319,7 +2335,7 @@ In practice, the publication package may ship the authored source bundle under `
 
 Publication/release payloads should include public bootstrap files such as `setup` / `setup.bat`.
 
-They should not include generated local activation artifacts such as `activate` / `activate.bat`, because those belong to post-setup local project state rather than to the public release surface.
+They should not include generated local activation artifacts such as `activate` / `activate.bat` / `activate.ps1`, because those belong to post-setup local project state rather than to the public release surface.
 
 This means the publication package is not just a thin remote stub.
 

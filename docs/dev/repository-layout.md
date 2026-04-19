@@ -10,6 +10,7 @@ alteran/
   setup.bat
   activate
   activate.bat
+  activate.ps1
   alteran.ts
   alteran.json
   deno.json
@@ -41,7 +42,7 @@ alteran/
 
 - `alteran.ts`: stable public repository/package entrypoint
 - `setup`, `setup.bat`: public bootstrap entrypoints
-- `activate`, `activate.bat`: generated repository-local activation entrypoints
+- `activate`, `activate.bat`, `activate.ps1`: generated repository-local activation entrypoints
 
 ## Why The Layout Mirrors Managed Projects
 

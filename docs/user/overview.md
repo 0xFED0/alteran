@@ -5,7 +5,7 @@ If you want to use Alteran in your own project, start here.
 Alteran gives a Deno-based project:
 
 - public bootstrap entrypoints: `setup` and `setup.bat`
-- generated local activation entrypoints: `activate` and `activate.bat`
+- generated local activation entrypoints: `activate`, `activate.bat`, and `activate.ps1`
 - a project-local managed Deno runtime under `.runtime/`
 - first-class `apps/`, `tools/`, `libs/`, and `tests/`
 - managed execution with logging and context injection

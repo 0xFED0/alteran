@@ -5,6 +5,7 @@ export interface EnvTemplateInput {
   denoBinDir: string;
   wrapperBinDir: string;
   shellWrapper: string;
+  batchWrapper: string;
   appAliases: string[];
   toolAliases: string[];
   shellAliases: string[];
@@ -49,6 +50,56 @@ export function renderBatchEnv(input: EnvTemplateInput): string {
     ...input.shellAliases,
     "",
   ].join("\r\n");
+}
+
+function powerShellLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+function renderPowerShellCommandShim(name: string, command: string): string {
+  return [
+    `function global:${name} {`,
+    `  __alteran_invoke_alias ${powerShellLiteral(command)} $args`,
+    "}",
+  ].join("\n");
+}
+
+export function renderPowerShellEnv(input: EnvTemplateInput): string {
+  return [
+    `$env:ALTERAN_HOME = ${powerShellLiteral(input.runtimeDir)}`,
+    `$env:DENO_DIR = ${powerShellLiteral(input.cacheDir)}`,
+    `$env:DENO_INSTALL_ROOT = ${powerShellLiteral(input.platformDir)}`,
+    `$env:PATH = ${powerShellLiteral(`${input.wrapperBinDir};${input.denoBinDir};`)} + $env:PATH`,
+    "function global:__alteran_invoke_alias {",
+    "  param([string]$Command, [object[]]$RestArgs)",
+    "  if ($null -eq $RestArgs -or $RestArgs.Count -eq 0) {",
+    "    Invoke-Expression $Command",
+    "    return",
+    "  }",
+    "  $quotedArgs = foreach ($arg in $RestArgs) {",
+    '    if ($null -eq $arg) { \'""\'; continue }',
+    "    $text = [string]$arg",
+    "    if ($text -match '[\\s\"`]') {",
+    "      '\"' + $text.Replace('`', '``').Replace('\"', '`\"') + '\"'",
+    "    } else {",
+    "      $text",
+    "    }",
+    "  }",
+    "  $suffix = ($quotedArgs -join ' ')",
+    '  Invoke-Expression "$Command $suffix"',
+    "}",
+    `function global:alteran { & ${powerShellLiteral(input.batchWrapper)} @args }`,
+    "Set-Alias -Scope Global alt alteran",
+    renderPowerShellCommandShim("arun", "alteran run"),
+    renderPowerShellCommandShim("atask", "alteran task"),
+    renderPowerShellCommandShim("atest", "alteran test"),
+    renderPowerShellCommandShim("ax", "alteran x"),
+    renderPowerShellCommandShim("adeno", "alteran deno"),
+    ...input.appAliases,
+    ...input.toolAliases,
+    ...input.shellAliases,
+    "",
+  ].join("\n");
 }
 
 export interface CliWrapperTemplateInput {

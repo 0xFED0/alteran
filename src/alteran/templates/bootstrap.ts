@@ -655,6 +655,35 @@ del /q "%ALTERAN_ENV_FILE%" >nul 2>nul
 exit /b %STATUS%
 `;
 
+function powerShellLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+const ACTIVATE_PS1_TEMPLATE = `$ProjectDir = __PROJECT_DIR__
+$DenoExe = __DENO_EXE__
+$AlteranEntry = __ALTERAN_ENTRY__
+$DenoCacheDir = __DENO_CACHE_DIR__
+
+if (!(Test-Path -LiteralPath $DenoExe)) {
+  Write-Error "Alteran activate requires $DenoExe. Run setup first."
+  return 1
+}
+if (!(Test-Path -LiteralPath $AlteranEntry)) {
+  Write-Error "Alteran activate requires $AlteranEntry. Run setup first."
+  return 1
+}
+
+$env:DENO_DIR = $DenoCacheDir
+$shellenvOutput = (
+  & $DenoExe run -A $AlteranEntry shellenv $ProjectDir --shell=powershell
+) -join [Environment]::NewLine
+if ($LASTEXITCODE -ne 0) {
+  return $LASTEXITCODE
+}
+
+Invoke-Expression $shellenvOutput
+`;
+
 export function readSetupTemplate(version = ALTERAN_VERSION): Promise<string> {
   return Promise.resolve(
     SETUP_TEMPLATE
@@ -707,5 +736,17 @@ export function readActivateBatTemplate(
       .replace("__DENO_EXE__", batchLiteral(input.denoExe))
       .replace("__ALTERAN_ENTRY__", batchLiteral(input.alteranEntry))
       .replace("__DENO_CACHE_DIR__", batchLiteral(input.denoCacheDir)),
+  );
+}
+
+export function readActivatePs1Template(
+  input: ActivateTemplateInput,
+): Promise<string> {
+  return Promise.resolve(
+    ACTIVATE_PS1_TEMPLATE
+      .replace("__PROJECT_DIR__", powerShellLiteral(input.projectDir))
+      .replace("__DENO_EXE__", powerShellLiteral(input.denoExe))
+      .replace("__ALTERAN_ENTRY__", powerShellLiteral(input.alteranEntry))
+      .replace("__DENO_CACHE_DIR__", powerShellLiteral(input.denoCacheDir)),
   );
 }

@@ -46,6 +46,7 @@ Deno.test({
           "setup.bat",
           "activate",
           "activate.bat",
+          "activate.ps1",
           "alteran.json",
           "deno.json",
           ".runtime/alteran/mod.ts",

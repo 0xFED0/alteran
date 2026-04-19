@@ -14,7 +14,7 @@ alteran compact-copy <destination> [--source=<project-dir>]
 
 - `cache`: remove `.runtime/deno/<platform>/cache`
 - `runtime`: remove generated runtime state under `.runtime/` while preserving the current managed Deno binary when needed
-- `env`: remove generated `activate` and `activate.bat`
+- `env`: remove generated `activate`, `activate.bat`, and `activate.ps1`
 - `app-runtimes`: remove nested `apps/*/.runtime/`
 - `logs`: remove `.runtime/logs/`
 - `builds`: remove `dist/`
@@ -30,7 +30,7 @@ On Windows, cleanup routes that conflict with the active managed runtime may use
 - removes root `.runtime/`
 - removes nested app runtimes
 - removes `dist/`
-- removes generated `activate` and `activate.bat`
+- removes generated `activate`, `activate.bat`, and `activate.ps1`
 - keeps user source, config, and public setup scripts
 
 After compact, the project should be recoverable by running `setup` again.

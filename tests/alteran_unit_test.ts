@@ -41,6 +41,7 @@ import { runCli } from "../src/alteran/mod.ts";
 import {
   renderBatchCliWrapper,
   renderBatchEnv,
+  renderPowerShellEnv,
   renderShellEnv,
 } from "../src/alteran/templates/env.ts";
 import { ALTERAN_VERSION } from "../src/alteran/version.ts";
@@ -976,6 +977,7 @@ Deno.test("examples tool temp copy for managed examples uses compact-copy style 
   await ensureDir(join(sourceDir, ".runtime"));
   await Deno.writeTextFile(join(sourceDir, "activate"), "generated\n");
   await Deno.writeTextFile(join(sourceDir, "activate.bat"), "generated\r\n");
+  await Deno.writeTextFile(join(sourceDir, "activate.ps1"), "generated\r\n");
   await ensureDir(join(sourceDir, "dist"));
   await ensureDir(join(sourceDir, "apps", "portable-cli", ".runtime"));
 
@@ -988,6 +990,10 @@ Deno.test("examples tool temp copy for managed examples uses compact-copy style 
   expect(
     !(await exists(join(tempCopy, "activate"))),
     "Expected managed example temp copy not to include activate",
+  );
+  expect(
+    !(await exists(join(tempCopy, "activate.ps1"))),
+    "Expected managed example temp copy not to include activate.ps1",
   );
   expect(
     !(await exists(join(tempCopy, "dist"))),
@@ -1021,6 +1027,7 @@ Deno.test("examples tool temp copy for bootstrap-empty examples preserves source
   const sourceDir = join(tempRepo, "examples", "01-bootstrap-empty-folder");
   await ensureDir(join(sourceDir, ".runtime"));
   await Deno.writeTextFile(join(sourceDir, "activate"), "generated\n");
+  await Deno.writeTextFile(join(sourceDir, "activate.ps1"), "generated\r\n");
   await Deno.writeTextFile(join(sourceDir, "alteran.json"), "{}\n");
   await ensureDir(join(sourceDir, "libs"));
   await Deno.writeTextFile(join(sourceDir, "libs", ".keep"), "\n");
@@ -1235,6 +1242,7 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     denoBinDir: "/tmp/project/.runtime/deno/linux-x64/bin",
     wrapperBinDir: "/tmp/project/.runtime/alteran/bin",
     shellWrapper: "/tmp/project/.runtime/alteran/bin/alteran.sh",
+    batchWrapper: "/tmp/project/.runtime/alteran/bin/alteran.bat",
     appAliases: ["alias app-hello='alteran app run hello'"],
     toolAliases: ["alias tool-seed='alteran tool run seed'"],
     shellAliases: ["alias myrun='alt run scripts/demo.ts'"],
@@ -1246,9 +1254,22 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
     denoBinDir: "C:\\project\\.runtime\\deno\\windows-x64\\bin",
     wrapperBinDir: "C:\\project\\.runtime\\alteran\\bin",
     shellWrapper: "/tmp/project/.runtime/alteran/bin/alteran.sh",
+    batchWrapper: "C:\\project\\.runtime\\alteran\\bin\\alteran.bat",
     appAliases: ['doskey app-hello=call "C:\\project\\.runtime\\alteran\\bin\\alteran.bat" app run hello $*'],
     toolAliases: ['doskey tool-seed=call "C:\\project\\.runtime\\alteran\\bin\\alteran.bat" tool run seed $*'],
     shellAliases: ['doskey myrun=alt run scripts/demo.ts $*'],
+  });
+  const powershell = renderPowerShellEnv({
+    runtimeDir: "C:\\project\\.runtime",
+    cacheDir: "C:\\project\\.runtime\\deno\\windows-x64\\cache",
+    platformDir: "C:\\project\\.runtime\\deno\\windows-x64",
+    denoBinDir: "C:\\project\\.runtime\\deno\\windows-x64\\bin",
+    wrapperBinDir: "C:\\project\\.runtime\\alteran\\bin",
+    shellWrapper: "/tmp/project/.runtime/alteran/bin/alteran.sh",
+    batchWrapper: "C:\\project\\.runtime\\alteran\\bin\\alteran.bat",
+    appAliases: ["function global:app-hello {\n  __alteran_invoke_alias 'alteran app run hello' $args\n}"],
+    toolAliases: ["function global:tool-seed {\n  __alteran_invoke_alias 'alteran tool run seed' $args\n}"],
+    shellAliases: ["function global:myrun {\n  __alteran_invoke_alias 'alt run scripts/demo.ts' $args\n}"],
   });
 
   expect(
@@ -1284,6 +1305,17 @@ Deno.test("env templates expose runtime variables and Alteran shortcuts", () => 
       batch.includes('doskey tool-seed=call "C:\\project\\.runtime\\alteran\\bin\\alteran.bat" tool run seed $*') &&
       batch.includes("doskey myrun=alt run scripts/demo.ts $*"),
     "Expected batch env to clear stale core doskey aliases, rely on PATH for core commands, and keep registry-derived doskey shortcuts",
+  );
+  expect(
+    powershell.includes("$env:ALTERAN_HOME = 'C:\\project\\.runtime'") &&
+      powershell.includes("$env:PATH = 'C:\\project\\.runtime\\alteran\\bin;C:\\project\\.runtime\\deno\\windows-x64\\bin;' + $env:PATH") &&
+      powershell.includes("function global:alteran { & 'C:\\project\\.runtime\\alteran\\bin\\alteran.bat' @args }") &&
+      powershell.includes("Set-Alias -Scope Global alt alteran") &&
+      powershell.includes("function global:atest {") &&
+      powershell.includes("function global:app-hello {") &&
+      powershell.includes("function global:tool-seed {") &&
+      powershell.includes("function global:myrun {"),
+    "Expected PowerShell env to expose runtime vars, the alteran function, and registry-derived command shims",
   );
 });
 

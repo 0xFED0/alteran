@@ -43,6 +43,10 @@ Deno.test({
         "Expected generated activate.bat to be removed",
       );
       assert(
+        !(await exists(join(projectDir, "activate.ps1"))),
+        "Expected generated activate.ps1 to be removed",
+      );
+      assert(
         !(await exists(join(projectDir, "apps", "portable-cli", ".runtime"))),
         "Expected nested app runtime to be removed",
       );
@@ -91,6 +95,10 @@ Deno.test({
       assert(
         await exists(join(projectDir, "activate")),
         "Expected setup to regenerate activate",
+      );
+      assert(
+        await exists(join(projectDir, "activate.ps1")),
+        "Expected setup to regenerate activate.ps1",
       );
       assert(
         await exists(join(projectDir, "alteran.json")),
