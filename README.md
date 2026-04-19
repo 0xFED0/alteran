@@ -100,6 +100,13 @@ call setup.bat
 call activate.bat
 ```
 
+Windows PowerShell one-line setup:
+
+```powershell
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+. .\activate.ps1
+```
+
 If Deno is already installed globally, use the public package entrypoint:
 
 ```sh

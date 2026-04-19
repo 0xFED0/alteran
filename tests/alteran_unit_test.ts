@@ -60,6 +60,7 @@ import {
 import {
   getReleaseZipPath,
   getReleaseSetupBatPath,
+  getReleaseSetupPs1Path,
   getReleaseSetupPath,
   getVersionedZipDistDir,
   prepareReleaseScriptAssetsAt,
@@ -780,6 +781,17 @@ Deno.test("release helpers use versioned dist directories", () => {
       ),
     "Expected release setup.bat path to include version",
   );
+  expect(
+    getReleaseSetupPs1Path(repoRoot) ===
+      join(
+        repoRoot,
+        "dist",
+        "zips",
+        ALTERAN_VERSION,
+        `setup-v${ALTERAN_VERSION}.ps1`,
+      ),
+    "Expected release setup.ps1 path to include version",
+  );
 });
 
 Deno.test("prepare_jsr stays lean while release zip staging adds docs", async () => {
@@ -830,6 +842,19 @@ Deno.test("prepare_jsr stays lean while release zip staging adds docs", async ()
   expect(
     await exists(join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}.bat`)),
     "Expected release assets to include a versioned Windows setup script",
+  );
+  expect(
+    await exists(join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}.ps1`)),
+    "Expected release assets to include a versioned PowerShell setup script",
+  );
+  const setupPs1 = await Deno.readTextFile(
+    join(repoRoot, "dist", "zips", ALTERAN_VERSION, `setup-v${ALTERAN_VERSION}.ps1`),
+  );
+  expect(
+    setupPs1.includes("$setupBatPath = Join-Path $resolvedTargetDir \"setup.bat\"") &&
+      setupPs1.includes("& cmd /d /c") &&
+      setupPs1.includes("@echo off"),
+    "Expected release setup.ps1 to materialize setup.bat locally and delegate bootstrap through cmd",
   );
 });
 

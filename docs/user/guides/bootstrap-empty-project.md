@@ -16,8 +16,9 @@ source ./activate
 This is the shortest public Unix bootstrap path and does not require a global
 Deno install up front.
 
-For the full list of setup launch paths, including Windows `setup.bat`, Deno
-package entry, and repository-local `./setup <dir>`, see
+For the full list of setup launch paths, including Windows `setup.bat`,
+PowerShell `irm ... | iex`, Deno package entry, and repository-local
+`./setup <dir>`, see
 [Setup Launch Methods](./setup-launch-methods.md).
 
 ## Repository-Local Equivalent

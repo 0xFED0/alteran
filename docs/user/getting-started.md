@@ -33,7 +33,7 @@ curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.
 ```
 
 If you want the full matrix of launch options such as Windows `setup.bat`,
-downloaded local `setup`, Deno package entry, or
+PowerShell `irm ... | iex`, downloaded local `setup`, Deno package entry, or
 repository-local `./setup <dir>`, use [Setup Launch Methods](./guides/setup-launch-methods.md).
 
 ## Good Companion Docs

@@ -2,6 +2,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { copyDirectory, ensureDir, removeIfExists } from "../src/alteran/fs.ts";
+import { ALTERAN_VERSION } from "../src/alteran/version.ts";
+import { prepareReleaseScriptAssetsAt } from "../tools/prepare_zip/mod.ts";
 import {
   summarizeEnvKeys,
   TEST_TRACE_CATEGORY,
@@ -612,6 +614,54 @@ Deno.test({
       );
     } finally {
       await removeIfExists(repoCopy);
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "windows powershell: release setup.ps1 can be executed through iex and bootstraps the current directory",
+  ignore: !IS_WINDOWS,
+  async fn() {
+    const releaseDir = await Deno.makeTempDir({
+      prefix: "alteran-win-release-ps1-",
+    });
+    const targetDir = await makeDirWithSpaces(
+      "alteran-win-target-release-ps1-",
+      "powershell release target with spaces",
+    );
+
+    try {
+      await prepareReleaseScriptAssetsAt(releaseDir, ALTERAN_VERSION);
+
+      const output = await runPowerShellStdin(
+        [
+          `Set-Location ${psQuote(targetDir)}`,
+          `$setupScript = Get-Content -LiteralPath ${
+            psQuote(join(releaseDir, `setup-v${ALTERAN_VERSION}.ps1`))
+          } -Raw`,
+          "Invoke-Expression $setupScript",
+          `if (!(Test-Path ${
+            psQuote(join(targetDir, ".runtime", "alteran", "mod.ts"))
+          })) { exit 21 }`,
+          `if (!(Test-Path ${psQuote(join(targetDir, "setup.bat"))})) { exit 22 }`,
+          `if (!(Test-Path ${psQuote(join(targetDir, "activate.bat"))})) { exit 23 }`,
+          `if (!(Test-Path ${psQuote(join(targetDir, "activate.ps1"))})) { exit 24 }`,
+        ].join(";\n"),
+        {
+          env: {
+            PATH: hostDenoPathWindows(),
+            ALTERAN_RUN_SOURCES:
+              pathToFileURL(join(ALTERAN_REPO_DIR, "alteran.ts")).href,
+          },
+        },
+      );
+      assertSuccess(
+        output,
+        "Expected release setup.ps1 executed via iex to bootstrap the current directory through setup.bat",
+      );
+    } finally {
+      await removeIfExists(releaseDir);
     }
   },
 });

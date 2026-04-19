@@ -48,6 +48,19 @@ call activate.bat
 This is the direct Windows equivalent of keeping a local public bootstrap file
 in the project.
 
+## Windows PowerShell `iex`
+
+If you want the one-shot PowerShell path, use the versioned release wrapper:
+
+```powershell
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+. .\activate.ps1
+```
+
+This PowerShell wrapper is only a release convenience surface. It does not
+replace `setup.bat`; it writes `setup.bat` into the project and then delegates
+bootstrap through `cmd`.
+
 ## Deno Public Package Entry
 
 If Deno is already installed globally, the public package entry remains a valid
@@ -79,6 +92,9 @@ different target directory from an existing checkout.
 - use `curl ... | sh` on Unix when you want the shortest public bootstrap path
 - use downloaded `setup` / `setup.bat` when you want local bootstrap files in
   the project
+- use `irm ... | iex` in PowerShell when you want the shortest native
+  PowerShell bootstrap path without maintaining a separate Windows bootstrap
+  implementation
 - use `deno run -A jsr:@alteran/alteran setup` when Deno is already installed
 - use `./setup <dir>` when you already have an Alteran checkout and want to
   bootstrap another directory

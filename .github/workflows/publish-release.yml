@@ -99,6 +99,7 @@ jobs:
             ./dist/zips/${{ env.ALTERAN_VERSION }}/alteran-v${{ env.ALTERAN_VERSION }}.zip
             ./dist/zips/${{ env.ALTERAN_VERSION }}/setup-v${{ env.ALTERAN_VERSION }}
             ./dist/zips/${{ env.ALTERAN_VERSION }}/setup-v${{ env.ALTERAN_VERSION }}.bat
+            ./dist/zips/${{ env.ALTERAN_VERSION }}/setup-v${{ env.ALTERAN_VERSION }}.ps1
 
       - name: Upload dry-run release assets
         if: env.PUBLICATION_MODE == 'dry-run'

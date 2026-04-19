@@ -2381,6 +2381,7 @@ scripts next to the archive asset itself, for example:
 - `alteran-v<version>.zip`
 - `setup-v<version>`
 - `setup-v<version>.bat`
+- `setup-v<version>.ps1`
 
 These assets should live on the same release as the matching version tag.
 

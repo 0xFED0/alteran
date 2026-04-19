@@ -20,7 +20,7 @@ curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.
 ```
 
 This path does not assume a global Deno install. It downloads the public `setup`
-script for Alteran `0.1.9` and runs it against the current directory.
+script for Alteran `0.1.10` and runs it against the current directory.
 
 ## 3. Enter The Local Environment
 
@@ -168,6 +168,17 @@ call activate.bat
 
 This is the direct Windows equivalent of keeping a local checked-in bootstrap
 surface in the project directory.
+
+### Windows PowerShell: `irm | iex`
+
+```powershell
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+. .\activate.ps1
+```
+
+This is a release-only PowerShell convenience wrapper. Internally it writes
+`setup.bat` into the target directory and delegates to the normal Windows
+bootstrap path.
 
 ### Deno: Public Package Entry
 

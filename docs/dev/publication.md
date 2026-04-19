@@ -89,11 +89,16 @@ the archive asset, for example:
 - `alteran-v<version>.zip`
 - `setup-v<version>`
 - `setup-v<version>.bat`
+- `setup-v<version>.ps1`
 
 This is intentional. Versioned asset names make it much easier to confirm which
 archive or bootstrap script was actually downloaded, copied, or executed during
-debugging, while the script contents themselves still represent the normal
-`setup` / `setup.bat` bootstrap surface for that Alteran version.
+debugging.
+
+`setup-v<version>.ps1` is a release-only PowerShell wrapper. It is not a second
+bootstrap implementation. It materializes `setup.bat` into the target
+directory and delegates bootstrap through `cmd`, so Windows bootstrap logic
+stays single-sourced in the batch surface.
 
 ## Automated Publication
 
@@ -113,7 +118,7 @@ The intended flow is:
 - optionally fall back to repository secret `JSR_TOKEN` for token-based auth
 - prepare a release zip from the same staged publication payload
 - attach versioned standalone bootstrap scripts such as `setup-v<version>` and
-  `setup-v<version>.bat` to the same release
+  `setup-v<version>.bat` and `setup-v<version>.ps1` to the same release
 - attach that zip to the GitHub release created from the version tag
 
 For maintainer workflow debugging, the publish workflows also support manual

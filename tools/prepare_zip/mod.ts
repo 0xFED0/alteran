@@ -52,6 +52,46 @@ export function getReleaseSetupBatPath(
   );
 }
 
+export function getReleaseSetupPs1Path(
+  repoRoot: string,
+  version = ALTERAN_VERSION,
+): string {
+  return join(
+    getVersionedZipDistDir(repoRoot, version),
+    `setup-v${version}.ps1`,
+  );
+}
+
+function renderReleaseSetupPs1(setupBatSource: string): string {
+  const escapedSetupBatSource = setupBatSource
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\n", "\r\n");
+
+  return `# Alteran PowerShell release bootstrap wrapper
+# This file is release-only. It materializes setup.bat into the target directory
+# and delegates bootstrap to cmd so Windows bootstrap logic remains single-sourced.
+
+$targetDir = if ($args.Length -gt 0 -and -not [string]::IsNullOrWhiteSpace($args[0])) {
+  $args[0]
+} else {
+  "."
+}
+
+$resolvedTargetDir = [System.IO.Path]::GetFullPath($targetDir)
+[System.IO.Directory]::CreateDirectory($resolvedTargetDir) | Out-Null
+
+$setupBatPath = Join-Path $resolvedTargetDir "setup.bat"
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$setupBatSource = @'
+${escapedSetupBatSource}
+'@
+[System.IO.File]::WriteAllText($setupBatPath, $setupBatSource, $utf8NoBom)
+
+& cmd /d /c "cd /d ""$resolvedTargetDir"" && call ""$setupBatPath"""
+exit $LASTEXITCODE
+`;
+}
+
 export async function prepareReleaseZipStagingAt(
   repoRoot: string,
   stagingDir: string,
@@ -79,13 +119,19 @@ export async function prepareReleaseScriptAssetsAt(
   await ensureDir(outputDir);
   const setupPath = join(outputDir, `setup-v${version}`);
   const setupBatPath = join(outputDir, `setup-v${version}.bat`);
+  const setupPs1Path = join(outputDir, `setup-v${version}.ps1`);
+  const setupBatTemplate = await readSetupBatTemplate(version);
   await writeTextFileIfChanged(
     setupPath,
     await readSetupTemplate(version),
   );
   await writeTextFileIfChanged(
     setupBatPath,
-    await readSetupBatTemplate(version),
+    setupBatTemplate,
+  );
+  await writeTextFileIfChanged(
+    setupPs1Path,
+    renderReleaseSetupPs1(setupBatTemplate),
   );
   if (Deno.build.os !== "windows") {
     await Deno.chmod(setupPath, 0o755);
