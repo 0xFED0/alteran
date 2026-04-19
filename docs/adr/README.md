@@ -12,7 +12,7 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0004: Use Self-Hosted Bootstrap Fixtures for Remote Bootstrap Tests](./0004-self-hosted-bootstrap-fixtures-for-e2e.md)
 - [ADR 0005: Keep Authored Alteran Source in `src/`, Not in `.runtime/`](./0005-src-is-the-authored-source-of-truth.md)
 - [ADR 0006: Keep Activation Lightweight Rather Than Rebuilding on Every Entry](./0006-activate-stays-lightweight.md)
-- [ADR 0007: Keep `alteran.ts` Thin and Deno-Only](./0007-thin-public-entrypoint-with-node-bootstrap-bridge.md)
+- [ADR 0007: Keep `alteran.ts` Thin and Deno-Only](./0007-rejected-thin-public-entrypoint-with-node-bootstrap-bridge.md)
 - [ADR 0008: Stable Public Entrypoint vs Local Materialized Runtime](./0008-stable-public-entrypoint-vs-local-runtime.md)
 - [ADR 0009: Separate Alteran Runtime from Runtime Helper Tools](./0009-separate-alteran-runtime-from-runtime-tools.md)
 - [ADR 0010: Keep Bootstrap Shell Minimal and Put Real Logic in TypeScript](./0010-minimal-shell-bootstrap-and-typescript-owned-logic.md)
@@ -42,7 +42,8 @@ ADR files capture decisions that are not obvious from the final specification al
 - [ADR 0034: Normalize Committed Examples Through a Non-Destructive `reset` Script](./0034-normalize-committed-examples-through-a-reset-script.md)
 - [ADR 0035: Add an Explicit `from` Command for Context-Rebased Execution](./0035-add-an-explicit-from-command-for-context-rebased-execution.md)
 - [ADR 0036: Use Narrow Cleanup Handoff for Deferred Runtime Mutations](./0036-use-narrow-cleanup-handoff-for-deferred-runtime-mutations.md)
-- [ADR 0037: Extract `apack` as a Separate JSR Package with Portable Core](./0037-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
+- [ADR 0037: Separate Shell Entry Surfaces from Root Bootstrap and Make `enter` the Primary Interactive Entry](./0037-separate-shell-entry-surfaces-and-make-enter-primary.md)
+- [ADR 0038: Extract `apack` as a Separate JSR Package with Portable Core](./0038-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
 
 ## Notes
 

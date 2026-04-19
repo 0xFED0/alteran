@@ -1,4 +1,4 @@
-# ADR: Extract `apack` as a Separate JSR Package with Portable Core
+# ADR 0038: Extract `apack` as a Separate JSR Package with Portable Core
 
 - Status: Accepted
 - Date: 2026-04-18

@@ -14,7 +14,8 @@ This page is the contributor-facing ADR entrypoint inside the dev docs. Canonica
 - [ADR 0022: public `setup` vs generated local `activate`](../../adr/0022-separate-setup-from-activate-and-generate-activation-locally.md)
 - [ADR 0023: project-scoped execution context and canonical log root](../../adr/0023-project-scoped-execution-context-and-canonical-log-root.md)
 - [ADR 0027: portable `ai-user` bundle vs repository-scoped `ai-dev`](../../adr/0027-separate-portable-ai-user-bundle-from-repository-ai-dev.md)
-- [ADR 0037: separate `@alteran/apack` package with portable core](../../adr/0037-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
+- [ADR 0037: separate shell entry surfaces and make `enter` primary](../../adr/0037-separate-shell-entry-surfaces-and-make-enter-primary.md)
+- [ADR 0038: separate `@alteran/apack` package with portable core](../../adr/0038-extract-apack-as-a-separate-jsr-package-with-portable-core.md)
 
 Use the full [ADR README](../../adr/README.md) for the complete list.
 
