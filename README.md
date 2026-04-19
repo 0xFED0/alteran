@@ -28,7 +28,7 @@ cd hello-alteran
 Initialize it from the versioned public bootstrap script:
 
 ```sh
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11 | sh -s -- .
 ```
 
 Activate env:
@@ -86,7 +86,7 @@ Other common ways to launch `setup` are:
 Unix, keep a local `setup` file in the project:
 
 ```sh
-curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11
 chmod +x ./setup
 ./setup
 source ./activate
@@ -95,7 +95,7 @@ source ./activate
 Windows, download `setup.bat` into the project and run it:
 
 ```bat
-curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.bat
 call setup.bat
 call activate.bat
 ```
@@ -103,7 +103,7 @@ call activate.bat
 Windows PowerShell one-line setup:
 
 ```powershell
-irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.ps1 | iex
 . .\activate.ps1
 ```
 

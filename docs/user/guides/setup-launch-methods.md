@@ -13,7 +13,7 @@ The shortest public bootstrap path is the versioned release script:
 ```sh
 mkdir hello-alteran
 cd hello-alteran
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11 | sh -s -- .
 source ./activate
 ```
 
@@ -25,7 +25,7 @@ up front.
 If you want the project directory itself to keep a local bootstrap file:
 
 ```sh
-curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11
 chmod +x ./setup
 ./setup
 source ./activate
@@ -40,7 +40,7 @@ Download the versioned batch bootstrap file and run it in the target project
 directory:
 
 ```bat
-curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.bat
 call setup.bat
 call activate.bat
 ```
@@ -53,7 +53,7 @@ in the project.
 If you want the one-shot PowerShell path, use the versioned release wrapper:
 
 ```powershell
-irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.ps1 | iex
 . .\activate.ps1
 ```
 

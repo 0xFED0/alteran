@@ -16,11 +16,11 @@ cd hello-alteran
 The simplest Unix path is the versioned public bootstrap script:
 
 ```sh
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11 | sh -s -- .
 ```
 
 This path does not assume a global Deno install. It downloads the public `setup`
-script for Alteran `0.1.10` and runs it against the current directory.
+script for Alteran `0.1.11` and runs it against the current directory.
 
 ## 3. Enter The Local Environment
 
@@ -149,7 +149,7 @@ way to bootstrap a project.
 ### Unix: Keep A Local `setup` File In The Project
 
 ```sh
-curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10
+curl -fsSLo setup https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11
 chmod +x ./setup
 ./setup
 source ./activate
@@ -161,7 +161,7 @@ or copyable bootstrap file right away.
 ### Windows: Download And Run `setup.bat`
 
 ```bat
-curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.bat
+curl.exe -fsSLo setup.bat https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.bat
 call setup.bat
 call activate.bat
 ```
@@ -172,7 +172,7 @@ surface in the project directory.
 ### Windows PowerShell: `irm | iex`
 
 ```powershell
-irm https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10.ps1 | iex
+irm https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11.ps1 | iex
 . .\activate.ps1
 ```
 

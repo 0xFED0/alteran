@@ -29,7 +29,7 @@ That usually means the beginner path is:
 The shortest public Unix bootstrap path is:
 
 ```sh
-curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.10/setup-v0.1.10 | sh -s -- .
+curl -fsSL https://github.com/0xFED0/alteran/releases/download/v0.1.11/setup-v0.1.11 | sh -s -- .
 ```
 
 If you want the full matrix of launch options such as Windows `setup.bat`,
