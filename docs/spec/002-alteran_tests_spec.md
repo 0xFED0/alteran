@@ -163,7 +163,6 @@ These tests cover:
 - sourced `activate`
 - shell alias behavior in `sh`/`zsh`
 - Unix launcher execution semantics
-- node bridge scenarios validated from Unix hosts
 - copied `setup` bootstrap flows that are exercised through Unix shells
 - Unix direct cleanup and compact behavior without Windows-specific handoff
 

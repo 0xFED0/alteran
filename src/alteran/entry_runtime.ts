@@ -3,14 +3,6 @@ type DenoCliRuntime = {
   exit(code?: number): never;
 };
 
-type NodeCliProcess = {
-  argv: string[];
-  exit(code?: number): never;
-  versions?: {
-    node?: string;
-  };
-};
-
 export type CliRunner = (args: string[]) => Promise<number>;
 
 export function getDenoRuntime(): DenoCliRuntime | null {
@@ -21,34 +13,24 @@ export function getDenoRuntime(): DenoCliRuntime | null {
   return value as DenoCliRuntime;
 }
 
-export function getNodeProcess(): NodeCliProcess | null {
-  const value = (globalThis as Record<string, unknown>).process;
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const nodeProcess = value as NodeCliProcess;
-  return nodeProcess.versions?.node ? nodeProcess : null;
-}
-
 export function isDeno(): boolean {
   return getDenoRuntime() !== null;
-}
-
-export function isNode(): boolean {
-  return getNodeProcess() !== null;
 }
 
 export async function isMain(
   entryUrl: string,
   denoImportMetaMain: boolean,
 ): Promise<boolean> {
-  const denoRuntime = getDenoRuntime();
-  if (denoRuntime) {
+  if (isDeno()) {
     return denoImportMetaMain;
   }
 
-  const nodeProcess = getNodeProcess();
-  if (!nodeProcess) {
+  const processValue = (globalThis as Record<string, unknown>).process;
+  if (!processValue || typeof processValue !== "object") {
+    return false;
+  }
+  const argv = (processValue as { argv?: unknown }).argv;
+  if (!Array.isArray(argv) || typeof argv[1] !== "string") {
     return false;
   }
 
@@ -56,19 +38,11 @@ export async function isMain(
     import("node:path"),
     import("node:url"),
   ]);
-  const invokedPath = nodeProcess.argv[1];
-  if (!invokedPath) {
-    return false;
-  }
-  return resolve(invokedPath) === resolve(fileURLToPath(entryUrl));
+  return resolve(argv[1]) === resolve(fileURLToPath(entryUrl));
 }
 
 export function getCliArgs(): string[] {
-  const denoRuntime = getDenoRuntime();
-  if (denoRuntime) {
-    return denoRuntime.args;
-  }
-  return getNodeProcess()?.argv.slice(2) ?? [];
+  return getDenoRuntime()?.args ?? [];
 }
 
 export function exitCli(code: number): never {
@@ -77,24 +51,19 @@ export function exitCli(code: number): never {
     denoRuntime.exit(code);
   }
 
-  const nodeProcess = getNodeProcess();
-  if (nodeProcess) {
-    nodeProcess.exit(code);
-  }
-
-  throw new Error("Unsupported platform");
+  throw new Error("Unsupported runtime: Alteran requires Deno.");
 }
 
 export async function loadCliRunner(): Promise<CliRunner> {
-  if (isDeno()) {
-    const denoModule = await import("./mod.ts");
-    return denoModule.runCli;
+  if (!isDeno()) {
+    return async () => {
+      console.error(
+        "Alteran error: Only the Deno runtime is supported. Run alteran with Deno.",
+      );
+      return 1;
+    };
   }
 
-  if (isNode()) {
-    const nodeCompatModule = await import("./node_compat.ts");
-    return nodeCompatModule.runNodeCompatCli;
-  }
-
-  throw new Error("Unsupported platform: Alteran requires Deno or Node.js.");
+  const denoModule = await import("./mod.ts");
+  return denoModule.runCli;
 }

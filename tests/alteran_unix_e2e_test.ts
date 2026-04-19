@@ -245,75 +245,39 @@ async function assertSuccessfulShellActivation(
   }
 }
 
-async function isNodeAvailable(): Promise<boolean> {
-  try {
+const ZSH_AVAILABLE = await commandExists("zsh");
+const NODE_AVAILABLE = await commandExists("node");
+
+Deno.test({
+  name: "direct node alteran.ts invocation fails with a Deno-only runtime message",
+  ignore: IS_WINDOWS || !NODE_AVAILABLE,
+  async fn() {
     const output = await new Deno.Command("node", {
-      args: ["--version"],
-      stdout: "null",
-      stderr: "null",
-    }).output();
-    return output.success;
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      return false;
-    }
-    throw error;
-  }
-}
-
-async function resolveNodeBridgeArgsPrefix(): Promise<string[] | null> {
-  if (!(await isNodeAvailable())) {
-    return null;
-  }
-
-  try {
-    const plainOutput = await new Deno.Command("node", {
       args: [ALTERAN_ENTRY_PATH, "--help"],
       cwd: ALTERAN_REPO_DIR,
       env: {
         ...Deno.env.toObject(),
         PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
       },
-      stdout: "null",
-      stderr: "null",
+      stdout: "piped",
+      stderr: "piped",
     }).output();
-    if (plainOutput.success) {
-      return [];
-    }
-  } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) {
-      throw error;
-    }
-    return null;
-  }
+    const stdout = decode(output.stdout);
+    const stderr = decode(output.stderr);
+    const combined = `${stdout}\n${stderr}`;
 
-  try {
-    const stripTypesOutput = await new Deno.Command("node", {
-      args: ["--experimental-strip-types", ALTERAN_ENTRY_PATH, "--help"],
-      cwd: ALTERAN_REPO_DIR,
-      env: {
-        ...Deno.env.toObject(),
-        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
-      },
-      stdout: "null",
-      stderr: "null",
-    }).output();
-    if (stripTypesOutput.success) {
-      return ["--experimental-strip-types"];
+    if (output.success) {
+      throw new Error(
+        `Expected direct node alteran.ts invocation to fail. stdout=${stdout} stderr=${stderr}`,
+      );
     }
-  } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) {
-      throw error;
+    if (!combined.includes("Only the Deno runtime is supported")) {
+      throw new Error(
+        `Expected a Deno-only runtime message from direct node alteran.ts invocation, got: ${combined}`,
+      );
     }
-    return null;
-  }
-
-  return null;
-}
-
-const NODE_BRIDGE_ARGS_PREFIX = await resolveNodeBridgeArgsPrefix();
-const NODE_AVAILABLE = NODE_BRIDGE_ARGS_PREFIX !== null;
-const ZSH_AVAILABLE = await commandExists("zsh");
+  },
+});
 
 Deno.test({
   name: "managed app launcher runs from another working directory",
@@ -830,87 +794,6 @@ Deno.test({
       ]
     ) {
       await Deno.stat(preservedPath);
-    }
-  },
-});
-
-Deno.test({
-  name: "node compatibility bridge can show CLI help",
-  ignore: !NODE_AVAILABLE,
-  async fn() {
-    const command = new Deno.Command("node", {
-      args: [...NODE_BRIDGE_ARGS_PREFIX!, ALTERAN_ENTRY_PATH, "--help"],
-      cwd: ALTERAN_REPO_DIR,
-      env: {
-        ...Deno.env.toObject(),
-        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
-      },
-      stdout: "piped",
-      stderr: "piped",
-    });
-    const output = await command.output();
-    const stdout = decode(output.stdout);
-    const stderr = decode(output.stderr);
-
-    if (!output.success) {
-      throw new Error(
-        `Expected node bridge help to succeed. stdout=${stdout} stderr=${stderr}`,
-      );
-    }
-    if (
-      !stdout.includes("Alteran") || !stdout.includes("alteran setup [dir]")
-    ) {
-      throw new Error(
-        `Expected Alteran help output from node bridge, got: ${stdout}`,
-      );
-    }
-  },
-});
-
-Deno.test({
-  name: "node compatibility bridge can set up a project through Deno",
-  ignore: !NODE_AVAILABLE,
-  async fn() {
-    const projectDir = await Deno.makeTempDir({
-      prefix: "alteran-node-setup-",
-    });
-    const command = new Deno.Command("node", {
-      args: [
-        ...NODE_BRIDGE_ARGS_PREFIX!,
-        ALTERAN_ENTRY_PATH,
-        "setup",
-        projectDir,
-      ],
-      cwd: ALTERAN_REPO_DIR,
-      env: {
-        ...Deno.env.toObject(),
-        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
-      },
-      stdout: "piped",
-      stderr: "piped",
-    });
-    const output = await command.output();
-    const stdout = decode(output.stdout);
-    const stderr = decode(output.stderr);
-
-    if (!output.success) {
-      throw new Error(
-        `Expected node bridge setup to succeed. stdout=${stdout} stderr=${stderr}`,
-      );
-    }
-
-    for (
-      const expectedPath of [
-        join(projectDir, "setup"),
-        join(projectDir, "setup.bat"),
-        join(projectDir, "activate"),
-        join(projectDir, "activate.bat"),
-        join(projectDir, "alteran.json"),
-        join(projectDir, "deno.json"),
-        join(projectDir, ".runtime", "alteran", "mod.ts"),
-      ]
-    ) {
-      await Deno.stat(expectedPath);
     }
   },
 });
