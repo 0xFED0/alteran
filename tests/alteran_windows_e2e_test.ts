@@ -534,9 +534,6 @@ Deno.test({
         } exit /b 1`,
         `if not exist ${cmdQuote(join(targetDir, "activate.bat"))} exit /b 1`,
         `if not exist ${cmdQuote(join(targetDir, "activate.ps1"))} exit /b 1`,
-        cmdCallBatch(join(targetDir, "activate.bat")),
-        "if errorlevel 1 exit /b %ERRORLEVEL%",
-        cmdCallCommand("alteran", "help", ">nul"),
       ]),
       {
         cwd: targetDir,

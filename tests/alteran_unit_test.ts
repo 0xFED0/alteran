@@ -10,7 +10,7 @@ import {
   syncRootDenoConfig,
   updateAlteranConfig,
 } from "../src/alteran/config.ts";
-import { ensureDir, exists } from "../src/alteran/fs.ts";
+import { ensureDir, exists, writeTextFileIfChanged } from "../src/alteran/fs.ts";
 import { copyDirectory } from "../src/alteran/fs.ts";
 import { updateJsoncFile } from "../src/alteran/jsonc.ts";
 import {
@@ -181,6 +181,25 @@ Deno.test("source configuration helpers honor defaults, explicit values, and emp
       "ALTERAN_BOOTSTRAP_ARCHIVE_SOURCES",
       previousBootstrapArchiveSources,
     );
+  }
+});
+
+Deno.test("writeTextFileIfChanged treats LF and CRLF content as synchronized", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "alteran-unit-newlines-" });
+  const filePath = join(tempDir, "setup.bat");
+
+  try {
+    await Deno.writeTextFile(filePath, "@echo off\r\nexit /b 0\r\n");
+    const before = await Deno.readTextFile(filePath);
+    await writeTextFileIfChanged(filePath, "@echo off\nexit /b 0\n");
+    const after = await Deno.readTextFile(filePath);
+
+    expect(
+      after === before,
+      "Expected newline-only differences not to rewrite an existing text file",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
   }
 });
 

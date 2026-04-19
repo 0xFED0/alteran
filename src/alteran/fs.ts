@@ -45,7 +45,13 @@ export async function writeTextFileIfChanged(
   content: string,
 ): Promise<void> {
   const current = await readTextIfExists(path);
-  if (current === content) {
+  if (
+    current === content ||
+    (
+      current !== null &&
+      current.replaceAll("\r\n", "\n") === content.replaceAll("\r\n", "\n")
+    )
+  ) {
     return;
   }
   await ensureDir(dirname(path));
