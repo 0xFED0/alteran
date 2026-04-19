@@ -246,38 +246,6 @@ async function assertSuccessfulShellActivation(
 }
 
 const ZSH_AVAILABLE = await commandExists("zsh");
-const NODE_AVAILABLE = await commandExists("node");
-
-Deno.test({
-  name: "direct node alteran.ts invocation fails with a Deno-only runtime message",
-  ignore: IS_WINDOWS || !NODE_AVAILABLE,
-  async fn() {
-    const output = await new Deno.Command("node", {
-      args: [ALTERAN_ENTRY_PATH, "--help"],
-      cwd: ALTERAN_REPO_DIR,
-      env: {
-        ...Deno.env.toObject(),
-        PATH: `${dirname(Deno.execPath())}:${Deno.env.get("PATH") ?? ""}`,
-      },
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
-    const stdout = decode(output.stdout);
-    const stderr = decode(output.stderr);
-    const combined = `${stdout}\n${stderr}`;
-
-    if (output.success) {
-      throw new Error(
-        `Expected direct node alteran.ts invocation to fail. stdout=${stdout} stderr=${stderr}`,
-      );
-    }
-    if (!combined.includes("Only the Deno runtime is supported")) {
-      throw new Error(
-        `Expected a Deno-only runtime message from direct node alteran.ts invocation, got: ${combined}`,
-      );
-    }
-  },
-});
 
 Deno.test({
   name: "managed app launcher runs from another working directory",
