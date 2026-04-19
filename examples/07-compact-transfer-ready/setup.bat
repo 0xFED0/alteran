@@ -232,6 +232,6 @@ goto :eof
 
 :try_archive_entry
 echo(%~1| findstr /i /r /c:"[\\/]src[\\/]alteran[\\/]mod\.ts$" >nul || goto :eof
-for %%R in ("%~1\..\..\..") do set "ARCHIVE_ROOT=%%~fR"
+for %%R in ("%~dp1..\..") do set "ARCHIVE_ROOT=%%~fR"
 if exist "%ARCHIVE_ROOT%\alteran.ts" set "ARCHIVE_ENTRY=%ARCHIVE_ROOT%\alteran.ts"
 goto :eof
